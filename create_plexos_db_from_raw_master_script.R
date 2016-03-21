@@ -2,18 +2,51 @@
 # setup ----
 #------------------------------------------------------------------------------|
 
-#if sourcing this script
-if (Sys.info()["user"]=="dpalchak") {
-  setwd("./Process_for_PLEXOS_import/") 
+# This script is part of the PSSE2PLEXOS repository to function properly, it should be inserted into
+# a data repository as a git submodule. The PSSE2PLEXOS submodule should reside in a folder with two
+# other folders: InputData (containing input *.csv and *.raw files), and OutputData
+
+# To Run:
+# 1. create an argument string (example below)
+# 2. run this code by either a. or b.
+#   a. source('create_plexos_db_from_raw_master_script.r')
+#   b. Rscript create_plexos_db_from_raw_master_script.r
+
+# With the exception of the PSSE file (required) the following input arguments 
+#   will be processed if they are defined:
+# 1. PSSE.raw file name
+# 2. region re-mapping .csv file name
+# 3. zone re-mapping .csv file name
+# 4. generator fuel mapping .csv file name
+# 5. regional load file def .csv name
+# 6. new RE gens to be added .csv name
+
+#example arg strings:
+# args = c("All_India_Peak_Oct_2015_version31_without_outage_lines.raw","map_new_regions.csv","map_new_zones.csv","map_generators_to_fuel.csv","map_region_to_loadfile.csv","2014_State_RE_gens.csv")
+# args = c("2014_Peak_LuzVis v31.raw","","","","","")
+
+
+if (interactive()) {
+  t=try(dirname(sys.frame(1)$ofile),silent = T)
+  if(inherits(t, "try-error")) {
+    warning("Make sure you are in the PSSE2PLEXOS submodule path")
+  } else {
+    script.dir = dirname(sys.frame(1)$ofile)
+    setwd(script.dir)
+  }
 } else {
-  dirname(sys.frame(1)$ofile)
-setwd(dirname(parent.frame(2)$ofile))
+  dir = getSrcDirectory(function(x) {x})
+  m <- regexpr("(?<=^--file=).+", commandArgs(), perl=TRUE)
+  script.dir <- dirname(regmatches(commandArgs(), m))
+  if(length(script.dir) == 0) stop("can't determine script dir: please call the script with Rscript")
+  if(length(script.dir) > 1) stop("can't determine script dir: more than one '--file' argument detected")
+  setwd(script.dir)
 }
 
 
 #install.packages("pacman")
 pacman::p_load(cowplot, plyr, dplyr, ggplot2, grid, gridExtra, gtools, 
-  knitr, lubridate, reshape2, data.table, rplexos, RSQLite, stringr) 
+  knitr, lubridate, reshape2, data.table, RSQLite, stringr) 
 pacman::p_load(openxlsx)  
   # had to follow instructions here: https://github.com/awalker89/openxlsx, 
   # including installing Rtools from here: 
@@ -55,23 +88,23 @@ runAllFiles <- function () {
 # ---- required/generic inputs ----
 
 # PSSE file
-raw.file.path <- "All_India_Peak_Oct_2015_version31_without_outage_lines.raw"
+raw.file.path <- args[1]
 
 # remap nodes' regions and zones? files are required if rename.regions or 
 # rename.zones are set to TRUE
-rename.regions <- TRUE  
-map.newregion.file <- "map_new_regions.csv" 
-rename.zones <- TRUE 
-map.newzone.file <- "map_new_zones.csv" 
+map.newregion.file <- args[2]
+rename.regions = ifelse(map.newregion.file=='',F,T)
+map.newzone.file <- args[3]
+rename.zones = ifelse(map.newzone.file=='',F,T)
 
 # add generators to fuel
-map.gen.to.fuel.file <- "map_generators_to_fuel.csv"
+map.gen.to.fuel.file <- args[4]
 
 # point each region to a load file
-map.region.to.load.RE.file <- "map_region_to_loadfile.csv"
+map.region.to.load.RE.file <- args[5]
 
 # add new generators
-RE.gen.file <- "2014_State_RE_gens.csv"
+RE.gen.file <- args[6]
 
 # add properties to objects. 
 # files should be of the form: one column with names of all affected objects, 

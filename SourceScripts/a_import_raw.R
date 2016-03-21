@@ -96,61 +96,99 @@ mva.base <- as.numeric(raw.table[1,V2])
 #4=disconnected bus
 #Note: PSSE uses the term "Area" in this table, but this code changes that to 
 #"Region" for consistency with Plexos. 
-setnames(Bus.table, colnames(Bus.table), c("BusNumber", "BusName", "Voltage.kV", 
-  "BusTypeCode", "Region", "Zone", "Owner", "BusVoltageMagnitude.pu", 
-      "BusVoltageAngle.degrees"))
+if (exists('Bus.table')) {
+  setnames(Bus.table, colnames(Bus.table), c("BusNumber", "BusName", "Voltage.kV", 
+                                             "BusTypeCode", "Region", "Zone", "Owner", "BusVoltageMagnitude.pu", 
+                                             "BusVoltageAngle.degrees"))
+} else {
+  warning("No Bus Table exists")
+}
 
 #Load.table, p.5-9
 #LoadTypeCode if there are multiple loads are bus
 #LoadStatus == 1 if in-service and == 0 for out-of-service
 #Note: PSSE uses the term "Area" in this table, but this code changes that to 
 #"Region" for consistency with Plexos. 
-setnames(Load.table, colnames(Load.table), c("BusNumber", "LoadTypeCode", 
-  "Status", "Region", "Zone", "ActivePower.MW", "ReactivePower.MVAR", 
-  "ActivePowerOfConstCurrent.MW", "ReactivePowerOfConstCurrent.MVAR", 
-  "ActivePowerOfConstAdmittance.MW", "ReactivePowerOfConstAdmittance.MVAR", 
-  "Owner"))
+if (exists('Load.table')) {
+  setnames(Load.table, colnames(Load.table), c("BusNumber", "LoadTypeCode", 
+                                               "Status", "Region", "Zone", "ActivePower.MW", "ReactivePower.MVAR", 
+                                               "ActivePowerOfConstCurrent.MW", "ReactivePowerOfConstCurrent.MVAR", 
+                                               "ActivePowerOfConstAdmittance.MW", "ReactivePowerOfConstAdmittance.MVAR", 
+                                               "Owner"))
+} else {
+  warning("No Loax Table exists")
+}
+
 
 #Fixed.shunt.table
 #see manual
-setnames(Fixed.shunt.table, colnames(Fixed.shunt.table), c("BusNumber", "ID", 
-  "Status", "ActiveCompShuntAdmToGrnd.MW", "ReactiveCompShuntAdmToGrnd.MVAR"))
+if (exists('Fixed.shunt.table')) {
+  setnames(Fixed.shunt.table, colnames(Fixed.shunt.table), c("BusNumber", "ID", 
+                                                             "Status", "ActiveCompShuntAdmToGrnd.MW", "ReactiveCompShuntAdmToGrnd.MVAR"))
+} else {
+  warning("No Fixed Shunt Table exists")
+}
+
 
 #Generator.table, p.5-13
 #OtherBusReg = number of bus who voltage is regulated by this gen (otherwise 
 #will regulate its own)
 #WindControlMode = 0 - not wind; 1 - reactive power limits are specified here; 
 #2, 3 - reactive power limits calculated
-setnames(Generator.table, colnames(Generator.table), c("BusNumber", "ID", 
-  "ActivePower.MW", "ReactivePower.MVAR", "MaxReactivePowerOutput.MVAR", 
-  "MinReactivePowerOutput.MVAR", "VoltageSetpoint.pu", "OtherBusReg", "MVA", 
-  "IMpedance1", "Impedance2", "XfrmrImpedance1", "XfrmrImpedance2", 
-  "XfrmrTurnsRatio", "Status", "PctMVARToHoldVoltage", "MaxOutput.MW", 
-  "MinOutput.MW", "Owner", "FractionOfOwnership", "WindControlMode", 
-  "WindPowerFactor"))
+if (exists('Generator.table')) {
+  setnames(Generator.table, colnames(Generator.table), c("BusNumber", "ID", 
+                                                         "ActivePower.MW", "ReactivePower.MVAR", "MaxReactivePowerOutput.MVAR", 
+                                                         "MinReactivePowerOutput.MVAR", "VoltageSetpoint.pu", "OtherBusReg", "MVA", 
+                                                         "IMpedance1", "Impedance2", "XfrmrImpedance1", "XfrmrImpedance2", 
+                                                         "XfrmrTurnsRatio", "Status", "PctMVARToHoldVoltage", "MaxOutput.MW", 
+                                                         "MinOutput.MW", "Owner", "FractionOfOwnership", "WindControlMode", 
+                                                         "WindPowerFactor"))
+} else {
+  warning("No Gen Table exists")
+}
+
 
 #Branch.table
 # RatingA is technical limit (not important here), RatingB is thermal limit, 
 # RatingC is overload limit
-setnames(Branch.table, colnames(Branch.table), c("BranchFromBus", "BranchToBus", 
-  "ID", "Resistance.pu", "Reactance.pu","ChargingSusceptance.pu", "RatingA",
-  "RatingB","RatingC", "FromBusAdmittanceReal.pu","FromBusAdmittanceImag.pu", 
-  "ToBusAdmittanceReal.pu","ToBusAdmittanceImag.pu", "Status", "MeteredEnd", 
-       "Length", "Owner", "FractionOfOwnership", "Owner2", 
-  "FractionOfOwnership2"))
+if (exists('Branch.table')) {
+  setnames(Branch.table, colnames(Branch.table), c("BranchFromBus", "BranchToBus", 
+                                                   "ID", "Resistance.pu", "Reactance.pu","ChargingSusceptance.pu", "RatingA",
+                                                   "RatingB","RatingC", "FromBusAdmittanceReal.pu","FromBusAdmittanceImag.pu", 
+                                                   "ToBusAdmittanceReal.pu","ToBusAdmittanceImag.pu", "Status", "MeteredEnd", 
+                                                   "Length", "Owner", "FractionOfOwnership", "Owner2", "FractionOfOwnership2",
+                                                   "Owner3", "FractionOfOwnership3", "Owner4", "FractionOfOwnership4"))
+} else {
+  warning("No Branch Table exists")
+}
+
 
 #Area.interchange.table
 #Note: PSSE uses the term "Area" in this table, but this code changes that to 
-#"Region" for consistency with Plexos. 
-setnames(Area.interchange.table, colnames(Area.interchange.table), c("Region", 
-  "SlackBusNumber", "DesiredNetInterchange.MW", "InterchangeTolerance.MW", 
-  "RegionName"))
+#"Region" for consistency with Plexos.
+if (exists('Area.interchange.table')){
+  setnames(Area.interchange.table, colnames(Area.interchange.table), c("Region", 
+                                                                       "SlackBusNumber", "DesiredNetInterchange.MW", "InterchangeTolerance.MW", 
+                                                                       "RegionName"))
+} else {
+  warning("No Area Interchange Table Exists")
+}
+
 
 #Owner.table
-setnames(Owner.table, colnames(Owner.table), c("Owner", "OwnerName"))
+if (exists('Owner.table')) {
+  setnames(Owner.table, colnames(Owner.table), c("Owner", "OwnerName"))
+} else {
+  warning("No Owner Table exists")
+}
 
 #Zone.table
-setnames(Zone.table, colnames(Zone.table), c("Zone", "ZoneName"))
+if (exists('Zone.table')) {
+  setnames(Zone.table, colnames(Zone.table), c("Zone", "ZoneName"))
+  } else {
+  warning("No Zone Table exists")
+}
+
 
 #Transformer.table, p.5-22
   #Not sure how to do this elegantly. Transformers can be two- or three-winding 
