@@ -374,7 +374,7 @@ rm(cur.table, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
 
 for (elem in seq_along(object.property.list)) {
   if (file.exists(file.path('../InputFiles', object.property.list[[elem]][1]))) {
-    sprintf("... Adding properties from %s", object.property.list[[elem]][1])
+    message(sprintf("... Adding properties from %s", object.property.list[[elem]][1]))
     # read in table
     cur.table <- fread(file.path('../InputFiles', object.property.list[[elem]][1]))
     
@@ -385,7 +385,7 @@ for (elem in seq_along(object.property.list)) {
     # add to properties sheet using input arguments and new table
     do.call(add_to_properties_sheet, cur.args)
   } else {
-    sprintf("... %s does not exist ... skipping", object.property.list[[elem]][1])
+    message(sprintf("... %s does not exist ... skipping", object.property.list[[elem]][1]))
   }
 }
 
