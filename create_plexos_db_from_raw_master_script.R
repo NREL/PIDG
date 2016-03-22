@@ -19,11 +19,11 @@
 # 3. zone re-mapping .csv file name
 # 4. generator fuel mapping .csv file name
 # 5. regional load file def .csv name
-# 6. new RE gens to be added .csv name
+# 6. new RE gens to be added csv name
 
 #example arg strings:
 # args = c("All_India_Peak_Oct_2015_version31_without_outage_lines.raw","map_new_regions.csv","map_new_zones.csv","map_generators_to_fuel.csv","map_region_to_loadfile.csv","2014_State_RE_gens.csv")
-# args = c("2014_Peak_LuzVis v31.raw","","","","","")
+# args = c("2014_Peak_LuzVis v31.raw","","","map_generators_to_fuel.csv","map_region_to_loadfile.csv","")
 
 
 if (interactive()) {
@@ -105,6 +105,7 @@ map.region.to.load.RE.file <- args[5]
 
 # add new generators
 RE.gen.file <- args[6]
+add.RE.gens = ifelse(RE.gen.file=='',F,T)
 
 # add properties to objects. 
 # files should be of the form: one column with names of all affected objects, 

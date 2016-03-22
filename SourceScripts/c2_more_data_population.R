@@ -134,183 +134,183 @@ rm(load.to.region.map, load.file.to.object, load.filename.to.properties,
 # add RE generators ----
 #------------------------------------------------------------------------------|
 # these will be added to generator.data.table
-
-# read in information about RE gens
-RE.gens <- fread(file.path("../InputFiles", RE.gen.file), colClasses = 'numeric')
-
-# 1. create nodes to put new RE on
-new.node.table <- unique(RE.gens, by = c('Node.Name', 'Category'))
-
-# add RE nodes to objects .sheet
-RE.nodes.to.objects <- initialize_table(Objects.prototype, 
-  nrow(new.node.table), list(class = "Node", name = new.node.table[,Node.Name], 
-    category  = new.node.table[,Node.Region]))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.nodes.to.objects)
-
-# add RE nodes to properties .sheet
-RE.nodes.to.properties <- new.node.table[,.(Node.Name, Voltage = Node.kV, 
-  Units = 1)]
-
-add_to_properties_sheet(RE.nodes.to.properties, names.col = 'Node.Name', 
-  collection.name = 'Nodes', object.class = 'Node')
-
-# add RE node-region and node-zone membership to memberships .sheet
-RE.nodes.to.memberships.regions <- initialize_table(Memberships.prototype, 
-  nrow(new.node.table), list(parent_class = "Node", 
-  parent_object = new.node.table[,Node.Name], collection = "Region", 
-  child_class = "Region", child_object = new.node.table[, Node.Region]))
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  RE.nodes.to.memberships.regions)
-
-RE.nodes.to.memberships.zones <- initialize_table(Memberships.prototype, 
-  nrow(new.node.table), list(parent_class = "Node", 
-  parent_object = new.node.table[,Node.Name], collection = "Zone", 
-  child_class = "Zone", child_object = new.node.table[,Node.Zone]))
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  RE.nodes.to.memberships.zones)
-
-# 2. create new lines with no congestion to connect new nodes to existing nodes
-RE.line.table <- new.node.table[,.(Node.From = Node.Name, 
-  Node.To = Node.To.Connect, kV = Node.kV)]
-RE.line.table[, To.Node.Number := tstrsplit(Node.To, "_")[1]]
-RE.line.table[, Line.Name:= paste0(Node.From, "_", To.Node.Number, "_1_CKT")]
-RE.line.table[, Region := RE.gens[,Node.Region]]
-
-# add lines to objects .sheet 
-RE.lines.to.objects <- initialize_table(Objects.prototype, 
-  nrow(RE.line.table), list(name = RE.line.table[, Line.Name], 
-  class = "Line", category = RE.line.table[,Region]))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.lines.to.objects)
-
-# add new lines to properties .sheet
-RE.lines.to.properties <- RE.line.table[,.(Line.Name, Units = 1, 
-  `Max Flow` = 9999, `Min Flow` = -9999)]
-
-add_to_properties_sheet(RE.lines.to.properties, names.col = 'Line.Name', 
-  collection.name = 'Lines', object.class = 'Line')
-
-#  add RE Node To/Node From lines to memberships
-RE.lines.to.memberships.from <- initialize_table(Memberships.prototype, 
-  nrow(new.node.table), list(parent_class = "Line", collection = "Node From", 
-  child_class = "Node"))
-RE.lines.to.memberships.from[, parent_object := RE.line.table[,Line.Name]]
-RE.lines.to.memberships.from[, child_object := RE.line.table[,Node.From]]
-
-RE.lines.to.memberships.to <- initialize_table(Memberships.prototype, 
-  nrow(new.node.table), list(parent_class = "Line", collection = "Node To",
-  child_class = "Node"))
-RE.lines.to.memberships.to[, parent_object := RE.line.table[,Line.Name]]
-RE.lines.to.memberships.to[, child_object := RE.line.table[,Node.To]]
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  RE.lines.to.memberships.from)
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  RE.lines.to.memberships.to)
-
-# 3. add data file objects for rating of these gens
-rating.data.files.to.objects <- initialize_table(Objects.prototype, 
-  nrow(RE.gens), list(class = "Data File", 
-  category = RE.gens[, paste0(Category, " Rating")]))
-rating.data.files.to.objects[,name := paste(RE.gens[, 
-  gsub('GEN_','', Generator.Name)], "Rating File Object")]
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-  rating.data.files.to.objects)
-
-# add data files to properties (attach filepath to data file objects)
-rating.data.files.to.properties <- initialize_table(Properties.prototype, 
-  nrow(RE.gens), list(parent_class = "System", parent_object = "System", 
-  collection = "Data Files", child_class = "Data File", property = "filename", 
-  band_id = 1, value = 0))
-rating.data.files.to.properties[,child_object := paste(RE.gens[,
-  gsub('GEN_','', Generator.Name)], "Rating File Object")]
-rating.data.files.to.properties[, filename := RE.gens[,Data.File]]
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-  rating.data.files.to.properties)
-
-# 4. (finally) add in RE gens
-# add RE gens to objects
-RE.gens.to.objects <- initialize_table(Objects.prototype, nrow(RE.gens), 
-  list(class = "Generator", name = RE.gens[,Generator.Name], 
-  category = RE.gens[,paste(Category, Fuel)]))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.gens.to.objects)
-
-# add RE gens to properties .sheet (Units, Max Capacity)
-RE.gens.to.properties <- RE.gens[,.(Generator.Name, Units = 1, 
-  `Max Capacity` = Max.Capacity)]
-
-add_to_properties_sheet(RE.gens.to.properties, object.class = 'Generator', 
-  names.col = 'Generator.Name', collection.name = 'Generators')
-
-# add RE gens to properties .sheet (Rating and associated datafile)
-RE.gens.to.properties.rating <- RE.gens[,.(Generator.Name, Rating = '0', 
-  ratingfile = paste0("{Object}", gsub('GEN_','', Generator.Name), 
-  " Rating File Object"))]
-
-add_to_properties_sheet(RE.gens.to.properties.rating, 
-  object.class = 'Generator', names.col = 'Generator.Name', 
-  collection.name = 'Generators', datafile.col = 'ratingfile')
-
-# add RE gen-fuel to memberships (connecting gens to fuel and nodes)
-RE.gens.to.memberships.nodes <- initialize_table(Memberships.prototype, 
-  nrow(RE.gens), list(parent_class = "Generator", collection = "Nodes", 
-    child_class = "Node"))
-RE.gens.to.memberships.nodes[, parent_object := RE.gens[,Generator.Name]]
-RE.gens.to.memberships.nodes[, child_object := RE.gens[,Node.Name]]
-
-RE.gens.to.memberships.fuel <- initialize_table(Memberships.prototype, 
-  nrow(RE.gens), list(parent_class = "Generator", collection = "Fuels", 
-    child_class = "Fuel"))
-RE.gens.to.memberships.fuel[, parent_object := RE.gens[,Generator.Name]]
-RE.gens.to.memberships.fuel[, child_object := RE.gens[,Fuel]]
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  RE.gens.to.memberships.nodes)
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  RE.gens.to.memberships.fuel)
-
-# add new nodes, gens, and lines to *.data.tables so can be accessed later
-# need to put each in right format before merging
-
-# nodes
-new.RE.nodes.data <- new.node.table[,.(BusName = Node.Name, 
-  Voltage.kV = Node.kV, RegionName = Node.Region, ZoneName = Node.Zone)]
-
-node.data.table <- rbind(node.data.table, new.RE.nodes.data, fill = TRUE)
-
-# lines - pull table in right format, then add zones
-# doesn't fill in RatingB, ID, Status, ToKV, FromKV, category, ACorDC. should?
-# doesn't have resistance
-new.RE.lines.data <- RE.line.table[,.(name = Line.Name, ToRegion = Region, 
-  FromRegion = Region, BranchToBus = To.Node.Number, FromBusName = Node.From, 
-  ToBusName = Node.To)]
-new.RE.lines.data <- merge(new.RE.lines.data, new.RE.nodes.data[,
-  .(BusName, ZoneName)], by.x = 'FromBusName', by.y = 'BusName', all.x = TRUE)
-new.RE.lines.data[,c('ToZone', 'FromZone') := ZoneName][,ZoneName := NULL]
-
-line.data.table <- rbind(line.data.table, new.RE.lines.data, fill = TRUE)
-
-# generators - can also add bus number, ID, an implied min cap of 0
-new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = Node.Name, 
-  RegionName = Node.Region, ZoneName = Node.Zone, Voltage.kV = Node.kV, 
-  Fuel, MaxOutput.MW = Max.Capacity)]
-generator.data.table <- rbind(generator.data.table, new.RE.gens.data, fill = T)
-
-# clean up
-rm(RE.gens, new.node.table, RE.nodes.to.objects, RE.nodes.to.properties, 
-  RE.nodes.to.memberships.regions, RE.nodes.to.memberships.zones, RE.line.table, 
-  RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from, 
-  RE.lines.to.memberships.to, rating.data.files.to.objects, 
-  rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties, 
-  RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data, 
-  new.RE.gens.data)
-
+if (add.RE.gens){
+  # read in information about RE gens
+  RE.gens <- fread(file.path("../InputFiles", RE.gen.file), colClasses = 'numeric')
+  
+  # 1. create nodes to put new RE on
+  new.node.table <- unique(RE.gens, by = c('Node.Name', 'Category'))
+  
+  # add RE nodes to objects .sheet
+  RE.nodes.to.objects <- initialize_table(Objects.prototype, 
+                                          nrow(new.node.table), list(class = "Node", name = new.node.table[,Node.Name], 
+                                                                     category  = new.node.table[,Node.Region]))
+  
+  Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.nodes.to.objects)
+  
+  # add RE nodes to properties .sheet
+  RE.nodes.to.properties <- new.node.table[,.(Node.Name, Voltage = Node.kV, 
+                                              Units = 1)]
+  
+  add_to_properties_sheet(RE.nodes.to.properties, names.col = 'Node.Name', 
+                          collection.name = 'Nodes', object.class = 'Node')
+  
+  # add RE node-region and node-zone membership to memberships .sheet
+  RE.nodes.to.memberships.regions <- initialize_table(Memberships.prototype, 
+                                                      nrow(new.node.table), list(parent_class = "Node", 
+                                                                                 parent_object = new.node.table[,Node.Name], collection = "Region", 
+                                                                                 child_class = "Region", child_object = new.node.table[, Node.Region]))
+  
+  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                           RE.nodes.to.memberships.regions)
+  
+  RE.nodes.to.memberships.zones <- initialize_table(Memberships.prototype, 
+                                                    nrow(new.node.table), list(parent_class = "Node", 
+                                                                               parent_object = new.node.table[,Node.Name], collection = "Zone", 
+                                                                               child_class = "Zone", child_object = new.node.table[,Node.Zone]))
+  
+  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                           RE.nodes.to.memberships.zones)
+  
+  # 2. create new lines with no congestion to connect new nodes to existing nodes
+  RE.line.table <- new.node.table[,.(Node.From = Node.Name, 
+                                     Node.To = Node.To.Connect, kV = Node.kV)]
+  RE.line.table[, To.Node.Number := tstrsplit(Node.To, "_")[1]]
+  RE.line.table[, Line.Name:= paste0(Node.From, "_", To.Node.Number, "_1_CKT")]
+  RE.line.table[, Region := RE.gens[,Node.Region]]
+  
+  # add lines to objects .sheet 
+  RE.lines.to.objects <- initialize_table(Objects.prototype, 
+                                          nrow(RE.line.table), list(name = RE.line.table[, Line.Name], 
+                                                                    class = "Line", category = RE.line.table[,Region]))
+  
+  Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.lines.to.objects)
+  
+  # add new lines to properties .sheet
+  RE.lines.to.properties <- RE.line.table[,.(Line.Name, Units = 1, 
+                                             `Max Flow` = 9999, `Min Flow` = -9999)]
+  
+  add_to_properties_sheet(RE.lines.to.properties, names.col = 'Line.Name', 
+                          collection.name = 'Lines', object.class = 'Line')
+  
+  #  add RE Node To/Node From lines to memberships
+  RE.lines.to.memberships.from <- initialize_table(Memberships.prototype, 
+                                                   nrow(new.node.table), list(parent_class = "Line", collection = "Node From", 
+                                                                              child_class = "Node"))
+  RE.lines.to.memberships.from[, parent_object := RE.line.table[,Line.Name]]
+  RE.lines.to.memberships.from[, child_object := RE.line.table[,Node.From]]
+  
+  RE.lines.to.memberships.to <- initialize_table(Memberships.prototype, 
+                                                 nrow(new.node.table), list(parent_class = "Line", collection = "Node To",
+                                                                            child_class = "Node"))
+  RE.lines.to.memberships.to[, parent_object := RE.line.table[,Line.Name]]
+  RE.lines.to.memberships.to[, child_object := RE.line.table[,Node.To]]
+  
+  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                           RE.lines.to.memberships.from)
+  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                           RE.lines.to.memberships.to)
+  
+  # 3. add data file objects for rating of these gens
+  rating.data.files.to.objects <- initialize_table(Objects.prototype, 
+                                                   nrow(RE.gens), list(class = "Data File", 
+                                                                       category = RE.gens[, paste0(Category, " Rating")]))
+  rating.data.files.to.objects[,name := paste(RE.gens[, 
+                                                      gsub('GEN_','', Generator.Name)], "Rating File Object")]
+  
+  Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+                                       rating.data.files.to.objects)
+  
+  # add data files to properties (attach filepath to data file objects)
+  rating.data.files.to.properties <- initialize_table(Properties.prototype, 
+                                                      nrow(RE.gens), list(parent_class = "System", parent_object = "System", 
+                                                                          collection = "Data Files", child_class = "Data File", property = "filename", 
+                                                                          band_id = 1, value = 0))
+  rating.data.files.to.properties[,child_object := paste(RE.gens[,
+                                                                 gsub('GEN_','', Generator.Name)], "Rating File Object")]
+  rating.data.files.to.properties[, filename := RE.gens[,Data.File]]
+  
+  Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                          rating.data.files.to.properties)
+  
+  # 4. (finally) add in RE gens
+  # add RE gens to objects
+  RE.gens.to.objects <- initialize_table(Objects.prototype, nrow(RE.gens), 
+                                         list(class = "Generator", name = RE.gens[,Generator.Name], 
+                                              category = RE.gens[,paste(Category, Fuel)]))
+  
+  Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.gens.to.objects)
+  
+  # add RE gens to properties .sheet (Units, Max Capacity)
+  RE.gens.to.properties <- RE.gens[,.(Generator.Name, Units = 1, 
+                                      `Max Capacity` = Max.Capacity)]
+  
+  add_to_properties_sheet(RE.gens.to.properties, object.class = 'Generator', 
+                          names.col = 'Generator.Name', collection.name = 'Generators')
+  
+  # add RE gens to properties .sheet (Rating and associated datafile)
+  RE.gens.to.properties.rating <- RE.gens[,.(Generator.Name, Rating = '0', 
+                                             ratingfile = paste0("{Object}", gsub('GEN_','', Generator.Name), 
+                                                                 " Rating File Object"))]
+  
+  add_to_properties_sheet(RE.gens.to.properties.rating, 
+                          object.class = 'Generator', names.col = 'Generator.Name', 
+                          collection.name = 'Generators', datafile.col = 'ratingfile')
+  
+  # add RE gen-fuel to memberships (connecting gens to fuel and nodes)
+  RE.gens.to.memberships.nodes <- initialize_table(Memberships.prototype, 
+                                                   nrow(RE.gens), list(parent_class = "Generator", collection = "Nodes", 
+                                                                       child_class = "Node"))
+  RE.gens.to.memberships.nodes[, parent_object := RE.gens[,Generator.Name]]
+  RE.gens.to.memberships.nodes[, child_object := RE.gens[,Node.Name]]
+  
+  RE.gens.to.memberships.fuel <- initialize_table(Memberships.prototype, 
+                                                  nrow(RE.gens), list(parent_class = "Generator", collection = "Fuels", 
+                                                                      child_class = "Fuel"))
+  RE.gens.to.memberships.fuel[, parent_object := RE.gens[,Generator.Name]]
+  RE.gens.to.memberships.fuel[, child_object := RE.gens[,Fuel]]
+  
+  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                           RE.gens.to.memberships.nodes)
+  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                           RE.gens.to.memberships.fuel)
+  
+  # add new nodes, gens, and lines to *.data.tables so can be accessed later
+  # need to put each in right format before merging
+  
+  # nodes
+  new.RE.nodes.data <- new.node.table[,.(BusName = Node.Name, 
+                                         Voltage.kV = Node.kV, RegionName = Node.Region, ZoneName = Node.Zone)]
+  
+  node.data.table <- rbind(node.data.table, new.RE.nodes.data, fill = TRUE)
+  
+  # lines - pull table in right format, then add zones
+  # doesn't fill in RatingB, ID, Status, ToKV, FromKV, category, ACorDC. should?
+  # doesn't have resistance
+  new.RE.lines.data <- RE.line.table[,.(name = Line.Name, ToRegion = Region, 
+                                        FromRegion = Region, BranchToBus = To.Node.Number, FromBusName = Node.From, 
+                                        ToBusName = Node.To)]
+  new.RE.lines.data <- merge(new.RE.lines.data, new.RE.nodes.data[,
+                                                                  .(BusName, ZoneName)], by.x = 'FromBusName', by.y = 'BusName', all.x = TRUE)
+  new.RE.lines.data[,c('ToZone', 'FromZone') := ZoneName][,ZoneName := NULL]
+  
+  line.data.table <- rbind(line.data.table, new.RE.lines.data, fill = TRUE)
+  
+  # generators - can also add bus number, ID, an implied min cap of 0
+  new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = Node.Name, 
+                                 RegionName = Node.Region, ZoneName = Node.Zone, Voltage.kV = Node.kV, 
+                                 Fuel, MaxOutput.MW = Max.Capacity)]
+  generator.data.table <- rbind(generator.data.table, new.RE.gens.data, fill = T)
+  
+  # clean up
+  rm(RE.gens, new.node.table, RE.nodes.to.objects, RE.nodes.to.properties, 
+     RE.nodes.to.memberships.regions, RE.nodes.to.memberships.zones, RE.line.table, 
+     RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from, 
+     RE.lines.to.memberships.to, rating.data.files.to.objects, 
+     rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties, 
+     RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data, 
+     new.RE.gens.data)
+}
 
 #------------------------------------------------------------------------------|
 # generator properties ----
