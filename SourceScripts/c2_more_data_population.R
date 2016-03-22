@@ -373,17 +373,20 @@ rm(cur.table, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
 # rm(cur.gen.file)
 
 for (elem in seq_along(object.property.list)) {
-  
-  # read in table
-  cur.table <- fread(file.path('../InputFiles', object.property.list[[elem]][1]))
-  
-  # read in args
-  cur.args <- object.property.list[[elem]][[2]]
-  cur.args$input.table <- cur.table
-  
-  # add to properties sheet using input arguments and new table
-  do.call(add_to_properties_sheet, cur.args)
-  
+  if (file.exists(file.path('../InputFiles', object.property.list[[elem]][1]))) {
+    sprintf("... Adding properties from %s", object.property.list[[elem]][1])
+    # read in table
+    cur.table <- fread(file.path('../InputFiles', object.property.list[[elem]][1]))
+    
+    # read in args
+    cur.args <- object.property.list[[elem]][[2]]
+    cur.args$input.table <- cur.table
+    
+    # add to properties sheet using input arguments and new table
+    do.call(add_to_properties_sheet, cur.args)
+  } else {
+    sprintf("... %s does not exist ... skipping", object.property.list[[elem]][1])
+  }
 }
 
 rm(elem, cur.table, cur.args)
@@ -392,6 +395,7 @@ rm(elem, cur.table, cur.args)
 #------------------------------------------------------------------------------|
 # add start cost ----
 #------------------------------------------------------------------------------|
+
   #uses start.cost.file, fuels.to.gens
 start.cost <- fread(file.path("../InputFiles", start.cost.file))
 # the start cost file has cost by size for coal. this seperates those for 
