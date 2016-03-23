@@ -44,6 +44,12 @@ if (interactive()) {
 }
 
 
+#******************* CHECKING for India_GtG... 
+# TODO: remove stuff in PSSE2PLEXOS that is India specific
+# but for now, just skip it
+india.repo = any(strsplit(getwd(),split="/")[[1]]=='India_GtG')
+
+
 #install.packages("pacman")
 pacman::p_load(cowplot, plyr, dplyr, ggplot2, grid, gridExtra, gtools, 
   knitr, lubridate, reshape2, data.table, RSQLite, stringr) 
@@ -62,16 +68,17 @@ source("SourceScripts/functions.R")
 #------------------------------------------------------------------------------|
 
 runAllFiles <- function () {
-  print("importing PSSE files...")
+  message("importing PSSE files...")
   source("SourceScripts/a_import_raw.R")
   print("creating tables...")
   source("SourceScripts/b_create_sheet_tables.R")
-  print("populating and cleaning tables...")
+  message("populating tables...")
   source("SourceScripts/c1_populate_sheet_tables_with_raw_tables.R")
   source("SourceScripts/c2_more_data_population.R")
   source("SourceScripts/c3_create_scenarios_and_models.R")
+  message("cleaning tables...")
   source("SourceScripts/d_data_cleanup.R")
-  print("exporting tables...")
+  message("exporting tables...")
   source("SourceScripts/e_export_to_excel.R")
 }
 

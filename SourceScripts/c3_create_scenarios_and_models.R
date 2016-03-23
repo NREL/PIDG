@@ -286,20 +286,32 @@ Properties.sheet[property %in% c("Min Up Time", "Min Down Time", "Start Cost"),
 # that contain properties that correspond with those scenarios
 
 for (scenario.name in names(wheeling.charge.cases.files)) {
-  # create scenario and add to Objects.sheet
-  cur.scen.to.objects <- initialize_table(Objects.prototype, 1, 
-    list(class = "Scenario", name = scenario.name, 
-    category = "Add wheeling charges"))
-  Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
-  
-  # read in file
-  cur.properties.file <- fread(file.path("../InputFiles", 
-    wheeling.charge.cases.files[[scenario.name]]))
-  
-  # add properties from file to Properties.sheet
-  add_to_properties_sheet(cur.properties.file, object.class = "Line", 
-    names.col = "Line.Name", collection.name = "Lines", 
-    scenario.name = scenario.name)
+  if (file.exists(file.path('../InputFiles',
+                            wheeling.charge.cases.files[[scenario.name]][1]))) {
+    
+    message(sprintf("... Adding properties for wheeling charges from  %s", 
+                    wheeling.charge.cases.files[[scenario.name]][1]))
+    
+    # create scenario and add to Objects.sheet
+    cur.scen.to.objects <- 
+      initialize_table(Objects.prototype, 1, 
+                       list(class = "Scenario", name = scenario.name, 
+                            category = "Add wheeling charges"))
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
+    
+    # read in file
+    cur.properties.file <- 
+      fread(file.path("../InputFiles", 
+                      wheeling.charge.cases.files[[scenario.name]]))
+    
+    # add properties from file to Properties.sheet
+    add_to_properties_sheet(cur.properties.file, object.class = "Line", 
+                            names.col = "Line.Name", collection.name = "Lines", 
+                            scenario.name = scenario.name)
+  } else {
+    message(sprintf("... %s does not exist ... skipping", 
+                    wheeling.charge.cases.files[[scenario.name]][1]))
+  }
 }
 
 
@@ -334,16 +346,25 @@ all.sheets <- c("Objects", "Categories", "Memberships", "Attributes",
   #create temporary function definitions for better readability of double 
   #lapply below
 read_tab <- function(file.name) {
-  data.table(suppressWarnings(read.csv(paste0("../InputFiles/", file.name), 
-    stringsAsFactors = FALSE, fill = TRUE, header=FALSE, col.names = 
-      paste0("V",seq_len(20)), strip.white = TRUE)))
+  if (file.exists(file.path('../InputFiles',file.name))) {
+    message(sprintf("... importing from  %s", file.name))
+    data.table(suppressWarnings(
+      read.csv(paste0("../InputFiles/", file.name), 
+               stringsAsFactors = FALSE, fill = TRUE, header=FALSE, col.names = 
+                 paste0("V",seq_len(20)), strip.white = TRUE)))
+    
+  } else {
+    message(sprintf("... %s does not exist ... skipping", file.name))
+  }
 }
 
 import_and_merge <- function(imported.tab, sheet.name) {
-  cur.tab <- import_table_generic(imported.tab, sheet.name)
-  if (!is.null(cur.tab)) {
-    assign(paste0(sheet.name, ".sheet"), merge_sheet_w_table(get(paste0(
-      sheet.name,".sheet")), cur.tab), envir = .GlobalEnv)
+  if (!is.null(imported.file)) {
+    cur.tab <- import_table_generic(imported.tab, sheet.name)
+    if (!is.null(cur.tab)) {
+      assign(paste0(sheet.name, ".sheet"), merge_sheet_w_table(get(paste0(
+        sheet.name,".sheet")), cur.tab), envir = .GlobalEnv)
+    } 
   }
 }
 
@@ -351,6 +372,8 @@ import_and_merge <- function(imported.tab, sheet.name) {
 invisible(lapply(generic.import.files, function (x) {
   imported.file <- read_tab(x)
   lapply(all.sheets, function(y) import_and_merge(imported.file, y))}))
+
+
 rm(import_and_merge, read_tab)
 
 
@@ -361,21 +384,29 @@ rm(import_and_merge, read_tab)
    # loop through compact generic input files and read in tables
   
 for (i in seq_along(compact.generic.import.files)) {
-  
-  cur.tab <- fread(file.path('../InputFiles', 
-    compact.generic.import.files[[i]][1]))
-  
-  cur.obj.type <- compact.generic.import.files[[i]][2]
-  
-  # read in file, add appropriate sections to object, attib, memb .sheet tables
-  import_table_compact(cur.tab, cur.obj.type)
-  
+  if (file.exists(file.path('../InputFiles',
+                            compact.generic.import.files[[i]][1]))) {
+    message(sprintf("... importing from  %s", 
+                    compact.generic.import.files[[i]][1]))
+    
+    cur.tab <- fread(file.path('../InputFiles', 
+                               compact.generic.import.files[[i]][1]))
+    
+    cur.obj.type <- compact.generic.import.files[[i]][2]
+    
+    # read in file, add appropriate sections to object, attib, memb .sheet tables
+    import_table_compact(cur.tab, cur.obj.type)
+    
+  } else {
+    message(sprintf("... %s does not exist ... skipping", 
+                    compact.generic.import.files[[i]][1]))
+  }
 }
 
 # clean up
 rm(cur.tab, cur.obj.type)
 
-
+if (india.repo){
 #------------------------------------------------------------------------------|
 # [[Regional]] Make two scenarios: one for each regional study
 # -----------------------------------------------------------------------------|
@@ -431,7 +462,7 @@ scenario.WR.properties[, child_object := region.zone[ZoneName != "WR" &
 
 Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
   scenario.WR.properties)
-
+}
 
 #------------------------------------------------------------------------------|
 # [[Scenario archive for other configs]] Add Max Energy Penalty ----
@@ -457,6 +488,7 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet,
   max.en.penalty.to.properties)
 
 
+if (india.repo){
 #------------------------------------------------------------------------------|
 # [[Scenario archive for other configs]] Change R, X of Delhi import lines ----
 # -----------------------------------------------------------------------------|
@@ -483,7 +515,7 @@ scenario.changeRandXDelhiImport.to.properties[, value := c(0.00383, 0.0204,
 
 Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
   scenario.changeRandXDelhiImport.to.properties)
-
+}
 
 #------------------------------------------------------------------------------|
 # [[Scenario archive for other configurations]] Set line reactance to zero ----
@@ -515,90 +547,114 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet,
 #------------------------------------------------------------------------------|
 # [[Scenario archive for other configs]] Lines to enforce for natnl study ----
 # -----------------------------------------------------------------------------|
+if (file.exists(file.path('../InputFiles',
+                          enforced.interstate.lines.file))) {
+  message(sprintf("... enforcing lines from  %s", 
+                  enforced.interstate.lines.file))
+  
   # scneario to objects
-scenario.interstate.lines <- initialize_table(Objects.prototype, 1, 
-  list(class = "Scenario", name = "For PsN - fewer interstate lines to enforce", 
-  category = "Scenario archive for other configurations"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-  scenario.interstate.lines)
-
+  scenario.interstate.lines <- 
+    initialize_table(Objects.prototype, 1, 
+                     list(class = "Scenario", 
+                          name = "For PsN - fewer interstate lines to enforce", 
+                          category = "Scenario archive for other configurations"))
+  Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+                                       scenario.interstate.lines)
+  
   # scenario to properties
   # uses line.data.table
-interstate.to.enf <- fread(file.path("../InputFiles",
-  enforced.interstate.lines.file))
-
-scenario.enf.interstate.lines.to.propterties <- 
-  initialize_table(Properties.prototype, nrow(interstate.to.enf), 
-  list(parent_class = "System", child_class = "Line", 
-  parent_object = "System", band_id = 1, collection = "Lines"))
-scenario.enf.interstate.lines.to.propterties[,
-  child_object := interstate.to.enf[,Line.Name]]
-scenario.enf.interstate.lines.to.propterties[,property := "Enforce Limits"]
-scenario.enf.interstate.lines.to.propterties[,value := "2"] # always
-scenario.enf.interstate.lines.to.propterties[,
-  scenario := "{Object}For PsN - fewer interstate lines to enforce"]
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-  scenario.enf.interstate.lines.to.propterties)
-
+  interstate.to.enf <- fread(file.path("../InputFiles",
+                                       enforced.interstate.lines.file))
+  
+  scenario.enf.interstate.lines.to.propterties <- 
+    initialize_table(Properties.prototype, nrow(interstate.to.enf), 
+                     list(parent_class = "System", child_class = "Line", 
+                          parent_object = "System", band_id = 1, 
+                          collection = "Lines"))
+  scenario.enf.interstate.lines.to.propterties[,child_object := 
+                                                 interstate.to.enf[,Line.Name]]
+  scenario.enf.interstate.lines.to.propterties[,property := "Enforce Limits"]
+  scenario.enf.interstate.lines.to.propterties[,value := "2"] # always
+  scenario.enf.interstate.lines.to.propterties[,scenario := 
+                                                 "{Object}For PsN - fewer interstate lines to enforce"]
+  
+  Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                          scenario.enf.interstate.lines.to.propterties)
+  
+} else {
+  message(sprintf("... %s does not exist ... skipping", 
+                  enforced.interstate.lines.file))
+}
 
 #------------------------------------------------------------------------------|
 # [[Scen arx for other configs]] Rmve isolated nodes, recalc LPF for others ----
 # -----------------------------------------------------------------------------|
+if (file.exists(file.path('../InputFiles',
+                          isolated.nodes.to.remove.file))) {
+  message(sprintf("... removing isolated nodes from  %s in scenario", 
+                  isolated.nodes.to.remove.file))
   # scenario to objects
-scenario.remove.isolated <- initialize_table(Objects.prototype, 1, 
-  list(class = "Scenario", 
-  name = "For PsN/nodal - remove isolated nodes, redo LPFs", 
-  category = "Scenario archive for other configurations"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-  scenario.remove.isolated)
-
+  scenario.remove.isolated <- 
+    initialize_table(Objects.prototype, 1, 
+                     list(class = "Scenario", 
+                          name = "For PsN/nodal - remove isolated nodes, redo LPFs", 
+                          category = "Scenario archive for other configurations"))
+  Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+                                       scenario.remove.isolated)
+  
   # scenario to properties
   # uses isolated.nodes.to.remove.file
-# read in isolated nodes to remove file and change it to a veector
-isolated.nodes.to.remove <- fread(file.path("../InputFiles",
-  isolated.nodes.to.remove.file))
-isolated.nodes.to.remove <- isolated.nodes.to.remove[,Node.Name]
+  # read in isolated nodes to remove file and change it to a veector
+  isolated.nodes.to.remove <- fread(file.path("../InputFiles",
+                                              isolated.nodes.to.remove.file))
+  isolated.nodes.to.remove <- isolated.nodes.to.remove[,Node.Name]
+  
+  # turn off isolated load-only nodes in this scenario
+  isolated.units.to.zero <- 
+    initialize_table(Properties.sheet, 
+                     length(isolated.nodes.to.remove), 
+                     list(parent_class = "System", parent_object = "System", 
+                          collection = "Nodes",child_class = "Node",band_id=1))
+  isolated.units.to.zero[,child_object := isolated.nodes.to.remove]
+  isolated.units.to.zero[,property := "Units"]
+  isolated.units.to.zero[,value := "0"]
+  isolated.units.to.zero[,scenario := 
+                           "{Object}For PsN/nodal - remove isolated nodes, redo LPFs"]
+  
+  # recalculate relevant LPFs for other nodes 
+  # pull node LPFs from properties sheet for all nodes except the ones to be 
+  # removed
+  redo.lpfs.to.properties <- 
+    Properties.sheet[property == "Load Participation Factor" & 
+                       !(child_object %in% isolated.nodes.to.remove)]
+  
+  # add region for calculating LPF
+  redo.lpfs.to.properties <-
+    merge(redo.lpfs.to.properties, node.data.table[,.(BusName, RegionName)], 
+          by.x = "child_object", by.y = "BusName")
+  
+  # recalculate LPF
+  redo.lpfs.to.properties[,new.lpf := prop.table(as.numeric(value)), 
+                          by = "RegionName"]
+  redo.lpfs.to.properties <- redo.lpfs.to.properties[value != new.lpf]
+  # for nodes with LPFs that have changed, assign the new LPFs to the nodes
+  # and attach the scenario
+  redo.lpfs.to.properties[,value := new.lpf][,c("new.lpf", "RegionName") := NULL]
+  redo.lpfs.to.properties[,scenario := 
+                            "{Object}For PsN/nodal - remove isolated nodes, redo LPFs"]
+  
+  # add these new tables to the Properties.sheet
+  Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                          isolated.units.to.zero)
+  Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                          redo.lpfs.to.properties)
+  
+  # note: at least this first round, this also changes the LPF of 4 nodes in 
+  # Daman Diu, Jharkhand, and Nepal because of difference in sig figs. Not sure
+  # why this happens only with these.
+  
+} else {
+  message(sprintf("... %s does not exist ... skipping", 
+                  isolated.nodes.to.remove.file))
+} 
 
-# turn off isolated load-only nodes in this scenario
-isolated.units.to.zero <- initialize_table(Properties.sheet, 
-  length(isolated.nodes.to.remove), list(parent_class = "System", 
-    parent_object = "System", collection = "Nodes", child_class = "Node", 
-    band_id = 1))
-isolated.units.to.zero[,child_object := isolated.nodes.to.remove]
-isolated.units.to.zero[,property := "Units"]
-isolated.units.to.zero[,value := "0"]
-isolated.units.to.zero[,scenario := 
-    "{Object}For PsN/nodal - remove isolated nodes, redo LPFs"]
-
-# recalculate relevant LPFs for other nodes 
-# pull node LPFs from properties sheet for all nodes except the ones to be 
-# removed
-redo.lpfs.to.properties <- Properties.sheet[property == 
-    "Load Participation Factor" & 
-    !(child_object %in% isolated.nodes.to.remove)]
-
-# add region for calculating LPF
-redo.lpfs.to.properties <- merge(redo.lpfs.to.properties, 
-  node.data.table[,.(BusName, RegionName)], by.x = "child_object", 
-  by.y = "BusName")
-
-# recalculate LPF
-redo.lpfs.to.properties[,new.lpf := prop.table(as.numeric(value)), 
-  by = "RegionName"]
-redo.lpfs.to.properties <- redo.lpfs.to.properties[value != new.lpf]
-# for nodes with LPFs that have changed, assign the new LPFs to the nodes
-# and attach the scenario
-redo.lpfs.to.properties[,value := new.lpf][,c("new.lpf", "RegionName") := NULL]
-redo.lpfs.to.properties[,scenario := 
-    "{Object}For PsN/nodal - remove isolated nodes, redo LPFs"]
-
-# add these new tables to the Properties.sheet
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-  isolated.units.to.zero)
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-  redo.lpfs.to.properties)
-
-# note: at least this first round, this also changes the LPF of 4 nodes in 
-# Daman Diu, Jharkhand, and Nepal because of difference in sig figs. Not sure
-# why this happens only with these.
