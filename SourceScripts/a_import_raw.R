@@ -17,11 +17,13 @@
 #------------------------------------------------------------------------------|
 
 num_col <- max(count.fields(paste0("../InputFiles/", raw.file.path), sep = ','), 
-  na.rm = TRUE)
-raw.table <- data.table(suppressWarnings(read.csv(paste0("../InputFiles/", 
-  raw.file.path), stringsAsFactors = FALSE, fill = TRUE, header=FALSE, 
-  col.names = paste0("V",seq_len(num_col)), 
-  strip.white = TRUE, blank.lines.skip = FALSE)))
+               na.rm = TRUE)
+raw.table <- data.table(
+  suppressWarnings(
+    read.csv(paste0("../InputFiles/", 
+                    raw.file.path), stringsAsFactors = FALSE, fill = TRUE, 
+             header=FALSE, col.names = paste0("V",seq_len(num_col)), 
+             strip.white = TRUE, blank.lines.skip = FALSE)))
 # need to suppress warnings b/c read.csv doesn't like blanks in the file
 
 # find indices of breaks between subtables
@@ -37,16 +39,16 @@ names.strings <- c()
 for (i in 2:length(table.delimiters)) {
   table.start.index <- table.delimiters[i-1]
   table.end.index <- table.delimiters[i]
-    #pull name of sub-table in question
-    #gets cell that says "0 /End of xxx data"
+  #pull name of sub-table in question
+  #gets cell that says "0 /End of xxx data"
   data.in.row <- raw.table[[1]][table.end.index] 
- #remove "0 /End of " from beginning and " data" from end
+  #remove "0 /End of " from beginning and " data" from end
   cur.table.name.data <- substr(data.in.row, 11, nchar(data.in.row) - 5)
   cur.table.name <- paste0(gsub(" |-", ".", cur.table.name.data), ".table")
   #skip subsetting if there is no data between beginning and end of the subtable
   if (table.start.index == (table.end.index - 1)) {
     no.data.vec <- c(no.data.vec, cur.table.name); next} 
-    #if there is data, pull that data and assign it to correct variable
+  #if there is data, pull that data and assign it to correct variable
   assign(cur.table.name, raw.table[
     (table.start.index + 1):(table.end.index - 1),])
   names.vec <- c(names.vec, cur.table.name)
@@ -97,9 +99,10 @@ mva.base <- as.numeric(raw.table[1,V2])
 #Note: PSSE uses the term "Area" in this table, but this code changes that to 
 #"Region" for consistency with Plexos. 
 if (exists('Bus.table')) {
-  setnames(Bus.table, colnames(Bus.table), c("BusNumber", "BusName", "Voltage.kV", 
-                                             "BusTypeCode", "Region", "Zone", "Owner", "BusVoltageMagnitude.pu", 
-                                             "BusVoltageAngle.degrees"))
+  setnames(Bus.table, colnames(Bus.table), 
+           c("BusNumber", "BusName", "Voltage.kV", 
+             "BusTypeCode", "Region", "Zone", "Owner", "BusVoltageMagnitude.pu", 
+             "BusVoltageAngle.degrees"))
 } else {
   warning("No Bus Table exists")
 }
@@ -110,11 +113,13 @@ if (exists('Bus.table')) {
 #Note: PSSE uses the term "Area" in this table, but this code changes that to 
 #"Region" for consistency with Plexos. 
 if (exists('Load.table')) {
-  setnames(Load.table, colnames(Load.table), c("BusNumber", "LoadTypeCode", 
-                                               "Status", "Region", "Zone", "ActivePower.MW", "ReactivePower.MVAR", 
-                                               "ActivePowerOfConstCurrent.MW", "ReactivePowerOfConstCurrent.MVAR", 
-                                               "ActivePowerOfConstAdmittance.MW", "ReactivePowerOfConstAdmittance.MVAR", 
-                                               "Owner"))
+  setnames(Load.table, colnames(Load.table), 
+           c("BusNumber", "LoadTypeCode", "Status", "Region", "Zone", 
+             "ActivePower.MW", "ReactivePower.MVAR", 
+             "ActivePowerOfConstCurrent.MW", 
+             "ReactivePowerOfConstCurrent.MVAR", 
+             "ActivePowerOfConstAdmittance.MW", 
+             "ReactivePowerOfConstAdmittance.MVAR", "Owner"))
 } else {
   warning("No Loax Table exists")
 }
@@ -123,8 +128,9 @@ if (exists('Load.table')) {
 #Fixed.shunt.table
 #see manual
 if (exists('Fixed.shunt.table')) {
-  setnames(Fixed.shunt.table, colnames(Fixed.shunt.table), c("BusNumber", "ID", 
-                                                             "Status", "ActiveCompShuntAdmToGrnd.MW", "ReactiveCompShuntAdmToGrnd.MVAR"))
+  setnames(Fixed.shunt.table, colnames(Fixed.shunt.table), 
+           c("BusNumber", "ID", "Status", "ActiveCompShuntAdmToGrnd.MW", 
+             "ReactiveCompShuntAdmToGrnd.MVAR"))
 } else {
   warning("No Fixed Shunt Table exists")
 }
@@ -136,13 +142,15 @@ if (exists('Fixed.shunt.table')) {
 #WindControlMode = 0 - not wind; 1 - reactive power limits are specified here; 
 #2, 3 - reactive power limits calculated
 if (exists('Generator.table')) {
-  setnames(Generator.table, colnames(Generator.table), c("BusNumber", "ID", 
-                                                         "ActivePower.MW", "ReactivePower.MVAR", "MaxReactivePowerOutput.MVAR", 
-                                                         "MinReactivePowerOutput.MVAR", "VoltageSetpoint.pu", "OtherBusReg", "MVA", 
-                                                         "IMpedance1", "Impedance2", "XfrmrImpedance1", "XfrmrImpedance2", 
-                                                         "XfrmrTurnsRatio", "Status", "PctMVARToHoldVoltage", "MaxOutput.MW", 
-                                                         "MinOutput.MW", "Owner", "FractionOfOwnership", "WindControlMode", 
-                                                         "WindPowerFactor"))
+  setnames(Generator.table, colnames(Generator.table), 
+           c("BusNumber", "ID", 
+             "ActivePower.MW", "ReactivePower.MVAR", 
+             "MaxReactivePowerOutput.MVAR","MinReactivePowerOutput.MVAR", 
+             "VoltageSetpoint.pu", "OtherBusReg", "MVA", 
+             "IMpedance1", "Impedance2", "XfrmrImpedance1", "XfrmrImpedance2", 
+             "XfrmrTurnsRatio", "Status", "PctMVARToHoldVoltage", "MaxOutput.MW", 
+             "MinOutput.MW", "Owner", "FractionOfOwnership", "WindControlMode", 
+             "WindPowerFactor"))
 } else {
   warning("No Gen Table exists")
 }
@@ -152,12 +160,27 @@ if (exists('Generator.table')) {
 # RatingA is technical limit (not important here), RatingB is thermal limit, 
 # RatingC is overload limit
 if (exists('Branch.table')) {
-  setnames(Branch.table, colnames(Branch.table), c("BranchFromBus", "BranchToBus", 
-                                                   "ID", "Resistance.pu", "Reactance.pu","ChargingSusceptance.pu", "RatingA",
-                                                   "RatingB","RatingC", "FromBusAdmittanceReal.pu","FromBusAdmittanceImag.pu", 
-                                                   "ToBusAdmittanceReal.pu","ToBusAdmittanceImag.pu", "Status", "MeteredEnd", 
-                                                   "Length", "Owner", "FractionOfOwnership", "Owner2", "FractionOfOwnership2",
-                                                   "Owner3", "FractionOfOwnership3", "Owner4", "FractionOfOwnership4"))
+  branch.tablenames = c("BranchFromBus", "BranchToBus", 
+                        "ID", "Resistance.pu", "Reactance.pu",
+                        "ChargingSusceptance.pu", "RatingA","RatingB","RatingC",
+                        "FromBusAdmittanceReal.pu","FromBusAdmittanceImag.pu",
+                        "ToBusAdmittanceReal.pu","ToBusAdmittanceImag.pu", 
+                        "Status", "MeteredEnd", "Length")
+  if (length(names(Branch.table))>length(branch.tablenames)) {
+    extra.cols = data.frame(t(
+      (matrix(
+        data=c('Owner','FractionOfOwnership'),nrow = 2,
+        ncol=(length(names(Branch.table)) - length(branch.tablenames))/2))))
+    extra.cols = c(t(cbind(paste(extra.cols$X1,
+                                 rownames(extra.cols),sep=''),
+                           paste(extra.cols$X2,rownames(extra.cols),sep=''))))
+    setnames(Branch.table, 
+             colnames(Branch.table), 
+             c(branch.tablenames,extra.cols))
+    warning('Adding Ownership Columns to Branch table... hope that is OK')
+  } else{
+    setnames(Branch.table, colnames(Branch.table),branch.tablenames)
+  }
 } else {
   warning("No Branch Table exists")
 }
@@ -167,9 +190,10 @@ if (exists('Branch.table')) {
 #Note: PSSE uses the term "Area" in this table, but this code changes that to 
 #"Region" for consistency with Plexos.
 if (exists('Area.interchange.table')){
-  setnames(Area.interchange.table, colnames(Area.interchange.table), c("Region", 
-                                                                       "SlackBusNumber", "DesiredNetInterchange.MW", "InterchangeTolerance.MW", 
-                                                                       "RegionName"))
+  setnames(Area.interchange.table, colnames(Area.interchange.table), 
+           c("Region", 
+             "SlackBusNumber", "DesiredNetInterchange.MW", 
+             "InterchangeTolerance.MW", "RegionName"))
 } else {
   warning("No Area Interchange Table Exists")
 }
@@ -185,18 +209,18 @@ if (exists('Owner.table')) {
 #Zone.table
 if (exists('Zone.table')) {
   setnames(Zone.table, colnames(Zone.table), c("Zone", "ZoneName"))
-  } else {
+} else {
   warning("No Zone Table exists")
 }
 
 
 #Transformer.table, p.5-22
-  #Not sure how to do this elegantly. Transformers can be two- or three-winding 
-  #transformers, and each transformer entry will have a different number of 
-  #lines accordingly (4 or 5, respectively. Go through and separate these out 
-  #because it's otherwise very difficult to pull out data.) 
-  #all transformers here are 2-winding, so I'm commenting this out. Leaving the 
-  #code here for now in case we need it later.
+#Not sure how to do this elegantly. Transformers can be two- or three-winding 
+#transformers, and each transformer entry will have a different number of 
+#lines accordingly (4 or 5, respectively. Go through and separate these out 
+#because it's otherwise very difficult to pull out data.) 
+#all transformers here are 2-winding, so I'm commenting this out. Leaving the 
+#code here for now in case we need it later.
 #two.winding.txfmrs <- data.table(matrix(NA, ncol = 16, nrow = 0)); 
 #three.winding.txfmrs <- data.table(matrix(NA, ncol = 16, nrow = 0))
 #two.count <- 0; three.count <- 0
@@ -217,10 +241,10 @@ if (exists('Zone.table')) {
 #if (three.count > 0) {print("WARNING: three-winding transformers exist in this 
 #data set and are not properly dealt with. Please re-code.")}
 
-  #there is a lot of data in the transformer tables. This currently takes only 
-  #the data that Plexos seems to be reading in. There are three ratings
-  #but Plexos seems to only read the first and third. Should check this, 
-  #especially because some of the third ratings are zero.
+#there is a lot of data in the transformer tables. This currently takes only 
+#the data that Plexos seems to be reading in. There are three ratings
+#but Plexos seems to only read the first and third. Should check this, 
+#especially because some of the third ratings are zero.
 Transformer.table.edit <- Transformer.table[, .(V1)][
   1:nrow(Transformer.table) %% 4 == 1]
 setnames(Transformer.table.edit, "V1", "FromBusNumber")
@@ -241,12 +265,12 @@ Transformer.table.edit[,Rating.MW := Transformer.table[, .(as.numeric(V4))][
   1:nrow(Transformer.table) %% 4 == 3]] 
 Transformer.table.edit[,OverloadRating.MW := Transformer.table[, .(V6)][
   1:nrow(Transformer.table) %% 4 == 3]] 
-  #This results in some of the overload ratings being 0. Change them to the 
-  #Rating. This applies to ~ half of the entries
+#This results in some of the overload ratings being 0. Change them to the 
+#Rating. This applies to ~ half of the entries
 #Transformer.table.edit[OverloadRating.MW == 0, OverloadRating.MW := Rating.MW]
 
 # Two.terminal.dc.line.table
-  #this table has three lines of data per DC line
+#this table has three lines of data per DC line
 DC.line.table <- Two.terminal.dc.line.table[, .(V1)][
   1:nrow(Two.terminal.dc.line.table) %% 3 == 2]
 setnames(DC.line.table, "V1", "FromBusNumber")
