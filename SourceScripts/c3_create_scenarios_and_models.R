@@ -346,35 +346,40 @@ all.sheets <- c("Objects", "Categories", "Memberships", "Attributes",
   #create temporary function definitions for better readability of double 
   #lapply below
 read_tab <- function(file.name) {
-  if (file.exists(file.path('../InputFiles',file.name))) {
-    message(sprintf("... importing from  %s", file.name))
-    data.table(suppressWarnings(
-      read.csv(paste0("../InputFiles/", file.name), 
-               stringsAsFactors = FALSE, fill = TRUE, header=FALSE, col.names = 
-                 paste0("V",seq_len(20)), strip.white = TRUE)))
-    
-  } else {
-    message(sprintf("... %s does not exist ... skipping", file.name))
-  }
+    data.table(suppressWarnings(read.csv(paste0("../InputFiles/", file.name), 
+      stringsAsFactors = FALSE, fill = TRUE, header=FALSE, col.names = 
+      paste0("V",seq_len(20)), strip.white = TRUE)))
 }
 
 import_and_merge <- function(imported.tab, sheet.name) {
-  if (!is.null(imported.file)) {
     cur.tab <- import_table_generic(imported.tab, sheet.name)
     if (!is.null(cur.tab)) {
       assign(paste0(sheet.name, ".sheet"), merge_sheet_w_table(get(paste0(
         sheet.name,".sheet")), cur.tab), envir = .GlobalEnv)
     } 
-  }
 }
 
   #import and merge all generic import files
 invisible(lapply(generic.import.files, function (x) {
-  imported.file <- read_tab(x)
-  lapply(all.sheets, function(y) import_and_merge(imported.file, y))}))
+  
+  if (file.exists(file.path('../InputFiles',x))) {
+    
+    message(sprintf("... importing from  %s", x))
+    
+    # read in data and import into .sheet tables
+    imported.file <- read_tab(x)
+    lapply(all.sheets, function(y) import_and_merge(imported.file, y))
+    
+  } else {
+    
+    # warn about file not existing
+    message(sprintf("... %s does not exist ... skipping", x))
+    
+  }
+}))
 
 
-rm(import_and_merge, read_tab)
+rm(import_and_merge, read_tab, all.sheets)
 
 
 #------------------------------------------------------------------------------|
