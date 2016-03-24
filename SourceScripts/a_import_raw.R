@@ -177,7 +177,7 @@ if (exists('Branch.table')) {
     setnames(Branch.table, 
              colnames(Branch.table), 
              c(branch.tablenames,extra.cols))
-    warning('Adding Ownership Columns to Branch table... hope that is OK')
+    message('Adding Ownership Columns to Branch table... hope that is OK')
   } else{
     setnames(Branch.table, colnames(Branch.table),branch.tablenames)
   }
