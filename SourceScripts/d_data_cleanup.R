@@ -103,10 +103,10 @@ Properties.sheet[parent_object == "System" & property == "Max Capacity" &
 
 # retire plants from the "units_retired" file. This means: delete them 
 # completely from the database, since they will not 
-if (file.exists(file.path('../InputFiles',units.to.delete.file))) {
+if (file.exists(file.path(inputfiles.dir,units.to.delete.file))) {
   message(sprintf("... deleting units in  %s", units.to.delete.file))
   
-  to.delete <- fread(file.path("../InputFiles/", units.to.delete.file))
+  to.delete <- fread(file.path(inputfiles.dir, units.to.delete.file))
   Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Generator.Name])]
   Properties.sheet <- Properties.sheet[!(child_object %in% 
                                            to.delete[,Generator.Name])]

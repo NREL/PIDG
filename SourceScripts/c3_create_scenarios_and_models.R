@@ -286,7 +286,7 @@ Properties.sheet[property %in% c("Min Up Time", "Min Down Time", "Start Cost"),
 # that contain properties that correspond with those scenarios
 
 for (scenario.name in names(wheeling.charge.cases.files)) {
-  if (file.exists(file.path('../InputFiles',
+  if (file.exists(file.path(inputfiles.dir,
                             wheeling.charge.cases.files[[scenario.name]][1]))) {
     
     message(sprintf("... Adding properties for wheeling charges from  %s", 
@@ -301,7 +301,7 @@ for (scenario.name in names(wheeling.charge.cases.files)) {
     
     # read in file
     cur.properties.file <- 
-      fread(file.path("../InputFiles", 
+      fread(file.path(inputfiles.dir, 
                       wheeling.charge.cases.files[[scenario.name]]))
     
     # add properties from file to Properties.sheet
@@ -346,7 +346,7 @@ all.sheets <- c("Objects", "Categories", "Memberships", "Attributes",
   #create temporary function definitions for better readability of double 
   #lapply below
 read_tab <- function(file.name) {
-    data.table(suppressWarnings(read.csv(paste0("../InputFiles/", file.name), 
+    data.table(suppressWarnings(read.csv(file.path(inputfiles.dir, file.name), 
       stringsAsFactors = FALSE, fill = TRUE, header=FALSE, col.names = 
       paste0("V",seq_len(20)), strip.white = TRUE)))
 }
@@ -362,7 +362,7 @@ import_and_merge <- function(imported.tab, sheet.name) {
   #import and merge all generic import files
 invisible(lapply(generic.import.files, function (x) {
   
-  if (file.exists(file.path('../InputFiles',x))) {
+  if (file.exists(file.path(inputfiles.dir,x))) {
     
     message(sprintf("... importing from  %s", x))
     
@@ -389,12 +389,12 @@ rm(import_and_merge, read_tab, all.sheets)
    # loop through compact generic input files and read in tables
   
 for (i in seq_along(compact.generic.import.files)) {
-  if (file.exists(file.path('../InputFiles',
+  if (file.exists(file.path(inputfiles.dir,
                             compact.generic.import.files[[i]][1]))) {
     message(sprintf("... importing from  %s", 
                     compact.generic.import.files[[i]][1]))
     
-    cur.tab <- fread(file.path('../InputFiles', 
+    cur.tab <- fread(file.path(inputfiles.dir, 
                                compact.generic.import.files[[i]][1]))
     
     cur.obj.type <- compact.generic.import.files[[i]][2]
@@ -552,7 +552,7 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet,
 #------------------------------------------------------------------------------|
 # [[Scenario archive for other configs]] Lines to enforce for natnl study ----
 # -----------------------------------------------------------------------------|
-if (file.exists(file.path('../InputFiles',
+if (file.exists(file.path(inputfiles.dir,
                           enforced.interstate.lines.file))) {
   message(sprintf("... enforcing lines from  %s", 
                   enforced.interstate.lines.file))
@@ -568,7 +568,7 @@ if (file.exists(file.path('../InputFiles',
   
   # scenario to properties
   # uses line.data.table
-  interstate.to.enf <- fread(file.path("../InputFiles",
+  interstate.to.enf <- fread(file.path(inputfiles.dir,
                                        enforced.interstate.lines.file))
   
   scenario.enf.interstate.lines.to.propterties <- 
@@ -594,7 +594,7 @@ if (file.exists(file.path('../InputFiles',
 #------------------------------------------------------------------------------|
 # [[Scen arx for other configs]] Rmve isolated nodes, recalc LPF for others ----
 # -----------------------------------------------------------------------------|
-if (file.exists(file.path('../InputFiles',
+if (file.exists(file.path(inputfiles.dir,
                           isolated.nodes.to.remove.file))) {
   message(sprintf("... removing isolated nodes from  %s in scenario", 
                   isolated.nodes.to.remove.file))
@@ -610,7 +610,7 @@ if (file.exists(file.path('../InputFiles',
   # scenario to properties
   # uses isolated.nodes.to.remove.file
   # read in isolated nodes to remove file and change it to a veector
-  isolated.nodes.to.remove <- fread(file.path("../InputFiles",
+  isolated.nodes.to.remove <- fread(file.path(inputfiles.dir,
                                               isolated.nodes.to.remove.file))
   isolated.nodes.to.remove <- isolated.nodes.to.remove[,Node.Name]
   

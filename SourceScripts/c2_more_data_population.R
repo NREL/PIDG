@@ -17,7 +17,7 @@
 # add fuels and categorize generators by fuel ----
 #------------------------------------------------------------------------------|
 
-fuel.table <- fread(file.path("../InputFiles", map.gen.to.fuel.file))
+fuel.table <- fread(file.path(inputfiles.dir, map.gen.to.fuel.file))
 
 # add fuels to generator.data.table
 generator.data.table <- 
@@ -63,7 +63,7 @@ rm(fuel.table, all.fuels, fuels.to.objects, fuels.to.gens.to.memberships)
 # add load (mapped by region by external file) and lpf ----
 #------------------------------------------------------------------------------|
 load.to.region.map <- 
-  fread(file.path("../InputFiles", map.region.to.load.RE.file))
+  fread(file.path(inputfiles.dir, map.region.to.load.RE.file))
 
 # add load data file objects to objects .sheet 
 # uses load.to.region.map
@@ -150,7 +150,7 @@ if (add.RE.gens){
   message(sprintf("... Adding properties for RE gens from  %s", RE.gen.file))
   
   RE.gens <- 
-    fread(file.path("../InputFiles", RE.gen.file), colClasses = 'numeric')
+    fread(file.path(inputfiles.dir, RE.gen.file), colClasses = 'numeric')
   
   # 1. create nodes to put new RE on
   new.node.table <- unique(RE.gens, by = c('Node.Name', 'Category'))
@@ -366,12 +366,12 @@ if (add.RE.gens){
 # uses generator.property.by.fuel.list
 
 for (elem in seq_along(generator.property.by.fuel.list)) {
-  if (file.exists(file.path('../InputFiles',
+  if (file.exists(file.path(inputfiles.dir,
                             generator.property.by.fuel.list[[elem]][1]))) {
     message(sprintf("... Adding properties from %s", 
                     generator.property.by.fuel.list[[elem]][1]))
     # read in table
-    cur.table <- fread(file.path('../InputFiles',
+    cur.table <- fread(file.path(inputfiles.dir,
                                  generator.property.by.fuel.list[[elem]][1]))
     
     # set up arguments for merge_property_by_fuel
@@ -409,7 +409,7 @@ rm(cur.table, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
 # for (i in seq(generator.property.file.list)) {
 #   
 #   # read in file
-#   cur.gen.file <- fread(file.path("../InputFiles", 
+#   cur.gen.file <- fread(file.path(inputfiles.dir, 
 #     generator.property.file.list[[i]]['fl'])) 
 # 
 #   # add to properties sheet
@@ -426,11 +426,11 @@ rm(cur.table, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
 # rm(cur.gen.file)
 
 for (elem in seq_along(object.property.list)) {
-  if (file.exists(file.path('../InputFiles',object.property.list[[elem]][1]))) {
+  if (file.exists(file.path(inputfiles.dir,object.property.list[[elem]][1]))) {
     message(sprintf("... Adding properties from %s", 
                     object.property.list[[elem]][1]))
     # read in table
-    cur.table <- fread(file.path('../InputFiles', 
+    cur.table <- fread(file.path(inputfiles.dir, 
                                  object.property.list[[elem]][1]))
     
     # read in args
@@ -451,10 +451,10 @@ rm(elem, cur.table, cur.args)
 #------------------------------------------------------------------------------|
 # add start cost ----
 #------------------------------------------------------------------------------|
-if (file.exists(file.path('../InputFiles', start.cost.file))) {
+if (file.exists(file.path(inputfiles.dir, start.cost.file))) {
   message(sprintf("... Adding start costs from %s", start.cost.file))
   #uses start.cost.file, fuels.to.gens
-  start.cost <- fread(file.path("../InputFiles", start.cost.file))
+  start.cost <- fread(file.path(inputfiles.dir, start.cost.file))
   # the start cost file has cost by size for coal. this seperates those for 
   # merging, then binds it back together
   start.cost.na = start.cost[is.na(MaxOutput.MW), .(Fuel, `Start Cost`)]
@@ -509,18 +509,18 @@ if (file.exists(file.path('../InputFiles', start.cost.file))) {
 # uses interfaces.files.list
 
 for (i in seq(interfaces.files.list)) {
-  if (file.exists(file.path('../InputFiles', interfaces.files.list[[i]][1]))) {
+  if (file.exists(file.path(inputfiles.dir, interfaces.files.list[[i]][1]))) {
     message(
       sprintf("... Adding interfaces from %s", interfaces.files.list[[i]][1]))
     # read in files from interface files in this iteration
     interface.names <- fread(
-      file.path("../InputFiles", interfaces.files.list[[i]]['names']))
+      file.path(inputfiles.dir, interfaces.files.list[[i]]['names']))
     interface.properties <- fread(
-      file.path("../InputFiles", interfaces.files.list[[i]]['properties']))
+      file.path(inputfiles.dir, interfaces.files.list[[i]]['properties']))
     interface.memberships <- fread(
-      file.path("../InputFiles", interfaces.files.list[[i]]['memberships']))
+      file.path(inputfiles.dir, interfaces.files.list[[i]]['memberships']))
     interface.coefficients <- fread(
-      file.path("../InputFiles", interfaces.files.list[[i]]['flowcoefs']))
+      file.path(inputfiles.dir, interfaces.files.list[[i]]['flowcoefs']))
     
     # Add interfaces to objects sheet
     interfaces.to.objects <- initialize_table(

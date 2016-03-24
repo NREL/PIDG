@@ -21,5 +21,5 @@ invisible(lapply(names(sheets.list), function(x)
   writeData(workbook.to.export, sheet = x, as.data.frame(sheets.list[[x]]), 
     rowNames = FALSE)))
 
-saveWorkbook(workbook.to.export, paste0("../OutputFiles/", output.wb.name), 
+saveWorkbook(workbook.to.export, file.path(outputfiles.dir, output.wb.name), 
   overwrite = TRUE)

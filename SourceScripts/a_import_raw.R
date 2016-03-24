@@ -16,11 +16,11 @@
 # read in .raw file ----
 #------------------------------------------------------------------------------|
 
-num_col <- max(count.fields(paste0("../InputFiles/", raw.file.path), sep = ','), 
+num_col <- max(count.fields(file.path(inputfiles.dir, raw.file.path), sep = ','), 
                na.rm = TRUE)
 raw.table <- data.table(
   suppressWarnings(
-    read.csv(paste0("../InputFiles/", 
+    read.csv(file.path(inputfiles.dir, 
                     raw.file.path), stringsAsFactors = FALSE, fill = TRUE, 
              header=FALSE, col.names = paste0("V",seq_len(num_col)), 
              strip.white = TRUE, blank.lines.skip = FALSE)))
@@ -300,14 +300,14 @@ DC.line.table[,LineName := Two.terminal.dc.line.table[, .(V1)][
 
 # nodes -> regions: PLEXOS allows only one node per region
 if (rename.regions) { 
-  nodes.regions <- fread(file.path("../InputFiles", map.newregion.file))
+  nodes.regions <- fread(file.path(inputfiles.dir, map.newregion.file))
   if (any(nodes.regions[,length(RegionName) > 1, by = "BusNumber"][[2]])) {
     print("WARNING: at least one node is assigned to more than one region.")
   }
 }
 
 # make sure each generator has only one fuel
-gens.fuels <- fread(file.path("../InputFiles", map.gen.to.fuel.file))
+gens.fuels <- fread(file.path(inputfiles.dir, map.gen.to.fuel.file))
 if (any(gens.fuels[,length(Fuel) > 1, by = "Generator.Name"][[2]])) {
   print("WARNING: at least one generator is assigned more than one fuel.")
 }
@@ -318,26 +318,26 @@ if (any(gens.fuels[,Fuel == "" | is.na(Fuel)])) {
 }
 
 # # make sure each fuel has only one min gen
-# fuels.mingens <- fread(file.path("../InputFiles", min.gen.file))
+# fuels.mingens <- fread(file.path(inputfiles.dir, min.gen.file))
 # if (any(fuels.mingens[,length(MinStableLevel) > 1, by = "Fuel"][[2]])) {
 #   print("WARNING: at least one fuel is assigned more than one min gen level.")
 # }
 # 
 # # make sure each fuel has only one ramp
-# fuels.rmps <- fread(file.path("../InputFiles", map.ramps.to.fuel.file))
+# fuels.rmps <- fread(file.path(inputfiles.dir, map.ramps.to.fuel.file))
 # if (any(fuels.rmps[,length(maxRamp) > 1, by = "Fuel"][[2]])) {
 #   print("WARNING: at least one fuel is assigned more than one max ramp.")
 # }
 
 # # make sure each fuel has only one price
-# f.prce <-data.table(read.csv(paste0("../InputFiles/", map.fuel.price.to.fuel.file), 
+# f.prce <-data.table(read.csv(file.path(inputfiles.dir, map.fuel.price.to.fuel.file), 
 #   stringsAsFactors = FALSE, check.names = FALSE, strip.white = TRUE))
 # if (any(f.prce[,length(Price) > 1, by = "Fuel"][[2]])) {
 #   print("WARNING: at least one fuel is assigned more than one price.")
 # }
 
 # make sure each region has only one load file
-f.prce <- fread(file.path("../InputFiles", map.region.to.load.RE.file))
+f.prce <- fread(file.path(inputfiles.dir, map.region.to.load.RE.file))
 if (any(f.prce[,length(LoadFile) > 1, by = "RegionName"][[2]])) {
   print("WARNING: at least one region is assigned more than one load file.")
 }

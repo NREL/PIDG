@@ -29,7 +29,7 @@ node.data.table <- merge(node.data.table, Zone.table[, .(ZoneName,
 # if there are input files to remap the nodes' regions and zones, remap them
 if (rename.regions) { 
   
-  map.newregions <- fread(file.path("../InputFiles", map.newregion.file))
+  map.newregions <- fread(file.path(inputfiles.dir, map.newregion.file))
   
   node.data.table <- merge(node.data.table[,RegionName := NULL], 
     map.newregions[,.(BusNumber, RegionName)], by = "BusNumber", all.x = TRUE)
@@ -39,7 +39,7 @@ if (rename.regions) {
 
 if (rename.zones) {
 
-  map.newzones <- fread(file.path("../InputFiles", map.newzone.file))
+  map.newzones <- fread(file.path(inputfiles.dir, map.newzone.file))
   
   node.data.table <- merge(node.data.table[,ZoneName := NULL], 
     map.newzones[,.(BusNumber, ZoneName)], by = "BusNumber", all.x = TRUE)
@@ -292,7 +292,7 @@ gens.to.properties <- generator.data.table[, .(Generator.Name, Units = 1,
 # create table with units that should be turned off, based on NLDC data
 # this should go into c2 once the add properties function has an option
 # to replace 
-# units.off <- fread(file.path("../InputFiles", units.turned.off.file))[[1]]
+# units.off <- fread(file.path(inputfiles.dir, units.turned.off.file))[[1]]
 # gens.to.properties[Generator.Name %in% units.off, Units := 0]
 
 add_to_properties_sheet(gens.to.properties, names.col = 'Generator.Name', 
