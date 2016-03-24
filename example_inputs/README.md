@@ -8,6 +8,7 @@ Run PSSE2PLEXOS submodule by running the script run_PSSE2PLEXOS.R.
 To run_PSSE2PLEXOS.R, pass in four arguments, either as command line arguments
 or by modifying the definition of these variables in this script (and creating
 the variable 'args'): 
+
 1. path to directory of PSSE2PLEXOS master script
 2. path to input parameters file
 3. path to directory containing input files
