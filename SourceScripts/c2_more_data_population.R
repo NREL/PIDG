@@ -107,7 +107,9 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet,
 # add load participation factor to nodes
 # uses Load.table, node.data.table
 
-# oriignal table has duplicates which aren't related to each other--only select
+message('... Adding load participation factor from current raw file')
+
+# original table has duplicates which aren't related to each other--only select
 # one. Should refine later. 
 # since there are NAs, must convert them to zero for the next step to work 
 # correctly and for PLEXOS to read them in correctly
@@ -115,11 +117,20 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet,
 # convert NaNs to zero for PLEXOS to read them in correctly
 load.part.fact.table <- Load.table[, .(BusNumber,ActivePower.MW)] 
 # remove negative LPFs
-load.part.fact.table[ActivePower.MW < 0, ActivePower.MW := 0] 
+if (any(load.part.fact.table[,ActivePower.MW < 0])) {
+  message("Removing negative load participation factors... hope that is OK")
+  load.part.fact.table[ActivePower.MW < 0, ActivePower.MW := 0] 
+}
 # if there are multiple LPFs for a given node, sum those
-load.part.fact.table <- 
+if (any(load.part.fact.table[,length(ActivePower.MW) > 1, by = "BusNumber"][,V1]
+  )) {
+  message(
+  "Summing multiple load participation factors at same node... hope that is OK")
+  load.part.fact.table <- 
   load.part.fact.table[,list(ActivePower.MW = sum(ActivePower.MW)), 
                        by = "BusNumber"]
+}
+
 # merge with nodes table
 load.part.fact.table <- 
   merge(load.part.fact.table, 
