@@ -63,46 +63,62 @@ rm(fuel.table, all.fuels, fuels.to.objects, fuels.to.gens.to.memberships)
 # add load (mapped by region by external file) and lpf ----
 #------------------------------------------------------------------------------|
 load.to.region.map <- 
-  fread(file.path(inputfiles.dir, map.region.to.load.RE.file))
+  fread(file.path(inputfiles.dir, map.region.to.load.file))
+
+# create data file object name column
+load.to.region.map[,DataFile := paste0(load.to.region.map[,Region], 
+                                     " Load File Object")]
 
 # add load data file objects to objects .sheet 
 # uses load.to.region.map
 load.file.to.object <- 
   initialize_table(Objects.prototype, nrow(load.to.region.map), 
-                   list(class = "Data File", category = "Regional Load"))
-load.file.to.object[, name := paste0(load.to.region.map[,RegionName], 
-                                     " Load File Object")]
+  list(class = "Data File", category = "Regional Load"))
+load.file.to.object[, name := load.to.region.map[,DataFile]]
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.file.to.object)
 
-# load to properties (attach filepath to object)
-# uses load.to.region.map
-load.filename.to.properties <- 
-  initialize_table(Properties.prototype, nrow(load.to.region.map), 
-                   list(parent_class = "System", child_class = "Data File", 
-                        collection = "Data Files", parent_object = "System", 
-                        property = "filename", band_id = 1, value = 0))
-load.filename.to.properties[, child_object := paste0(
-  load.to.region.map[,RegionName], " Load File Object")]
-load.filename.to.properties[, filename := load.to.region.map[,LoadFile]]
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        load.filename.to.properties)
-
-# load file to region properties
+# load file object to as regional load
 # uses load.to.region.map
 load.to.region.properties <- 
   initialize_table(Properties.prototype, nrow(load.to.region.map), 
                    list(parent_class = "System", child_class = "Region", 
                         collection = "Regions", parent_object = "System", 
                         band_id = 1, property = "Load", value = 0))
-load.to.region.properties[,child_object := load.to.region.map[,RegionName]]
+load.to.region.properties[,child_object := load.to.region.map[,Region]]
 load.to.region.properties[, filename := 
-                            paste0("{Object}",load.to.region.map[,RegionName], 
-                                   " Load File Object")]
+                            paste0("{Object}",load.to.region.map[,DataFile])]
 
 Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
                                         load.to.region.properties)
+
+
+# load to properties (attach filepath to object based on scenario)
+# uses load.to.region.map
+
+# loop through each column and add columns
+load.scens <- colnames(load.to.region.map)
+load.scens <- load.scens[!(load.scens %in% c('Region', 'DataFile'))]
+
+for (name in load.scens) {
+  # create small table to pass to add_to_properties_sheet
+  cur.tab <- load.to.region.map[,.SD, .SDcols = c('DataFile', name)]
+  cur.tab[,filename := 0]
+  
+  add_to_properties_sheet(cur.tab, names.col = 'DataFile', 
+    object.class = 'Data File', collection.name = 'Data Files', 
+    datafile.col = name, 
+    scenario.name = ifelse(tolower(name) == 'base', NA, name))
+}
+
+# add any scenarios associated with load as objects
+load.scens <- load.scens[tolower(load.scens) != 'base']
+load.scens.to.objects <- 
+  initialize_table(Objects.prototype, length(load.scens), 
+  list(name = load.scens, class = "Scenario", category = "Load scenarios"))
+
+Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.scens.to.objects)
+
 
 # add load participation factor to nodes
 # uses Load.table, node.data.table
@@ -149,8 +165,9 @@ add_to_properties_sheet(lpf.to.node.properties, object.class = 'Node',
                         names.col = 'BusName', collection.name = 'Nodes')
 
 # clean up
-rm(load.to.region.map, load.file.to.object, load.filename.to.properties, 
-   load.to.region.properties, load.part.fact.table, lpf.to.node.properties)
+rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
+  load.part.fact.table, lpf.to.node.properties, load.scens, cur.tab, 
+  load.scens.to.objects)
 
 #------------------------------------------------------------------------------|
 # add RE generators ----

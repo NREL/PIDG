@@ -336,9 +336,9 @@ if (any(gens.fuels[,Fuel == "" | is.na(Fuel)])) {
 #   print("WARNING: at least one fuel is assigned more than one price.")
 # }
 
-# make sure each region has only one load file
-f.prce <- fread(file.path(inputfiles.dir, map.region.to.load.RE.file))
-if (any(f.prce[,length(LoadFile) > 1, by = "RegionName"][[2]])) {
-  print("WARNING: at least one region is assigned more than one load file.")
-}
+# # make sure each region has only one load file
+# f.prce <- fread(file.path(inputfiles.dir, map.region.to.load.file))
+# if (any(f.prce[,length(LoadFile) > 1, by = "RegionName"][[2]])) {
+#   print("WARNING: at least one region is assigned more than one load file.")
+# }
 
