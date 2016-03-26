@@ -12,6 +12,7 @@
 # RE.gen.file
 # interfaces.files.list
 # generator.property.by.fuel.list
+# turn.off.except.in.scen.list
 
 #------------------------------------------------------------------------------|
 # add fuels and categorize generators by fuel ----
@@ -427,31 +428,10 @@ for (elem in seq_along(generator.property.by.fuel.list)) {
 rm(cur.table, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
 
 
-# #----------------------------------------------------------------------------|
-# # add generic generator properties (in scenarios)----
-# #----------------------------------------------------------------------------|
-# # uses generator.property.file.list
-# 
-# # reads from the list of vectors describing the hydro limit data. For each, 
-# # first reads in the table, then submits it to add_to_properties sheet
-# for (i in seq(generator.property.file.list)) {
-#   
-#   # read in file
-#   cur.gen.file <- fread(file.path(inputfiles.dir, 
-#     generator.property.file.list[[i]]['fl'])) 
-# 
-#   # add to properties sheet
-#   add_to_properties_sheet(cur.gen.file, 
-#     object.class = 'Generator',
-#     collection.name = 'Generators',
-#     scenario.name = generator.property.file.list[[i]]['scen'],
-#     names.col = generator.property.file.list[[i]]['name'], 
-#     pattern.col = generator.property.file.list[[i]]['ptrn'],
-#     period.id = generator.property.file.list[[i]]['periodid']) 
-# }
-# 
-# # clean up
-# rm(cur.gen.file)
+#----------------------------------------------------------------------------|
+# add generic generator properties (in scenarios)----
+#----------------------------------------------------------------------------|
+# uses generator.property.file.list
 
 for (elem in seq_along(object.property.list)) {
   if (file.exists(file.path(inputfiles.dir,object.property.list[[elem]][1]))) {
@@ -474,6 +454,57 @@ for (elem in seq_along(object.property.list)) {
 }
 
 rm(elem, cur.table, cur.args)
+
+
+#------------------------------------------------------------------------------|
+# turn off objects except in scenario ----
+#------------------------------------------------------------------------------|
+# uses turn.off.except.in.scen.list
+if (exists('turn.off.except.in.scen.list')) {
+  
+  for (elem in seq_along(turn.off.except.in.scen.list)) {
+    
+    if (file.exists(file.path(inputfiles.dir,
+      turn.off.except.in.scen.list[[elem]][1]))) {
+      message(sprintf("... Adding turning off objects from %s except for in 
+        scenario %s", 
+        turn.off.except.in.scen.list[[elem]][1],
+        turn.off.except.in.scen.list[[elem]][['scenario.name']]))
+        
+      # read in table
+      cur.table <- fread(file.path(inputfiles.dir, 
+                                   turn.off.except.in.scen.list[[elem]][1]))
+      
+      # turn off Units property of these objects
+      cur.names <- turn.off.except.in.scen.list[[elem]][['names.col']]
+      cur.class <- turn.off.except.in.scen.list[[elem]][['object.class']]
+      cur.coll <- turn.off.except.in.scen.list[[elem]][['collection.name']]
+      cur.scen <- turn.off.except.in.scen.list[[elem]][['scenario.name']]
+      
+      # turn off Units in bae
+      cur.table[,Units := 0]
+
+      add_to_properties_sheet(cur.table, names.col = cur.names, 
+        object.class = cur.class, collection.name = cur.coll, overwrite = T)
+  
+      # turn on units in scenario
+      cur.table[,Units := 1]
+      
+      add_to_properties_sheet(cur.table, names.col = cur.names, 
+        object.class = cur.class, collection.name = cur.coll, 
+        scenario.name = cur.scen)
+
+    } else {
+      message(sprintf("... %s does not exist ... skipping", 
+                      turn.off.except.in.scen.list[[elem]][1]))
+    }
+  }
+} else {
+  message('... turn.off.except.in.scen.list does not exist ... skipping')
+}
+
+# clean up
+rm(elem, cur.names, cur.class, cur.coll, cur.scen)
 
 
 #------------------------------------------------------------------------------|
