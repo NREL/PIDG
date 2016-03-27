@@ -142,15 +142,31 @@ if (exists('Fixed.shunt.table')) {
 #WindControlMode = 0 - not wind; 1 - reactive power limits are specified here; 
 #2, 3 - reactive power limits calculated
 if (exists('Generator.table')) {
-  setnames(Generator.table, colnames(Generator.table), 
-           c("BusNumber", "ID", 
-             "ActivePower.MW", "ReactivePower.MVAR", 
-             "MaxReactivePowerOutput.MVAR","MinReactivePowerOutput.MVAR", 
-             "VoltageSetpoint.pu", "OtherBusReg", "MVA", 
-             "IMpedance1", "Impedance2", "XfrmrImpedance1", "XfrmrImpedance2", 
-             "XfrmrTurnsRatio", "Status", "PctMVARToHoldVoltage", "MaxOutput.MW", 
-             "MinOutput.MW", "Owner", "FractionOfOwnership", "WindControlMode", 
-             "WindPowerFactor"))
+  generator.tablenames <- c("BusNumber", "ID", 
+           "ActivePower.MW", "ReactivePower.MVAR", 
+           "MaxReactivePowerOutput.MVAR","MinReactivePowerOutput.MVAR", 
+           "VoltageSetpoint.pu", "OtherBusReg", "MVA", 
+           "IMpedance1", "Impedance2", "XfrmrImpedance1", "XfrmrImpedance2", 
+           "XfrmrTurnsRatio", "Status", "PctMVARToHoldVoltage", "MaxOutput.MW", 
+           "MinOutput.MW", "WindControlMode", "WindPowerFactor")
+  
+  # add as many Owner/FractionOfOwnership colnames as needed, given input table
+  length.diff <- length(names(Generator.table)) - length(generator.tablenames)
+  if (length.diff > 0) {
+    pairs.to.add <- length.diff/2
+    
+    before <- generator.tablenames[1:(length(generator.tablenames)-2)]
+    after <- generator.tablenames[!(generator.tablenames %in% before)]
+    
+    add <- c()
+    for (i in seq(pairs.to.add)) add <- c(add, 
+      paste0('Owner', i), paste0('FractionOfOwnership', i))
+    
+    generator.tablenames <- c(before, add, after)
+  }
+  
+  setnames(Generator.table, colnames(Generator.table), generator.tablenames)
+  
 } else {
   warning("No Gen Table exists")
 }
@@ -161,11 +177,11 @@ if (exists('Generator.table')) {
 # RatingC is overload limit
 if (exists('Branch.table')) {
   branch.tablenames = c("BranchFromBus", "BranchToBus", 
-                        "ID", "Resistance.pu", "Reactance.pu",
-                        "ChargingSusceptance.pu", "RatingA","RatingB","RatingC",
-                        "FromBusAdmittanceReal.pu","FromBusAdmittanceImag.pu",
-                        "ToBusAdmittanceReal.pu","ToBusAdmittanceImag.pu", 
-                        "Status", "MeteredEnd", "Length")
+                      "ID", "Resistance.pu", "Reactance.pu",
+                      "ChargingSusceptance.pu", "RatingA","RatingB","RatingC",
+                      "FromBusAdmittanceReal.pu","FromBusAdmittanceImag.pu",
+                      "ToBusAdmittanceReal.pu","ToBusAdmittanceImag.pu", 
+                      "Status", "MeteredEnd", "Length")
   if (length(names(Branch.table))>length(branch.tablenames)) {
     extra.cols = data.frame(t(
       (matrix(
