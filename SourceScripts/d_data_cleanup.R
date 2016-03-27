@@ -118,22 +118,29 @@ if (exists('units.to.delete.file')) {
     Memberships.sheet <- 
       Memberships.sheet[!(child_object %in% to.delete[,Generator.Name]) & 
                           !(parent_object %in% to.delete[,Generator.Name])]
-    
-    # also need to retire RE plants in the PSSE file, since we are replacing them 
-    # with our own. For now, doing it here, but if the new RE gens ever get added 
-    # to gen.names.table, this must be done elsewhere.
-    re.to.delete <- generator.data.table[Fuel %in% c("WIND", "SOLAR-PV") & 
-                                           !is.na(BusNumber), Generator.Name] 
-    
-    Objects.sheet <- Objects.sheet[!(name %in% re.to.delete)]
-    Properties.sheet <- Properties.sheet[!(child_object %in% re.to.delete)]
-    Memberships.sheet <- Memberships.sheet[!(child_object %in% re.to.delete) & 
-                                             !(parent_object %in% re.to.delete)]
   } else {
     message(sprintf("... %s does not exist ... skipping", units.to.delete.file))
   } 
 } else {
    message("... units.to.delete.file does not exist ... skipping")
+}
+
+
+
+    
+# also need to retire RE plants in the PSSE file, since we are replacing them 
+# with our own. For now, doing it here, but if the new RE gens ever get added 
+# to gen.names.table, this must be done elsewhere.
+if (delete.original.RE) {
+  message("...deleting original WIND and SOLAR-PV generators")
+  
+  re.to.delete <- generator.data.table[Fuel %in% c("WIND", "SOLAR-PV") & 
+                                         !is.na(BusNumber), Generator.Name] 
+  
+  Objects.sheet <- Objects.sheet[!(name %in% re.to.delete)]
+  Properties.sheet <- Properties.sheet[!(child_object %in% re.to.delete)]
+  Memberships.sheet <- Memberships.sheet[!(child_object %in% re.to.delete) & 
+                                           !(parent_object %in% re.to.delete)]
 }
 
 # add standard flow limits to lines with ratings of zero
