@@ -8,8 +8,12 @@
 #------------------------------------------------------------------------------|
 ###some min stable levels are less than zero, which Plexos can't handle. 
 ###Adjust them to zero.
-Properties.sheet[property=="Min Stable Level" & as.numeric(value) < 0, 
-  value := "0"] 
+if (any(Properties.sheet[property=="Min Stable Level", 
+  as.numeric(value) < 0])) {
+  message('Changing negative min stable levels to 0 MW... hope that is OK')
+  Properties.sheet[property=="Min Stable Level" & as.numeric(value) < 0, 
+    value := "0"] 
+}
 #remove quotes if end up changing numeric col types back to numeric
 #This doesn't matter now since we are reading in min gen files
 
@@ -103,30 +107,34 @@ Properties.sheet[parent_object == "System" & property == "Max Capacity" &
 
 # retire plants from the "units_retired" file. This means: delete them 
 # completely from the database, since they will not 
-if (file.exists(file.path(inputfiles.dir,units.to.delete.file))) {
-  message(sprintf("... deleting units in  %s", units.to.delete.file))
-  
-  to.delete <- fread(file.path(inputfiles.dir, units.to.delete.file))
-  Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Generator.Name])]
-  Properties.sheet <- Properties.sheet[!(child_object %in% 
-                                           to.delete[,Generator.Name])]
-  Memberships.sheet <- 
-    Memberships.sheet[!(child_object %in% to.delete[,Generator.Name]) & 
-                        !(parent_object %in% to.delete[,Generator.Name])]
-  
-  # also need to retire RE plants in the PSSE file, since we are replacing them 
-  # with our own. For now, doing it here, but if the new RE gens ever get added 
-  # to gen.names.table, this must be done elsewhere.
-  re.to.delete <- generator.data.table[Fuel %in% c("WIND", "SOLAR-PV") & 
-                                         !is.na(BusNumber), Generator.Name] 
-  
-  Objects.sheet <- Objects.sheet[!(name %in% re.to.delete)]
-  Properties.sheet <- Properties.sheet[!(child_object %in% re.to.delete)]
-  Memberships.sheet <- Memberships.sheet[!(child_object %in% re.to.delete) & 
-                                           !(parent_object %in% re.to.delete)]
+if (exists('units.to.delete.file')) {
+  if (file.exists(file.path(inputfiles.dir,units.to.delete.file))) {
+    message(sprintf("... deleting units in  %s", units.to.delete.file))
+    
+    to.delete <- fread(file.path(inputfiles.dir, units.to.delete.file))
+    Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Generator.Name])]
+    Properties.sheet <- Properties.sheet[!(child_object %in% 
+                                             to.delete[,Generator.Name])]
+    Memberships.sheet <- 
+      Memberships.sheet[!(child_object %in% to.delete[,Generator.Name]) & 
+                          !(parent_object %in% to.delete[,Generator.Name])]
+    
+    # also need to retire RE plants in the PSSE file, since we are replacing them 
+    # with our own. For now, doing it here, but if the new RE gens ever get added 
+    # to gen.names.table, this must be done elsewhere.
+    re.to.delete <- generator.data.table[Fuel %in% c("WIND", "SOLAR-PV") & 
+                                           !is.na(BusNumber), Generator.Name] 
+    
+    Objects.sheet <- Objects.sheet[!(name %in% re.to.delete)]
+    Properties.sheet <- Properties.sheet[!(child_object %in% re.to.delete)]
+    Memberships.sheet <- Memberships.sheet[!(child_object %in% re.to.delete) & 
+                                             !(parent_object %in% re.to.delete)]
+  } else {
+    message(sprintf("... %s does not exist ... skipping", units.to.delete.file))
+  } 
 } else {
-  message(sprintf("... %s does not exist ... skipping", units.to.delete.file))
-} 
+   message("... units.to.delete.file does not exist ... skipping")
+}
 
 # add standard flow limits to lines with ratings of zero
 # do this in a scenario (in script d)
@@ -171,7 +179,8 @@ if (any(Objects.sheet[,nchar(name) > 50])) {
 }
 
 # make sure min stable level is less than zero
-if (any(Properties.sheet[,property == "Min Stable Level" & value < 0])) {
+if (any(Properties.sheet[!is.na(property),
+  property == "Min Stable Level" & value < 0])) {
   print("WARNING: the following generator(s) have negative min stable levels:")
   print(Properties.sheet[property == "Min Stable Level" & value < 0])
 }

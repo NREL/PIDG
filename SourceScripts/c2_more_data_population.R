@@ -466,9 +466,8 @@ if (exists('turn.off.except.in.scen.list')) {
     
     if (file.exists(file.path(inputfiles.dir,
       turn.off.except.in.scen.list[[elem]][1]))) {
-      message(sprintf("... Adding turning off objects from %s except for in 
-        scenario %s", 
-        turn.off.except.in.scen.list[[elem]][1],
+      message(sprintf(paste0("... Adding turning off objects from %s except",
+        " for in scenario '%s'"), turn.off.except.in.scen.list[[elem]][1],
         turn.off.except.in.scen.list[[elem]][['scenario.name']]))
         
       # read in table
@@ -493,6 +492,12 @@ if (exists('turn.off.except.in.scen.list')) {
       add_to_properties_sheet(cur.table, names.col = cur.names, 
         object.class = cur.class, collection.name = cur.coll, 
         scenario.name = cur.scen)
+      
+      # add scenario as an object
+      cur.scen.to.obj <- initialize_table(Objects.prototype, 1, 
+        list(class= 'Scenario', name = cur.scen, category = 'Generator status'))
+      
+      Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.obj)
 
     } else {
       message(sprintf("... %s does not exist ... skipping", 
@@ -504,60 +509,62 @@ if (exists('turn.off.except.in.scen.list')) {
 }
 
 # clean up
-rm(elem, cur.names, cur.class, cur.coll, cur.scen)
+rm(elem, cur.names, cur.class, cur.coll, cur.scen, cur.scen.to.obj)
 
 
 #------------------------------------------------------------------------------|
 # add start cost ----
 #------------------------------------------------------------------------------|
-if (file.exists(file.path(inputfiles.dir, start.cost.file))) {
-  message(sprintf("... Adding start costs from %s", start.cost.file))
-  #uses start.cost.file, fuels.to.gens
-  start.cost <- fread(file.path(inputfiles.dir, start.cost.file))
-  # the start cost file has cost by size for coal. this seperates those for 
-  # merging, then binds it back together
-  start.cost.na = start.cost[is.na(MaxOutput.MW), .(Fuel, `Start Cost`)]
-  start.cost.thermal = start.cost[!is.na(MaxOutput.MW), .(Fuel, `Start Cost`, 
-                                                          MaxOutput.MW)]
-  start.cost.na <- merge(
-    start.cost.na, 
-    generator.data.table[,.(Generator.Name, Fuel, MaxOutput.MW)], 
-    by = "Fuel", all.x = TRUE)
-  
-  generator.data.table[, MaxOutput.MW.group := ifelse(
-    MaxOutput.MW <= 210, 210, ifelse(MaxOutput.MW <= 500, 500, 610)), 
-    by=Generator.Name]
-  
-  setnames(start.cost.thermal, "MaxOutput.MW", "MaxOutput.MW.group")
-  
-  start.cost.thermal = merge(
-    start.cost.thermal, 
-    generator.data.table[,.(Generator.Name, Fuel, 
-                            MaxOutput.MW.group, MaxOutput.MW)], 
-    by = c("MaxOutput.MW.group", "Fuel"), all.x = TRUE)
-  #not all combinations of cost and fuel.type exist, remove non-complete ones
-  start.cost.thermal = start.cost.thermal[complete.cases(start.cost.thermal)]
-  
-  start.cost.thermal = select(start.cost.thermal, -MaxOutput.MW.group)
-  
-  start.cost = rbind(start.cost.thermal, start.cost.na)
-  
-  start.cost.to.properties <- initialize_table(
-    Properties.prototype, nrow(start.cost), list(
-      parent_class = "System", child_class = "Generator", 
-      collection = "Generators", parent_object = "System", band_id = 1, 
-      property = "Start Cost"))
-  start.cost.to.properties[,child_object := start.cost[,Generator.Name]]
-  start.cost.to.properties[,value := start.cost[,`Start Cost` * MaxOutput.MW]]
-  
-  Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                          start.cost.to.properties)
-  
-} else {
-  message(sprintf("... %s does not exist ... skipping start costs", 
-                  start.cost.file))
+if (exists('start.cost.file')) {
+  if (file.exists(file.path(inputfiles.dir, start.cost.file))) {
+    message(sprintf("... Adding start costs from %s", start.cost.file))
+    #uses start.cost.file, fuels.to.gens
+    start.cost <- fread(file.path(inputfiles.dir, start.cost.file))
+    # the start cost file has cost by size for coal. this seperates those for 
+    # merging, then binds it back together
+    start.cost.na = start.cost[is.na(MaxOutput.MW), .(Fuel, `Start Cost`)]
+    start.cost.thermal = start.cost[!is.na(MaxOutput.MW), .(Fuel, `Start Cost`, 
+                                                            MaxOutput.MW)]
+    start.cost.na <- merge(
+      start.cost.na, 
+      generator.data.table[,.(Generator.Name, Fuel, MaxOutput.MW)], 
+      by = "Fuel", all.x = TRUE)
+    
+    generator.data.table[, MaxOutput.MW.group := ifelse(
+      MaxOutput.MW <= 210, 210, ifelse(MaxOutput.MW <= 500, 500, 610)), 
+      by=Generator.Name]
+    
+    setnames(start.cost.thermal, "MaxOutput.MW", "MaxOutput.MW.group")
+    
+    start.cost.thermal = merge(
+      start.cost.thermal, 
+      generator.data.table[,.(Generator.Name, Fuel, 
+                              MaxOutput.MW.group, MaxOutput.MW)], 
+      by = c("MaxOutput.MW.group", "Fuel"), all.x = TRUE)
+    #not all combinations of cost and fuel.type exist, remove non-complete ones
+    start.cost.thermal = start.cost.thermal[complete.cases(start.cost.thermal)]
+    
+    start.cost.thermal = select(start.cost.thermal, -MaxOutput.MW.group)
+    
+    start.cost = rbind(start.cost.thermal, start.cost.na)
+    
+    start.cost.to.properties <- initialize_table(
+      Properties.prototype, nrow(start.cost), list(
+        parent_class = "System", child_class = "Generator", 
+        collection = "Generators", parent_object = "System", band_id = 1, 
+        property = "Start Cost"))
+    start.cost.to.properties[,child_object := start.cost[,Generator.Name]]
+    start.cost.to.properties[,value := start.cost[,`Start Cost` * MaxOutput.MW]]
+    
+    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                            start.cost.to.properties)
+    
+  } else {
+    message(sprintf("... %s does not exist ... skipping start costs", 
+                    start.cost.file))
+} } else {
+    message(("... start.cost.file does not exist ... skipping start costs"))
 }
-
 
 
 #------------------------------------------------------------------------------|
