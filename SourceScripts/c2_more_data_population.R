@@ -68,13 +68,13 @@ load.to.region.map <-
 
 # create data file object name column
 load.to.region.map[,DataFile := paste0(load.to.region.map[,Region], 
-                                     " Load File Object")]
+                                       " Load File Object")]
 
 # add load data file objects to objects .sheet 
 # uses load.to.region.map
 load.file.to.object <- 
   initialize_table(Objects.prototype, nrow(load.to.region.map), 
-  list(class = "Data File", category = "Regional Load"))
+                   list(class = "Data File", category = "Regional Load"))
 load.file.to.object[, name := load.to.region.map[,DataFile]]
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.file.to.object)
@@ -107,16 +107,19 @@ for (name in load.scens) {
   cur.tab[,filename := 0]
   
   add_to_properties_sheet(cur.tab, names.col = 'DataFile', 
-    object.class = 'Data File', collection.name = 'Data Files', 
-    datafile.col = name, 
-    scenario.name = ifelse(tolower(name) == 'base', NA, name))
+                          object.class = 'Data File', 
+                          collection.name = 'Data Files', 
+                          datafile.col = name, 
+                          scenario.name = ifelse(tolower(name) == 'base', 
+                                                 NA, name))
 }
 
 # add any scenarios associated with load as objects
 load.scens <- load.scens[tolower(load.scens) != 'base']
 load.scens.to.objects <- 
   initialize_table(Objects.prototype, length(load.scens), 
-  list(name = load.scens, class = "Scenario", category = "Load scenarios"))
+                   list(name = load.scens, class = "Scenario",
+                        category = "Load scenarios"))
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.scens.to.objects)
 
@@ -140,12 +143,12 @@ if (any(load.part.fact.table[,ActivePower.MW < 0])) {
 }
 # if there are multiple LPFs for a given node, sum those
 if (any(load.part.fact.table[,length(ActivePower.MW) > 1, by = "BusNumber"][,V1]
-  )) {
+)) {
   message(
-  "Summing multiple load participation factors at same node... hope that is OK")
+    "Summing multiple load participation factors at same node... hope that is OK")
   load.part.fact.table <- 
-  load.part.fact.table[,list(ActivePower.MW = sum(ActivePower.MW)), 
-                       by = "BusNumber"]
+    load.part.fact.table[,list(ActivePower.MW = sum(ActivePower.MW)), 
+                         by = "BusNumber"]
 }
 
 # merge with nodes table
@@ -167,8 +170,8 @@ add_to_properties_sheet(lpf.to.node.properties, object.class = 'Node',
 
 # clean up
 rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
-  load.part.fact.table, lpf.to.node.properties, load.scens, cur.tab, 
-  load.scens.to.objects)
+   load.part.fact.table, lpf.to.node.properties, load.scens, cur.tab, 
+   load.scens.to.objects)
 
 #------------------------------------------------------------------------------|
 # add RE generators ----
@@ -282,7 +285,8 @@ if (add.RE.gens){
                           collection = "Data Files", child_class = "Data File", 
                           property = "filename", band_id = 1, value = 0))
   rating.data.files.to.properties[,child_object := 
-                                    paste(RE.gens[,gsub('GEN_','',Generator.Name)], 
+                                    paste(RE.gens[,gsub('GEN_','',
+                                                        Generator.Name)], 
                                           "Rating File Object")]
   rating.data.files.to.properties[, filename := RE.gens[,Data.File]]
   
@@ -465,11 +469,12 @@ if (exists('turn.off.except.in.scen.list')) {
   for (elem in seq_along(turn.off.except.in.scen.list)) {
     
     if (file.exists(file.path(inputfiles.dir,
-      turn.off.except.in.scen.list[[elem]][1]))) {
+                              turn.off.except.in.scen.list[[elem]][1]))) {
       message(sprintf(paste0("... Adding turning off objects from %s except",
-        " for in scenario '%s'"), turn.off.except.in.scen.list[[elem]][1],
-        turn.off.except.in.scen.list[[elem]][['scenario.name']]))
-        
+                             " for in scenario '%s'"), 
+                      turn.off.except.in.scen.list[[elem]][1],
+                      turn.off.except.in.scen.list[[elem]][['scenario.name']]))
+      
       # read in table
       cur.table <- fread(file.path(inputfiles.dir, 
                                    turn.off.except.in.scen.list[[elem]][1]))
@@ -482,23 +487,27 @@ if (exists('turn.off.except.in.scen.list')) {
       
       # turn off Units in bae
       cur.table[,Units := 0]
-
+      
       add_to_properties_sheet(cur.table, names.col = cur.names, 
-        object.class = cur.class, collection.name = cur.coll, overwrite = T)
-  
+                              object.class = cur.class,
+                              collection.name = cur.coll, overwrite = T)
+      
       # turn on units in scenario
       cur.table[,Units := 1]
       
       add_to_properties_sheet(cur.table, names.col = cur.names, 
-        object.class = cur.class, collection.name = cur.coll, 
-        scenario.name = cur.scen)
+                              object.class = cur.class, 
+                              collection.name = cur.coll, 
+                              scenario.name = cur.scen)
       
       # add scenario as an object
-      cur.scen.to.obj <- initialize_table(Objects.prototype, 1, 
-        list(class= 'Scenario', name = cur.scen, category = 'Generator status'))
+      cur.scen.to.obj <- 
+        initialize_table(Objects.prototype, 1,list(class= 'Scenario', 
+                                                   name = cur.scen, 
+                                                   category = 'Generator status'))
       
       Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.obj)
-
+      
     } else {
       message(sprintf("... %s does not exist ... skipping", 
                       turn.off.except.in.scen.list[[elem]][1]))
@@ -562,9 +571,9 @@ if (exists('start.cost.file')) {
   } else {
     message(sprintf("... %s does not exist ... skipping start costs", 
                     start.cost.file))
-} } else {
+  } } else {
     message(("... start.cost.file does not exist ... skipping start costs"))
-}
+  }
 
 
 #------------------------------------------------------------------------------|
@@ -573,94 +582,102 @@ if (exists('start.cost.file')) {
 
 
 # uses interfaces.files.list
-
-for (i in seq(interfaces.files.list)) {
-  if (file.exists(file.path(inputfiles.dir, interfaces.files.list[[i]][1]))) {
-    message(
-      sprintf("... Adding interfaces from %s", interfaces.files.list[[i]][1]))
-    # read in files from interface files in this iteration
-    interface.names <- fread(
-      file.path(inputfiles.dir, interfaces.files.list[[i]]['names']))
-    interface.properties <- fread(
-      file.path(inputfiles.dir, interfaces.files.list[[i]]['properties']))
-    interface.memberships <- fread(
-      file.path(inputfiles.dir, interfaces.files.list[[i]]['memberships']))
-    interface.coefficients <- fread(
-      file.path(inputfiles.dir, interfaces.files.list[[i]]['flowcoefs']))
-    
-    # Add interfaces to objects sheet
-    interfaces.to.objects <- initialize_table(
-      Objects.sheet, nrow(interface.names), 
-      list(class = "Interface", name = interface.names[,Interface.Name], 
-           category = interface.names[,category]))
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, interfaces.to.objects)
-    
-    # Add interface properties - changed to data.file. need to genericize, 
-    # change to data file object so can put in 2014 and 2022 data files, etc 
-    # add_to_properties_sheet(interface.properties, object.class = "Interface", 
-    #   collection.name = "Interfaces", names.col = "Interface.Name")
-    
-    # add max flow data files
-    
-    interface.to.properties <- initialize_table(
-      Properties.prototype, nrow(interface.names), list(
-        parent_class = 'System', parent_object = 'System', 
-        collection = 'Interfaces', child_class = 'Interface', band_id = 1))
-    
-    interface.to.properties[,property := 'Max Flow']
-    interface.to.properties[,value := '0']
-    interface.to.properties[,child_object := 
-                              interface.properties[,Interface.Name]]
-    interface.to.properties[,filename := interface.properties[,MaxFlow_datafile]]
-    
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            interface.to.properties)
-    
-    # add min flow data files
-    
-    interface.to.properties <- initialize_table(
-      Properties.prototype, nrow(interface.names), list(
-        parent_class = 'System', parent_object = 'System', 
-        collection = 'Interfaces', child_class = 'Interface', band_id = 1))
-    
-    interface.to.properties[,property := 'Min Flow']
-    interface.to.properties[,value := '0']
-    interface.to.properties[,child_object := 
-                              interface.properties[,Interface.Name]]
-    interface.to.properties[,filename := interface.properties[,MinFlow_datafile]]
-    
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            interface.to.properties)
-    
-    # Add interface-line memberships
-    interface.to.memberships <- initialize_table(
-      Memberships.prototype, nrow(interface.memberships), list(
-        parent_class = "Interface", child_class = "Line", collection = "Lines"))
-    
-    interface.to.memberships[,parent_object := 
-                               interface.memberships[,Interface.Name]]
-    interface.to.memberships[,child_object := interface.memberships[,Line.Name]]
-    
-    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                             interface.to.memberships)
-    
-    # Add flow coeffcienct to properties
-    
-    interface.coefficients.to.props <- initialize_table(
-      Properties.prototype, nrow(interface.coefficients), list(
-        parent_class = "Interface", child_class = "Line", collection = "Lines", 
-        band_id = 1, property = "Flow Coefficient", value = -1))
-    interface.coefficients.to.props[, parent_object := 
-                                      interface.coefficients[, Interface.Name]]
-    interface.coefficients.to.props[, child_object := 
-                                      interface.coefficients[, Line.Name]]
-    
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            interface.coefficients.to.props)
-    
-  } else {
-    message(sprintf("... %s does not exist ... skipping", 
-                    interfaces.files.list[[i]][1]))
+if(exists('interfaces.files.list')) {
+  for (i in seq(interfaces.files.list)) {
+    if (file.exists(file.path(inputfiles.dir, interfaces.files.list[[i]][1]))) {
+      message(
+        sprintf("... Adding interfaces from %s", interfaces.files.list[[i]][1]))
+      # read in files from interface files in this iteration
+      interface.names <- fread(
+        file.path(inputfiles.dir, interfaces.files.list[[i]]['names']))
+      interface.properties <- fread(
+        file.path(inputfiles.dir, interfaces.files.list[[i]]['properties']))
+      interface.memberships <- fread(
+        file.path(inputfiles.dir, interfaces.files.list[[i]]['memberships']))
+      interface.coefficients <- fread(
+        file.path(inputfiles.dir, interfaces.files.list[[i]]['flowcoefs']))
+      
+      # Add interfaces to objects sheet
+      interfaces.to.objects <- initialize_table(
+        Objects.sheet, nrow(interface.names), 
+        list(class = "Interface", name = interface.names[,Interface.Name], 
+             category = interface.names[,category]))
+      
+      Objects.sheet <- merge_sheet_w_table(Objects.sheet, interfaces.to.objects)
+      
+      # Add interface properties - changed to data.file. need to genericize, 
+      # change to data file object so can put in 2014 and 2022 data files, etc 
+      # add_to_properties_sheet(interface.properties, object.class = "Interface", 
+      #   collection.name = "Interfaces", names.col = "Interface.Name")
+      
+      # add max flow data files
+      
+      interface.to.properties <- initialize_table(
+        Properties.prototype, nrow(interface.names), list(
+          parent_class = 'System', parent_object = 'System', 
+          collection = 'Interfaces', child_class = 'Interface', band_id = 1))
+      
+      interface.to.properties[,property := 'Max Flow']
+      interface.to.properties[,value := '0']
+      interface.to.properties[,child_object := 
+                                interface.properties[,Interface.Name]]
+      interface.to.properties[,filename := 
+                                interface.properties[,MaxFlow_datafile]]
+      
+      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                              interface.to.properties)
+      
+      # add min flow data files
+      
+      interface.to.properties <- initialize_table(
+        Properties.prototype, nrow(interface.names), list(
+          parent_class = 'System', parent_object = 'System', 
+          collection = 'Interfaces', child_class = 'Interface', band_id = 1))
+      
+      interface.to.properties[,property := 'Min Flow']
+      interface.to.properties[,value := '0']
+      interface.to.properties[,child_object := 
+                                interface.properties[,Interface.Name]]
+      interface.to.properties[,filename := 
+                                interface.properties[,MinFlow_datafile]]
+      
+      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                              interface.to.properties)
+      
+      # Add interface-line memberships
+      interface.to.memberships <- initialize_table(
+        Memberships.prototype, nrow(interface.memberships), list(
+          parent_class = "Interface", 
+          child_class = "Line", collection = "Lines"))
+      
+      interface.to.memberships[,parent_object := 
+                                 interface.memberships[,Interface.Name]]
+      interface.to.memberships[,child_object := 
+                                 interface.memberships[,Line.Name]]
+      
+      Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                               interface.to.memberships)
+      
+      # Add flow coeffcienct to properties
+      
+      interface.coefficients.to.props <- initialize_table(
+        Properties.prototype, nrow(interface.coefficients), list(
+          parent_class = "Interface", 
+          child_class = "Line", collection = "Lines", 
+          band_id = 1, property = "Flow Coefficient", value = -1))
+      interface.coefficients.to.props[, parent_object := 
+                                        interface.coefficients[, Interface.Name]]
+      interface.coefficients.to.props[, child_object := 
+                                        interface.coefficients[, Line.Name]]
+      
+      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                              interface.coefficients.to.props)
+      
+    } else {
+      message(sprintf("... %s does not exist ... skipping", 
+                      interfaces.files.list[[i]][1]))
+    }
   }
+} else {
+  message('... no interface files defined ... skipping')
 }

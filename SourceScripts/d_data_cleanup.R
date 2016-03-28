@@ -131,18 +131,19 @@ if (exists('units.to.delete.file')) {
 # also need to retire RE plants in the PSSE file, since we are replacing them 
 # with our own. For now, doing it here, but if the new RE gens ever get added 
 # to gen.names.table, this must be done elsewhere.
-if (delete.original.RE) {
-  message("...deleting original WIND and SOLAR-PV generators")
-  
-  re.to.delete <- generator.data.table[Fuel %in% c("WIND", "SOLAR-PV") & 
-                                         !is.na(BusNumber), Generator.Name] 
-  
-  Objects.sheet <- Objects.sheet[!(name %in% re.to.delete)]
-  Properties.sheet <- Properties.sheet[!(child_object %in% re.to.delete)]
-  Memberships.sheet <- Memberships.sheet[!(child_object %in% re.to.delete) & 
-                                           !(parent_object %in% re.to.delete)]
+if (exists('delete.original.RE')) {
+  if (delete.original.RE) {
+    message("...deleting original WIND and SOLAR-PV generators")
+    
+    re.to.delete <- generator.data.table[Fuel %in% c("WIND", "SOLAR-PV") & 
+                                           !is.na(BusNumber), Generator.Name] 
+    
+    Objects.sheet <- Objects.sheet[!(name %in% re.to.delete)]
+    Properties.sheet <- Properties.sheet[!(child_object %in% re.to.delete)]
+    Memberships.sheet <- Memberships.sheet[!(child_object %in% re.to.delete) & 
+                                             !(parent_object %in% re.to.delete)]
+  }
 }
-
 # add standard flow limits to lines with ratings of zero
 # do this in a scenario (in script d)
 
