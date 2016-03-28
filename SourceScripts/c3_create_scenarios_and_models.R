@@ -40,24 +40,60 @@ agTx.to.properties[, child_object := all.regions]
 
 Properties.sheet <- merge_sheet_w_table(Properties.sheet, agTx.to.properties)
 
-  #add one node as reference node to every region
-  #uses node.data.table
-ref.node.region.table <- node.data.table[, .(Region, RegionName, BusName)]
-ref.node.region.table[, regionName := RegionName]
-ref.node.region.table <- ref.node.region.table[!duplicated(
-  ref.node.region.table[, regionName]),]
+# add one node as reference node to every region
+# uses node.data.table, remap.reference.nodes, map.ref.node.file
+
+# if there is an external file and this option is turned on, grab it and 
+# note and regions that aren't included
+if (exists('remap.reference.nodes') & remap.reference.nodes == TRUE &
+    file.exists(file.path(inputfiles.dir, map.ref.node.file))) {
+  
+  external.refnode <- fread(file.path(inputfiles.dir, map.ref.node.file))
+
+  # keep track of what regions aren't in this file to assign ref node to them
+  other.regions <- node.data.table[,unique(RegionName)]
+  other.regions <- other.regions[!(other.regions %in% 
+    external.refnode[,unique(Region)])]
+  
+} else {
+  message(paste('... remap.reference.nodes is FALSE or doesn\'t exist.',
+    'Assigning first node in each region as reference node'))
+ other.regions <- node.data.table[,unique(RegionName)]
+}
+
+# for any missing regions, grab a reference node and output full table, 
+# then combine all refnode tables so that all info is contained in 
+# ref.node.region.table
+if (length(other.regions) > 0) {
+  
+  message(sprintf('... Assigning reference node as first node in %s', 
+    paste0(other.regions, collapse = ', ')))
+  ref.node.region.table <- node.data.table[RegionName %in% other.regions, 
+    .(Region = RegionName, `Region.Reference Node` = BusName)]
+  ref.node.region.table <- ref.node.region.table[!duplicated(Region),]
+  
+  if (exists('external.refnode')) {
+    ref.node.region.table <- merge(ref.node.region.table, external.refnode, 
+      by = c('Region', 'Region.Reference Node'), all = T)
+  } 
+} else {
+  ref.node.region.table <- external.refnode
+}
 
 agTx.refnode.region.to.memberships <- initialize_table(Memberships.prototype, 
   nrow(ref.node.region.table), list(parent_class = "Region", 
     child_class = "Node", collection = "Reference Node"))
 agTx.refnode.region.to.memberships[, parent_object := 
-    ref.node.region.table[,regionName]]
+    ref.node.region.table[,Region]]
 agTx.refnode.region.to.memberships[, child_object := 
-    ref.node.region.table[,BusName]]
+    ref.node.region.table[,`Region.Reference Node`]]
 
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
   agTx.refnode.region.to.memberships)
 
+# clean up
+rm(ref.node.region.table, agTx.refnode.region.to.memberships, other.regions, 
+  scenario.agTx.to.objects, agTx.to.properties)
 
 #------------------------------------------------------------------------------|
 # [[Tx onfiguration]] Add scen. tag to interfaces ----
