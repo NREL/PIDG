@@ -229,7 +229,10 @@ standard.flow.lims <- c("132" = "80", "220" = "200", "400" = "870",
   "765" = "2200", 
   # these next ones are from looking at most commnon flow limits on these lines
   "11" = "30", "33" = "33", "66" = "28", "100" = "80", "110" = "80", 
-  "230" = "200")
+  "230" = "200",
+  #and these ones are rough guesses
+  "0.6" = "10", "69" = "30", "115" = "80", "22.9" = "20", "34.5" = "34.5",
+  "13.8" = "30", "138" = "150")
 
 max.flow.correction <- initialize_table(Properties.prototype, 
   nrow(zero.flow.lines), list(parent_class = "System", child_class = "Line", 
@@ -272,7 +275,7 @@ Objects.sheet <- merge_sheet_w_table(Objects.sheet,
 zero.flow.tfmrs <- transformer.data.table[Rating.MW == 0]
 # defines stadards with [name = low kV (kV.To)] = [element = standard rating]
 standard.flow.tfmr.lims <- c("220" = "315", "132" = "100", "110" = "100", 
-  "66" = "100")
+  "66" = "100", "69" = "100", "138" = "100", "13.8" = "100")
 
 tfmr.rating.correction <- initialize_table(Properties.prototype, 
   nrow(zero.flow.tfmrs), list(parent_class = "System", 
