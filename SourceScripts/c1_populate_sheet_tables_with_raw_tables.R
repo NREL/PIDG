@@ -229,6 +229,12 @@ lines.to.nodes.to.memberships <- melt(lines.to.nodes.to.memberships[,
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
   lines.to.nodes.to.memberships)
 
+# check to see if lines have a RatingB... if not, use RatingC, then RatingA
+line.data.table[ACorDC == 'AC' & RatingB == '0', RatingB := 
+                  apply(line.data.table[ACorDC == 'AC' &
+                                          RatingB == '0', 
+                                        .(RatingA,RatingC)],1,max)]
+
 # add lines to properties .sheet : pull relevant properties from line.data.table 
 # and add them to the properties .sheet
 # for now, AC and DC are done separately because they have different properties.
@@ -343,7 +349,10 @@ transformer.data.table[FromRegion != ToRegion, category := "Interstate_tfmr"]
 #------------------------------------------------------------------------------|
 # Add transformers ----
 #------------------------------------------------------------------------------|
-
+# check to see if transformers have an Overload Rating if not, use Rating
+transformer.data.table[OverloadRating.MW == '0', OverloadRating.MW := 
+                         transformer.data.table[OverloadRating.MW == '0', 
+                                                Rating.MW]]
 # add transformers to objects .sheet
 transf.to.objects <- initialize_table(Objects.prototype, 
   nrow(transformer.data.table), 

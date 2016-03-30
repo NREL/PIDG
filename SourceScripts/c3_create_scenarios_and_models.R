@@ -45,20 +45,22 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet, agTx.to.properties)
 
 # if there is an external file and this option is turned on, grab it and 
 # note and regions that aren't included
-if (exists('remap.reference.nodes') & remap.reference.nodes == TRUE &
-    file.exists(file.path(inputfiles.dir, map.ref.node.file))) {
-  
-  external.refnode <- fread(file.path(inputfiles.dir, map.ref.node.file))
-
-  # keep track of what regions aren't in this file to assign ref node to them
-  other.regions <- node.data.table[,unique(RegionName)]
-  other.regions <- other.regions[!(other.regions %in% 
-    external.refnode[,unique(Region)])]
-  
+if (exists('remap.reference.nodes')) {
+  if (remap.reference.nodes == TRUE &
+      file.exists(file.path(inputfiles.dir, map.ref.node.file))) {
+    
+    external.refnode <- fread(file.path(inputfiles.dir, map.ref.node.file))
+    
+    # keep track of what regions aren't in this file to assign ref node to them
+    other.regions <- node.data.table[,unique(RegionName)]
+    other.regions <- other.regions[!(other.regions %in% 
+                                     external.refnode[,unique(Region)])]
+    
+  } 
 } else {
   message(paste('... remap.reference.nodes is FALSE or doesn\'t exist.',
-    'Assigning first node in each region as reference node'))
- other.regions <- node.data.table[,unique(RegionName)]
+                'Assigning first node in each region as reference node'))
+  other.regions <- node.data.table[,unique(RegionName)]
 }
 
 # for any missing regions, grab a reference node and output full table, 
@@ -227,7 +229,10 @@ standard.flow.lims <- c("132" = "80", "220" = "200", "400" = "870",
   "765" = "2200", 
   # these next ones are from looking at most commnon flow limits on these lines
   "11" = "30", "33" = "33", "66" = "28", "100" = "80", "110" = "80", 
-  "230" = "200")
+  "230" = "200",
+  #and these ones are rough guesses
+  "0.6" = "10", "69" = "30", "115" = "80", "22.9" = "20", "34.5" = "34.5",
+  "13.8" = "30", "138" = "150")
 
 max.flow.correction <- initialize_table(Properties.prototype, 
   nrow(zero.flow.lines), list(parent_class = "System", child_class = "Line", 
@@ -270,7 +275,7 @@ Objects.sheet <- merge_sheet_w_table(Objects.sheet,
 zero.flow.tfmrs <- transformer.data.table[Rating.MW == 0]
 # defines stadards with [name = low kV (kV.To)] = [element = standard rating]
 standard.flow.tfmr.lims <- c("220" = "315", "132" = "100", "110" = "100", 
-  "66" = "100")
+  "66" = "100", "69" = "100", "138" = "100", "13.8" = "100")
 
 tfmr.rating.correction <- initialize_table(Properties.prototype, 
   nrow(zero.flow.tfmrs), list(parent_class = "System", 
@@ -323,6 +328,7 @@ Properties.sheet[property %in% c("Min Up Time", "Min Down Time", "Start Cost"),
 # names of that list are names of scenarios. elements of the list are filenames
 # that contain properties that correspond with those scenarios
 
+if (exists('wheeling.charge.cases.files')) {
 for (scenario.name in names(wheeling.charge.cases.files)) {
   if (file.exists(file.path(inputfiles.dir,
                             wheeling.charge.cases.files[[scenario.name]][1]))) {
@@ -351,7 +357,9 @@ for (scenario.name in names(wheeling.charge.cases.files)) {
                     wheeling.charge.cases.files[[scenario.name]][1]))
   }
 }
-
+} else {
+  message('... no wheeling charges defined ... skipping')
+}
 
 #------------------------------------------------------------------------------|
 # [[Hydro]] Make hydro scenarios ----
@@ -398,6 +406,7 @@ import_and_merge <- function(imported.tab, sheet.name) {
 }
 
   #import and merge all generic import files
+if (exists('generic.import.files')) {
 invisible(lapply(generic.import.files, function (x) {
   
   if (file.exists(file.path(inputfiles.dir,x))) {
@@ -415,7 +424,7 @@ invisible(lapply(generic.import.files, function (x) {
     
   }
 }))
-
+} else { message('... no generic import files defined ... skipping') }
 
 rm(import_and_merge, read_tab, all.sheets)
 
@@ -426,6 +435,7 @@ rm(import_and_merge, read_tab, all.sheets)
    # uses compact.generic.import.files
    # loop through compact generic input files and read in tables
   
+if (exists('compact.generic.import.files')) {
 for (i in seq_along(compact.generic.import.files)) {
   if (file.exists(file.path(inputfiles.dir,
                             compact.generic.import.files[[i]][1]))) {
@@ -445,7 +455,7 @@ for (i in seq_along(compact.generic.import.files)) {
                     compact.generic.import.files[[i]][1]))
   }
 }
-
+} else { message('... no compact generic import files defined ... skipping')}
 # clean up
 rm(cur.tab, cur.obj.type)
 
