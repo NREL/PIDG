@@ -297,13 +297,13 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 # NOTE: doesn't handle scenarios or filepaths yet
 add_to_properties_sheet <- function(input.table, object.class, names.col, 
   collection.name, scenario.name = NA, pattern.col = NA, period.id = NA, 
-  datafile.col = NA, overwrite = FALSE) {
+  datafile.col = NA, overwrite = FALSE, band.col = NA, memo.col = NA) {
   
   # get all property column names (everything but object names column and 
   # pattern column, if applicable)
   all.cols <- colnames(input.table)
   
-  non.prop.cols <- c(names.col, pattern.col, period.id, datafile.col)
+  non.prop.cols <- c(names.col, pattern.col, period.id, datafile.col, band.col)
   
   prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
 
@@ -325,7 +325,7 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
       child_object = input.table[, .SD, .SDcols = names.col], 
       property = input.table[, property], 
       value = input.table[, value], 
-      band_id = 1))
+      band_id = ifelse(is.na(band.col),1,list(input.table[,get(band.col)]))))
 
   # add pattern column if specified
   if (!is.na(pattern.col)) props.tab[, pattern := input.table[, 
@@ -342,6 +342,9 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   # add scenario name if specified
   if (!is.na(scenario.name)) {
     props.tab[,scenario := paste0("{Object}", scenario.name)] }
+  
+  # add memo column if specified
+  if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
   
   # merge with Properties.sheet
   if (overwrite == FALSE) {
