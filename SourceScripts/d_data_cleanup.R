@@ -135,7 +135,7 @@ if (exists('units.to.delete.file')) {
 # to gen.names.table, this must be done elsewhere.
 if (exists('delete.original.RE')) {
   if (delete.original.RE) {
-    message("...deleting original WIND and SOLAR-PV generators")
+    message("... deleting original WIND and SOLAR-PV generators")
     
     re.to.delete <- generator.data.table[Fuel %in% c("WIND", "SOLAR-PV") & 
                                            !is.na(BusNumber), Generator.Name] 
