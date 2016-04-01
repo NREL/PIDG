@@ -503,10 +503,13 @@ if (exists('turn.off.except.in.scen.list')) {
       # add scenario as an object
       cur.scen.to.obj <- 
         initialize_table(Objects.prototype, 1,list(class= 'Scenario', 
-                                                   name = cur.scen, 
-                                                   category = 'Generator status'))
+                                             name = cur.scen, 
+                                             category = 'Generator status'))
       
       Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.obj)
+      
+      # clean up
+      rm(elem, cur.names, cur.class, cur.coll, cur.scen, cur.scen.to.obj)
       
     } else {
       message(sprintf("... %s does not exist ... skipping", 
@@ -516,9 +519,6 @@ if (exists('turn.off.except.in.scen.list')) {
 } else {
   message('... turn.off.except.in.scen.list does not exist ... skipping')
 }
-
-# clean up
-rm(elem, cur.names, cur.class, cur.coll, cur.scen, cur.scen.to.obj)
 
 
 #------------------------------------------------------------------------------|
