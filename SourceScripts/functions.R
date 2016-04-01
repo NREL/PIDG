@@ -303,7 +303,8 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   # pattern column, if applicable)
   all.cols <- colnames(input.table)
   
-  non.prop.cols <- c(names.col, pattern.col, period.id, datafile.col, band.col)
+  non.prop.cols <- c(names.col, pattern.col, period.id, datafile.col, 
+                     band.col, memo.col)
   
   prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
 
@@ -311,7 +312,6 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   # property, value
   input.table <- melt(input.table, measure.vars = prop.cols, 
     variable.name = "property")
-  
   # remove missing values
   input.table <- input.table[!(is.na(value) | is.na(property))]
   
