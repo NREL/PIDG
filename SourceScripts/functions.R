@@ -261,7 +261,7 @@ import_table_compact <- function(input.table, object.type) {
 # fuels.to.gens, etc). Including change MaxOutput.MW to Max Capacity
 # NOTE: only handles one property at a time for now
 merge_property_by_fuel <- function(input.table, prop.cols, 
-  mult.by.max.cap = FALSE) {
+  mult.by.max.cap = FALSE, memo.col = NA) {
  
   # make sure Fuel column exists before merging
   if ( !("Fuel" %in% colnames(input.table))) {
@@ -272,7 +272,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
   # merge with gen.names.table and save in global environment - not sure if 
   # want to do this - should revisit later
   generator.data.table <- merge(generator.data.table, 
-    input.table[,.SD, .SDcols = c("Fuel", prop.cols)], by = "Fuel")
+    input.table[,.SD, .SDcols = c("Fuel", prop.cols, memo.col)], by = "Fuel")
   
   # if this property should be multiplied by max capacity, do it
   if (mult.by.max.cap) {

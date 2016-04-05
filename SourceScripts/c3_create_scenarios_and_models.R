@@ -45,19 +45,24 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet, agTx.to.properties)
 
 # if there is an external file and this option is turned on, grab it and 
 # note and regions that aren't included
-if (exists('remap.reference.nodes') & remap.reference.nodes == TRUE) {
-  if (file.exists(file.path(inputfiles.dir, map.ref.node.file))) {
-    
-    external.refnode <- fread(file.path(inputfiles.dir, map.ref.node.file))
-    
-    # keep track of what regions aren't in this file to assign ref node to them
-    other.regions <- node.data.table[,unique(RegionName)]
-    other.regions <- other.regions[!(other.regions %in% 
-                                     external.refnode[,unique(Region)])]
-    
-  } 
+if (exists('remap.reference.nodes')) {
+  if (remap.reference.nodes == TRUE) {
+    if (file.exists(file.path(inputfiles.dir, map.ref.node.file))) {
+      
+      external.refnode <- fread(file.path(inputfiles.dir, map.ref.node.file))
+      
+      # keep track of what regions aren't in this file to assign ref node to them
+      other.regions <- node.data.table[,unique(RegionName)]
+      other.regions <- other.regions[!(other.regions %in% 
+                                       external.refnode[,unique(Region)])]
+      
+    }} else {
+      message(paste('... remap.reference.nodes is FALSE.',
+                    'Assigning first node in each region as reference node'))
+      other.regions <- node.data.table[,unique(RegionName)]
+    }
 } else {
-  message(paste('... remap.reference.nodes is FALSE or doesn\'t exist.',
+  message(paste('... remap.reference.nodes or doesn\'t exist.',
                 'Assigning first node in each region as reference node'))
   other.regions <- node.data.table[,unique(RegionName)]
 }
