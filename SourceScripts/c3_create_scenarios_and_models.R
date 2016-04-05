@@ -366,25 +366,6 @@ for (scenario.name in names(wheeling.charge.cases.files)) {
 }
 
 #------------------------------------------------------------------------------|
-# [[Hydro]] Make hydro scenarios ----
-#------------------------------------------------------------------------------|
-
-# grab names of all hydro scenarios
-hydro.scenarios <- sapply(object.property.list, 
-  function(x) x[[2]][['scenario.name']])
-hydro.scenarios <- hydro.scenarios[grepl('Hydro', hydro.scenarios)]
-
-# put hydro scenarios in as objects 
-hydro.scenarios.to.objects <- initialize_table(Objects.sheet, 
-  length(hydro.scenarios), list(class = 'Scenario', 
-  name = hydro.scenarios, category = 'Hydro limits'))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, hydro.scenarios.to.objects)
-
-# clean up
-rm(hydro.scenarios)
-
-#------------------------------------------------------------------------------|
 # IMPORT GENERIC FILES (CREATE HORIZONS AND MODELS) ----
 # -----------------------------------------------------------------------------|
 
