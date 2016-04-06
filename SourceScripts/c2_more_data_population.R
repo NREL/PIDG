@@ -550,6 +550,7 @@ if (exists('start.cost.file')) {
     start.cost <- fread(file.path(inputfiles.dir, start.cost.file))
     # the start cost file has cost by size for coal. this seperates those for 
     # merging, then binds it back together
+    if (!'MaxOutput.MW' %in% names(start.cost)) start.cost[,MaxOutput.MW:=NA]
     start.cost.na = start.cost[is.na(MaxOutput.MW), .(Fuel, `Start Cost`)]
     start.cost.thermal = start.cost[!is.na(MaxOutput.MW), .(Fuel, `Start Cost`, 
                                                             MaxOutput.MW)]
