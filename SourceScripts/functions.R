@@ -271,8 +271,10 @@ merge_property_by_fuel <- function(input.table, prop.cols,
   
   # merge with gen.names.table and save in global environment - not sure if 
   # want to do this - should revisit later
+  if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
+  
   generator.data.table <- merge(generator.data.table, 
-    input.table[,.SD, .SDcols = c("Fuel", prop.cols, memo.col)], by = "Fuel")
+    input.table[,.SD, .SDcols = c("Fuel", prop.cols)], by = "Fuel")
   
   # if this property should be multiplied by max capacity, do it
   if (mult.by.max.cap) {
