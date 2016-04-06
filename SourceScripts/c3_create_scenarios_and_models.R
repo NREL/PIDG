@@ -106,7 +106,7 @@ interface.names <- Objects.sheet[class == "Interface" &
   
   # add dummy min up, min down, start costs to objects
 interf.scen.to.objects <- initialize_table(Objects.prototype, 1, 
-  list(class = "Scenario", name = "Include zonal interfaces", 
+  list(class = "Scenario", name = "Include zonal interfaces and interzone DC", 
   category = "Transmission configuration"))
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, interf.scen.to.objects)
 
@@ -121,7 +121,7 @@ interf.scen.to.properties <- initialize_table(Properties.prototype,
   length(interface.names), list(parent_class = "System", parent_object = "System", 
     collection = "Interfaces", child_class = "Interface", band_id = 1, 
     child_object = interface.names, property = "Units", 
-    value = 1, scenario = "{Object}Include zonal interfaces"))
+    value = 1, scenario = "{Object}Include zonal interfaces and interzone DC"))
 
 Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
   interf.scen.to.properties)
