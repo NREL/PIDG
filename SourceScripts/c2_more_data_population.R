@@ -560,7 +560,7 @@ if (exists('start.cost.file')) {
       by = "Fuel", all.x = TRUE)
     
     generator.data.table[, MaxOutput.MW.group := ifelse(
-      MaxOutput.MW <= 210, 210, ifelse(MaxOutput.MW <= 500, 500, 610)), 
+      MaxOutput.MW <= 210, 210, ifelse(MaxOutput.MW <= 500, 500, 660)), 
       by=Generator.Name]
     
     setnames(start.cost.thermal, "MaxOutput.MW", "MaxOutput.MW.group")
