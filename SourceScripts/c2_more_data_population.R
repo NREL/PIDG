@@ -240,8 +240,8 @@ if (add.RE.gens){
   
   # add new lines to properties .sheet
   RE.lines.to.properties <-
-    RE.line.table[,.(Line.Name, Units = 1, `Max Flow` = 9999, 
-                     `Min Flow` = -9999)]
+    RE.line.table[,.(Line.Name, Units = 1, `Max Flow` = 99999, 
+                     `Min Flow` = -99999)]
   
   add_to_properties_sheet(RE.lines.to.properties, names.col = 'Line.Name', 
                           collection.name = 'Lines', object.class = 'Line')
@@ -303,7 +303,7 @@ if (add.RE.gens){
   Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.gens.to.objects)
   
   # add RE gens to properties .sheet (Units, Max Capacity)
-  RE.gens.to.properties <- RE.gens[,.(Generator.Name, Units = 1, 
+  RE.gens.to.properties <- RE.gens[,.(Generator.Name, Units = Num.Units, 
                                       `Max Capacity` = Max.Capacity)]
   
   add_to_properties_sheet(RE.gens.to.properties, object.class = 'Generator', 
