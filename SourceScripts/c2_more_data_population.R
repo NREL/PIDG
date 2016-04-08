@@ -44,6 +44,11 @@ fuels.to.gens.to.memberships[,parent_object :=
                                generator.data.table[,Generator.Name]]
 fuels.to.gens.to.memberships[,child_object := generator.data.table[,Fuel]]
 
+if (any(is.na(fuels.to.gens.to.memberships$child_object))) {
+  warning ('There are generators without fuel definitions, deleting generatror-fuel membership entries')
+  fuels.to.gens.to.memberships=fuels.to.gens.to.memberships[!is.na(child_object),]
+}
+
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                          fuels.to.gens.to.memberships)
 

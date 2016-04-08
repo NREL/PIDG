@@ -377,6 +377,50 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
     Properties.sheet <<- Properties.sheet
 
   }
-
 }
+
+##import_constraint
+#shortcut for importing a table of constraints (all of the same type) and 
+# adding objects, categories, attributes, memberships, and properties to sheets.
+# constraint.table must have the format:
+#   obj.col= column defining objects for which to define constraints
+#   constraint.col = column declaring constraint names
+#   category.col = column declaring constraint categories
+#   prop.col = column declaring the property to which the constraint applies
+#   sense.col = sense value defining the inequality (-1='<=')
+# data files should be saved as : DataFiles\Constraint_Category\Constraint_name.csv
+#  with one file for every defined constraint
+import_constraint = function(constraint.table,obj.col = 'generator.name',constraint.type = 'RHS Month',collection='Generators',
+                             child_class='Generator',constraint.col = 'constraint',category.col = 'category',prop.col = 'property',
+                             sense.col = 'sense') {
+  if (constraint.type !='RHS Month') error(paste0('import_constraint() not yet defined for ',constraint.type))
+  period_type_id = 3
+  new.object.table = data.table(expand.grid(name=unique(constraint.table[,get(constraint.col)]),class = c('Constraint','Data File')),description=NA,key='name')
+  setkeyv(constraint.table,constraint.col)
+  new.object.table[constraint.table,category:=get(category.col)]
+  
+  new.category.table = constraint.table[!duplicated(constraint.table[,.(get(category.col))]),
+                                        .(class=c('Constraint','Data File'),category=get(category.col))]
+  
+  new.attribute.table = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),
+                                         .(name=get(constraint.col),class='Data File', attribute='Enabled', value=-1)]
+  new.membership.table = constraint.table[!duplicated(constraint.table[,.(get(obj.col))]),
+                                          .(parent_class='Constraint',child_class,collection,parent_object=get(constraint.col),
+                                            child_object=get(obj.col))]
+  
+  new.properties.table = constraint.table[!duplicated(constraint.table[,.(get(obj.col),get(constraint.col))]),
+                                          .(parent_class='Constraint',child_class,collection,parent_object=get(constraint.col),
+                                            child_object=get(obj.col),property=get(prop.col),band_id=1,value=1,filename=NA,period_type_id=NA)]
+  sense.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),.(parent_class='System',child_class='Constraint',collection='Constraints',parent_object='System',child_object=get(constraint.col),property='Sense',band_id=1,value=get(sense.col),filename=NA,period_type_id=NA)]
+  constraint.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),.(parent_class='System',child_class='Constraint',collection='Constraints',parent_object='System',child_object=get(constraint.col),property=constraint.type,band_id=1,value=0,filename=paste0('{Object}',get(constraint.col)),period_type_id)]
+  datafile.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),.(parent_class='System',child_class='Data File',collection='Data Files',parent_object='System',child_object=get(constraint.col),property='Filename',band_id=1,value=0,filename=paste('DataFiles',gsub(' ','_',x=get(category.col)),paste0(gsub(' ','_',x=get(constraint.col)),'.csv'),sep='\\'),period_type_id=NA)]
+  new.properties.table = rbind(new.properties.table,sense.props,constraint.props,datafile.props)
+  
+  Objects.sheet <<- merge_sheet_w_table(Objects.sheet,new.object.table)
+  Categories.sheet <<- merge_sheet_w_table(Categories.sheet,new.category.table)
+  Attributes.sheet <<- merge_sheet_w_table(Attributes.sheet,new.attribute.table)
+  Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet,new.membership.table)
+  Properties.sheet <<- merge_sheet_w_table(Properties.sheet,new.properties.table)
+}
+
 
