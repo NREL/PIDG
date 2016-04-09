@@ -269,10 +269,11 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     "Cannot merge this table. Property name is: ", prop.cols, "."))
   }
   
-  # merge with gen.names.table and save in global environment - not sure if 
-  # want to do this - should revisit later
-  if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
+  #This caused errors... need to determine how to insert memos into PLEXOS
+  #if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
   
+  # merge with gen.names.table and save in global environment - not sure if 
+  # want to do this - should revisit later  
   generator.data.table <- merge(generator.data.table, 
     input.table[,.SD, .SDcols = c("Fuel", prop.cols)], by = "Fuel")
   
