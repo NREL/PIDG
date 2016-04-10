@@ -2,9 +2,84 @@
 ###OVERVIEW OF CODE STRUCTURE
 **********
 __Introduction__
+
 Plexos can read in any Excel file that has the following structure: one workbook with 6 worksheets named Objects, Categories, Memberships, Attributes, Properties, and Reports, each with specified columns. These worksheets can hold all the information needed to construct and personalize a working model in Plexos. This set of scripts creates 6 data.tables, each corresponding to one required worksheet (referred to as .sheet tables throughout these comments and the code). Once these tables are created, the scripts compile all input data, format the data to correspond with Plexos's excel input file format, and add the data chunks to the .sheet tables. Lastly, the fully populated .sheet tables are exported into one Excel workbook, which can be imported directly into Plexos. 
 
-The database is built starting with a PSSE .raw file. Other input .csv are used to supplement and build off of the PSSE database. See "REQUIRED INPUT FILES" section for more detail.
+The database is built starting with a PSSE .raw file. Other input .csv are used to supplement and build off of the PSSE database. See "REQUIRED INPUT FILES" (documentation not complete as of 4/10/16) section for more detail.
+
+
+__To run__
+
+Load required variables into environment. Basic required variables are: 
+
+* location of master PSSE2PLEXOS script (**create\_plexos\_db\_from\_raw\_master\_script.R**) 
+* location of file defining input parameters (this isn't fully documented yet but will be, see *example\_inputs* dir for now)
+* location of directory containing all input files 
+* location of directory where output excel file should be saved
+* name that R should use when saving the output excel file 
+
+Then, run **create\_plexos\_db\_from\_raw\_master\_script.R**. This will sequentially run the scripts in the directory *SourceScripts* and write the output into an excel file.
+
+
+####Basic structure of *SourceScripts*
+
+* **a_import_raw.R:** reads in and parses the .raw file, based on expected PSSE version-specific table structure. Currently based on documentation for PSSE v31. If intending to use a .raw file from a different version of PSSE, this script should be modified to ensure that columns are named correctly. This is the only script that is dependent on the version of PSSE being used.
+* **b_create_sheet_tables.R:** This script creates empty .sheet tables (Objects.sheet, Categories.sheet, Memberships.sheet, Attributes.sheet, Properties.sheet, and Reports.sheet), as well as prototypes of these tables to be used in the initialize_table function (see below).
+* **c1_populate_sheet_tables_with_raw_tables.R:** populates .sheets tables using data from the .raw file created in script (a). It also creates node.data.table, generator.data.table, line.data.table, and transformer.data.table, which contain information about each type of object to be referenced later in the scripts when information is needed about these objects. 
+* **c2_more_data_population.R:** populates .sheet tables with information in other .csv input files. 
+* **c3_create_scenarios_and_models.R:** defines new scenarios and models.
+* **d_data_cleanup.R:** database cleaning and some data checks. Ideally the database-specific corrections will be moved to database-specific input files later.
+* **e_export_to_excel.R:** gathers fully-populated .sheet tables and exports them as separate sheets in output Excel workbook, which can be imported directly into Plexos.
+
+####Guide to functions and input file formats
+
+This needs to be filled in more, leaving sketches for now. See *functions.R* for more details on required arguments for these functions.
+
+**Fun	ctions for basic interaction with .sheet tables**
+
+* **initialize_table:** create empty table in the format of a .sheet table, to be populated with data
+* **merge_sheet_w_table:** merge populated table with existing .sheet table (always use this to add to .sheet table because it preserved column order and class)
+
+
+**Functions to import generic objects**
+
+These functions take .csv files defined as input parameters and read them in. Any file in the *generic.import.files* list will be read in by **import_table_generic** and any file in the *compact.generic.import.files* list will be read in by **import_table_compact.**
+
+* **import_table_generic:** read in any information in the raw form of the output excel file
+* **import_table_compact:** more compact, readable form of **import_table_generic.** Can only import objects of one type of per file.
+
+
+** Functions to add properties to objects**
+
+These functions read in inputfiles of specific formats and add properties contained in those files to objects that already exist in the database, with various options for customization. Any file in the *object.property.list* list will be read in by **add_to_properties_sheet** and any file in the *generator.property.by.fuel.list* list will be read in by **merge_property_by_fuel.**
+
+* **add_to_properties_sheet:** assigns properties to specific objects. takes any table of the form [colum with names of objects, arbitrary number of other columns with names that are exactly the Plexos property name] and add those properties to Properties.sheet. must also pass this function the name of the column that contains object names, the type of object (Generator, Line, etc), and the collection of that object (Generators, Lines, Interface.Lines, etc).
+    * Other options:
+        * set "overwrite" to TRUE if want it to overwrite existing properties instead of simply adding new properties
+        * if the table has columns with information on pattern (timeslice), datafile, or band, the names of those can be passed in to the function as well, and it will add them to Properties.sheet appropriately
+        * character strings corresponding to a scenario or period type id that should be associated with these properties can also be passed in
+
+* **merge_property_by_fuel:** assigns properties to generators, but by fuel type instead of object name. Requires a column named Fuel. All other columns will be taken to be Plexos properties (again, names must be exact matches to Plexos properties). It will spit out a table in the right format to be read in by **add_to_properties_sheet.** In these scripts, results are automatically fed to the **add_to_properties_sheet** function.
+    * Other options:
+        * set "mult.by.max.cap" to TRUE if value in table should be multiplied by the max capacity of the generator before setting the property (ex: useful for things like min gen, where input file will say that coal units can turn down to 70% of max capacity)
+
+
+**Other inputs**
+
+These all refer to variables in input_params
+
+* rename.regions (logical) / map.newregion.file (filepath)  and rename.zones (logical) / map.newzone.file (filepath): should the regions and zones assigned to nodes be mapped by an external file, rather than left as defaults from PSSE?
+* add.RE.gens (logical) / RE.gen.file (filepath): should new generators be added to the database? if yes, pull from RE.gen.file, create specified generators at new node, attached those new nodes to given existing nodes, assign a max capacity, number of units, and a datafile for rating. see format of RE.gen.file.
+* turn.off.except.in.scen.list (list): list of generators which should have Units set to 0 (will turn them off) in the base case but to 1 or whatever Units was in scenario passed in with filename
+* delete.original.RE (logical): should generators that are originally assigned the Fuel WIND or SOLAR-PV be eradicated from the database?
+* units.to.delete.file (filepath): names of objects that should be completely eradiated from the database
+* remap.reference.nodes (logical) / map.ref.node.file (filepath): should reference nodes for regions be assigned based on external file? if set to FALSE or it map.ref.node.file doesn't have all regions, any region without a reference node with have the reference node assigned arbitrarily  
+* interfaces.files.list (list): does specific things with interfaces. should be improved. these input files are the outputs of the india db's interface creation scripts
+
+
+**********
+###REQUIRED INPUT FILES - everything below here needs to be updated
+**********
 
 __Directory Structure__
 The script _create_plexos_db_from_raw_master_script.R_ should be in a directory that also contains folders nsmed "SourceScripts", "InputFiles", and "OutputFiles". This "master" script requires that the scripts it class (function definitions and other sub-scripts) be stored in the "SourceScripts" directory and that all input .raw and .csv files be stored in "InputFiles". The excel workbook created by the scripts will be automatically written to the "OutputFiles" folder.
