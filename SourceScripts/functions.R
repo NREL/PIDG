@@ -261,7 +261,7 @@ import_table_compact <- function(input.table, object.type) {
 # fuels.to.gens, etc). Including change MaxOutput.MW to Max Capacity
 # NOTE: only handles one property at a time for now
 merge_property_by_fuel <- function(input.table, prop.cols, 
-  mult.by.max.cap = FALSE, memo.col = NA) {
+  mult.by.max.cap = FALSE, cap.band.col = NA, memo.col = NA) {
  
   # make sure Fuel column exists before merging
   if ( !("Fuel" %in% colnames(input.table))) {
@@ -272,10 +272,60 @@ merge_property_by_fuel <- function(input.table, prop.cols,
   #This caused errors... need to determine how to insert memos into PLEXOS
   #if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
   
-  # merge with gen.names.table and save in global environment - not sure if 
-  # want to do this - should revisit later  
-  generator.data.table <- merge(generator.data.table, 
-    input.table[,.SD, .SDcols = c("Fuel", prop.cols)], by = "Fuel")
+  # split property by max capacity if needed
+  if (is.na(cap.band.col)) {
+    
+    # if cap.band.col is NA, then don't need to split properties by max
+    # capacity, so can do a regular merge with generator.data.table
+    generator.data.table <- merge(generator.data.table, 
+      input.table[,.SD, .SDcols = c("Fuel", prop.cols)], by = "Fuel")
+
+  } else {
+    
+    # is a cap.band.col is give, use that to split up property distribution
+    # when merging
+    
+    # create vectors of breaks for each fuel type (with min == 0 and 
+    # max == max capacity in generator.data.table)
+    maxes <- generator.data.table[,.(maxcap = max(MaxOutput.MW)), by = 'Fuel']
+    all.fuels <- input.table[,unique(Fuel)]
+    
+    fuel.breaks <- list()
+    for (fuel in all.fuels) {
+     unique.breaks <- input.table[Fuel == fuel, unique(get(cap.band.col))]
+     
+     if (!is.na(unique.breaks[1]))
+       # remove maxcap if it's less than any of the supplied breaks
+        if (any(maxes[Fuel == fuel, maxcap <= unique.breaks]))
+          maxes[Fuel == fuel, maxcap := NA] 
+
+     unique.breaks <- c(-1, unique.breaks, maxes[Fuel == fuel, maxcap])
+     unique.breaks <- sort(na.omit(unique.breaks))
+ 
+     fuel.breaks[[fuel]] <- unique.breaks
+    }
+    
+    # now that we have breaks for each fuel, add column to generator.data.table 
+    # and input.table that sorts gens, so can merge by that and fuel
+    for (fuel in all.fuels) {
+      # add capacity even to NA cols in input.table, so they get sorted right
+      input.table[Fuel == fuel & is.na(get(cap.band.col)), 
+        (cap.band.col) := maxes[Fuel == fuel, as.integer(maxcap)]]
+      
+      # add breaks col
+      input.table[Fuel == fuel, breaks.col := cut(get(cap.band.col), 
+                                breaks = fuel.breaks[[fuel]])]
+      generator.data.table[Fuel == fuel, breaks.col := cut(MaxOutput.MW, 
+        breaks = fuel.breaks[[fuel]])]
+    }
+    
+    # finally, merge input.table with generator.data.table
+    generator.data.table <- merge(generator.data.table, 
+      input.table[,.SD, .SDcols = c("Fuel", prop.cols, "breaks.col")], 
+      by = c("Fuel", "breaks.col"), all.x = T)
+  
+  }
+
   
   # if this property should be multiplied by max capacity, do it
   if (mult.by.max.cap) {

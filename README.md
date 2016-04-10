@@ -62,6 +62,7 @@ These functions read in inputfiles of specific formats and add properties contai
 * **merge_property_by_fuel:** assigns properties to generators, but by fuel type instead of object name. Requires a column named Fuel. All other columns will be taken to be Plexos properties (again, names must be exact matches to Plexos properties). It will spit out a table in the right format to be read in by **add_to_properties_sheet.** In these scripts, results are automatically fed to the **add_to_properties_sheet** function.
     * Other options:
         * set "mult.by.max.cap" to TRUE if value in table should be multiplied by the max capacity of the generator before setting the property (ex: useful for things like min gen, where input file will say that coal units can turn down to 70% of max capacity)
+		* set "cap.band.col" to the name of a banded column if have a property that depends on fuel and size. This will merge by fuel type and size, based on the breaks defined in that column (each property is given to generators with capacities *less* than or equal to the break listed)
 
 
 **Other inputs**

@@ -546,62 +546,6 @@ if (exists('turn.off.except.in.scen.list')) {
 
 
 #------------------------------------------------------------------------------|
-# add start cost ----
-#------------------------------------------------------------------------------|
-if (exists('start.cost.file')) {
-  if (file.exists(file.path(inputfiles.dir, start.cost.file))) {
-    message(sprintf("... Adding start costs from %s", start.cost.file))
-    #uses start.cost.file, fuels.to.gens
-    start.cost <- fread(file.path(inputfiles.dir, start.cost.file))
-    # the start cost file has cost by size for coal. this seperates those for 
-    # merging, then binds it back together
-    if (!'MaxOutput.MW' %in% names(start.cost)) start.cost[,MaxOutput.MW:=NA]
-    start.cost.na = start.cost[is.na(MaxOutput.MW), .(Fuel, `Start Cost`)]
-    start.cost.thermal = start.cost[!is.na(MaxOutput.MW), .(Fuel, `Start Cost`, 
-                                                            MaxOutput.MW)]
-    start.cost.na <- merge(
-      start.cost.na, 
-      generator.data.table[,.(Generator.Name, Fuel, MaxOutput.MW)], 
-      by = "Fuel", all.x = TRUE)
-    
-    generator.data.table[, MaxOutput.MW.group := ifelse(
-      MaxOutput.MW <= 210, 210, ifelse(MaxOutput.MW <= 500, 500, 660)), 
-      by=Generator.Name]
-    
-    setnames(start.cost.thermal, "MaxOutput.MW", "MaxOutput.MW.group")
-    
-    start.cost.thermal = merge(
-      start.cost.thermal, 
-      generator.data.table[,.(Generator.Name, Fuel, 
-                              MaxOutput.MW.group, MaxOutput.MW)], 
-      by = c("MaxOutput.MW.group", "Fuel"), all.x = TRUE)
-    #not all combinations of cost and fuel.type exist, remove non-complete ones
-    start.cost.thermal = start.cost.thermal[complete.cases(start.cost.thermal)]
-    
-    start.cost.thermal = select(start.cost.thermal, -MaxOutput.MW.group)
-    
-    start.cost = rbind(start.cost.thermal, start.cost.na)
-    
-    start.cost.to.properties <- initialize_table(
-      Properties.prototype, nrow(start.cost), list(
-        parent_class = "System", child_class = "Generator", 
-        collection = "Generators", parent_object = "System", band_id = 1, 
-        property = "Start Cost"))
-    start.cost.to.properties[,child_object := start.cost[,Generator.Name]]
-    start.cost.to.properties[,value := start.cost[,`Start Cost` * MaxOutput.MW]]
-    
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            start.cost.to.properties)
-    
-  } else {
-    message(sprintf("... %s does not exist ... skipping start costs", 
-                    start.cost.file))
-  } } else {
-    message(("... start.cost.file does not exist ... skipping start costs"))
-  }
-
-
-#------------------------------------------------------------------------------|
 # add interfaces from interface file list ----
 #------------------------------------------------------------------------------|
 
