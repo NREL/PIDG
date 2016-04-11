@@ -69,6 +69,9 @@ These functions read in inputfiles of specific formats and add properties contai
 
 These all refer to variables in input_params
 
+* raw.file.path (filepath): path to .raw (PSSE) file
+* map.gen.to.fuel.file (filepath): path to file that maps all generators to a fuel type (needs two colums: Generator.Name and Fuel)
+* map.region.to.load.file (filepath): path to file that matches regions with a pointer to a load file. One column must be called Region. Others will be treated as load scenarios. Any column called "Base" will be added with no scenario. Data file columns called anything else will be added with a scenario tag that is equal to the column name.
 * rename.regions (logical) / map.newregion.file (filepath)  and rename.zones (logical) / map.newzone.file (filepath): should the regions and zones assigned to nodes be mapped by an external file, rather than left as defaults from PSSE?
 * add.RE.gens (logical) / RE.gen.file.list (list or vector or filepaths): should new generators be added to the database? if yes, pull from each element of RE.gen.file, create specified generators at new node, attached those new nodes to given existing nodes, assign a max capacity, number of units, and a datafile for rating. see format of RE.gen.file.
 * turn.off.except.in.scen.list (list): list of generators which should have Units set to 0 (will turn them off) in the base case but to 1 or whatever Units was in scenario passed in with filename
