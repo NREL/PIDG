@@ -386,7 +386,8 @@ if (add.RE.gens){
     new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = Node.Name, 
                                    RegionName = Node.Region, ZoneName = Node.Zone, 
                                    Voltage.kV = Node.kV, 
-                                   Fuel, MaxOutput.MW = Max.Capacity)]
+                                   Fuel, MaxOutput.MW = Max.Capacity, 
+                                   Units = Num.Units)]
     generator.data.table <- rbind(generator.data.table, new.RE.gens.data, 
                                   fill = T)
     
@@ -526,8 +527,16 @@ if (exists('turn.off.except.in.scen.list')) {
                               object.class = cur.class,
                               collection.name = cur.coll, overwrite = T)
       
-      # turn on units in scenario
-      cur.table[,Units := 1]
+      # turn on units in scenario. if a generator, pull units from 
+      # generator.data.table
+      # right now, code only supports maintaining multiple units for generators
+      if (cur.class == 'Generator') {
+        
+        genunits <- generator.data.table[, .(Generator.Name, Units)]
+        cur.table <- merge(cur.table[,Units := NULL], genunits, 
+                           by.x = cur.names, by.y = 'Generator.Name')
+        
+      } else cur.table[,Units := 1]
       
       add_to_properties_sheet(cur.table, names.col = cur.names, 
                               object.class = cur.class, 

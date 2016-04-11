@@ -271,6 +271,7 @@ generator.data.table <- merge(generator.data.table, node.data.table,
   by = 'BusNumber')
 
 generator.data.table[,Generator.Name := paste0("GEN_", BusName, "_", ID)]
+generator.data.table[,Units := 1]
 
 # **needs to be cleaned up in a better way: NLDC changed max capacity of these 
 # two generators (initial capacities were 660 and 600 MW). See script d.
