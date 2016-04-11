@@ -70,7 +70,7 @@ These functions read in inputfiles of specific formats and add properties contai
 These all refer to variables in input_params
 
 * rename.regions (logical) / map.newregion.file (filepath)  and rename.zones (logical) / map.newzone.file (filepath): should the regions and zones assigned to nodes be mapped by an external file, rather than left as defaults from PSSE?
-* add.RE.gens (logical) / RE.gen.file (filepath): should new generators be added to the database? if yes, pull from RE.gen.file, create specified generators at new node, attached those new nodes to given existing nodes, assign a max capacity, number of units, and a datafile for rating. see format of RE.gen.file.
+* add.RE.gens (logical) / RE.gen.file.list (list or vector or filepaths): should new generators be added to the database? if yes, pull from each element of RE.gen.file, create specified generators at new node, attached those new nodes to given existing nodes, assign a max capacity, number of units, and a datafile for rating. see format of RE.gen.file.
 * turn.off.except.in.scen.list (list): list of generators which should have Units set to 0 (will turn them off) in the base case but to 1 or whatever Units was in scenario passed in with filename
 * delete.original.RE (logical): should generators that are originally assigned the Fuel WIND or SOLAR-PV be eradicated from the database?
 * units.to.delete.file (filepath): names of objects that should be completely eradiated from the database
