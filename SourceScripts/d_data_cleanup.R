@@ -109,20 +109,22 @@ Properties.sheet[parent_object == "System" & property == "Max Capacity" &
 # completely from the database, since they will not 
 # requires that no two objects have the same name (mabye should put in a 
 # check for this)
-if (exists('units.to.delete.file')) {
-  if (file.exists(file.path(inputfiles.dir,units.to.delete.file))) {
-    message(sprintf("... deleting units in  %s", units.to.delete.file))
-    
-    to.delete <- fread(file.path(inputfiles.dir, units.to.delete.file))
-    Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Object.Name])]
-    Properties.sheet <- Properties.sheet[!(child_object %in% 
-                                             to.delete[,Object.Name])]
-    Memberships.sheet <- 
-      Memberships.sheet[!(child_object %in% to.delete[,Object.Name]) & 
-                          !(parent_object %in% to.delete[,Object.Name])]
-  } else {
-    message(sprintf("... %s does not exist ... skipping", units.to.delete.file))
-  } 
+if (exists('units.to.delete.files')) {
+  for (fname in units.to.delete.files) {
+      if (file.exists(file.path(inputfiles.dir,fname))) {
+        message(sprintf("... deleting units in  %s", fname))
+        
+        to.delete <- fread(file.path(inputfiles.dir, fname))
+        Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Object.Name])]
+        Properties.sheet <- Properties.sheet[!(child_object %in% 
+                                                 to.delete[,Object.Name])]
+        Memberships.sheet <- 
+          Memberships.sheet[!(child_object %in% to.delete[,Object.Name]) & 
+                              !(parent_object %in% to.delete[,Object.Name])]
+      } else {
+        message(sprintf("... %s does not exist ... skipping", fname))
+      } 
+  }
 } else {
    message("... units.to.delete.file does not exist ... skipping")
 }
@@ -130,7 +132,7 @@ if (exists('units.to.delete.file')) {
 
 
     
-# also need to retire RE plants in the PSSE file, since we are replacing them 
+# also need to retire RE plants in the PSSE file, since we ae replacing them 
 # with our own. Doing this is script c2, right after adding fuel. 
 
 # add standard flow limits to lines with ratings of zero
