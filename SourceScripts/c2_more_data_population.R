@@ -64,6 +64,19 @@ Objects.sheet[,Fuel := NULL]
 # clean up
 rm(fuel.table, all.fuels, fuels.to.objects, fuels.to.gens.to.memberships)
 
+# ---- if turned on, delete original RE gens ----
+if (exists('delete.original.RE')) {
+  if (delete.original.RE) {
+    message("... deleting original WIND and SOLAR-PV generators")
+    
+    re.to.delete <- generator.data.table[Fuel %in% c("WIND", "SOLAR-PV"), Generator.Name] 
+    
+    Objects.sheet <- Objects.sheet[!(name %in% re.to.delete)]
+    Properties.sheet <- Properties.sheet[!(child_object %in% re.to.delete)]
+    Memberships.sheet <- Memberships.sheet[!(child_object %in% re.to.delete) & 
+                                             !(parent_object %in% re.to.delete)]
+  }
+}
 
 #------------------------------------------------------------------------------|
 # add load (mapped by region by external file) and lpf ----
