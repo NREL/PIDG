@@ -8,7 +8,6 @@
 # import.model.mayJuneAgTx.file
 # enforced.interstate.lines.file
 # isolated.nodes.to.remove.file
-# wheeling.charge.cases.files
 # compact.generic.import.files
 # constraint.import.files
 
@@ -296,75 +295,6 @@ invisible(lapply(names(standard.flow.tfmr.lims), function(kV.level) {
 Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
   tfmr.rating.correction)
 
-
-#------------------------------------------------------------------------------|
-# [[Add standard data]] Add scenario tag to ramp rates, VOM, min gen----
-# -----------------------------------------------------------------------------|
-  # add dummy min up, min down, start costs to objects
-dummy.data.scen.to.objects <- initialize_table(Objects.prototype, 1, 
-  list(class = "Scenario", name = "Placeholder ramp limits, min gen level", 
-  category = "Add standard data"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, dummy.data.scen.to.objects)
-
-  # add scenario tag to these properties
-Properties.sheet[property %in% c("Min Stable Level", "Max Ramp Up", 
-  "Max Ramp Down") & is.na(scenario), 
-  scenario := "{Object}Placeholder ramp limits, min gen level"]
-
-
-#------------------------------------------------------------------------------|
-# [[Add standard data]] Add scen. tag to min up. down, start costs ----
-# -----------------------------------------------------------------------------|
-  # add dummy min up, min down, start costs to objects
-dummy.data.scen.to.objects <- initialize_table(Objects.prototype, 1, 
-  list(class = "Scenario", name = "Placeholder min up/down time, start costs", 
-  category = "Add standard data"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, dummy.data.scen.to.objects)
-
-  # add scenario tag to these properties
-Properties.sheet[property %in% c("Min Up Time", "Min Down Time", "Start Cost"), 
-  scenario := "{Object}Placeholder min up/down time, start costs"]
-
-
-#------------------------------------------------------------------------------|
-# [[Add wheeling charges]] Add generic wheeling charge cases ----
-#------------------------------------------------------------------------------|
-# uses wheeling.charge.cases.files
-# names of that list are names of scenarios. elements of the list are filenames
-# that contain properties that correspond with those scenarios
-
-if (exists('wheeling.charge.cases.files')) {
-for (scenario.name in names(wheeling.charge.cases.files)) {
-  if (file.exists(file.path(inputfiles.dir,
-                            wheeling.charge.cases.files[[scenario.name]][1]))) {
-    
-    message(sprintf("... Adding properties for wheeling charges from  %s", 
-                    wheeling.charge.cases.files[[scenario.name]][1]))
-    
-    # create scenario and add to Objects.sheet
-    cur.scen.to.objects <- 
-      initialize_table(Objects.prototype, 1, 
-                       list(class = "Scenario", name = scenario.name, 
-                            category = "Add wheeling charges"))
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
-    
-    # read in file
-    cur.properties.file <- 
-      fread(file.path(inputfiles.dir, 
-                      wheeling.charge.cases.files[[scenario.name]]))
-    
-    # add properties from file to Properties.sheet
-    add_to_properties_sheet(cur.properties.file, object.class = "Line", 
-                            names.col = "Line.Name", collection.name = "Lines", 
-                            scenario.name = scenario.name)
-  } else {
-    message(sprintf("... %s does not exist ... skipping", 
-                    wheeling.charge.cases.files[[scenario.name]][1]))
-  }
-}
-} else {
-  message('... no wheeling charges defined ... skipping')
-}
 
 #------------------------------------------------------------------------------|
 # IMPORT GENERIC FILES (CREATE HORIZONS AND MODELS) ----

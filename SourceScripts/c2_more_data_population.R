@@ -438,6 +438,27 @@ for (elem in seq_along(generator.property.by.fuel.list)) {
     
     # add to properties sheet using input arguments and new table
     do.call(add_to_properties_sheet, cur.prop.sheet.args)
+    
+    if ('scenario.name' %in% names(cur.prop.sheet.args)) {
+        # for now, just add any scenario here that doesn't already exist
+        # need to deal with categories later
+        cur.scen <- cur.prop.sheet.args[['scenario.name']]
+        if (!(cur.scen %in% Objects.sheet[,name])) {
+            cur.scen.to.objects <- initialize_table(Objects.sheet, 1, 
+                list(name = cur.scen, category = 'Object properties',
+                    class = 'Scenario'))
+              
+            Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
+         
+            # clean up
+            rm(cur.scen.to.objects)
+             
+         }
+      
+        # clean up
+        rm(cur.scen)
+    }
+    
   } else {
     message(sprintf("... %s does not exist ... skipping", 
                     generator.property.by.fuel.list[[elem]][1]))
@@ -481,11 +502,9 @@ for (elem in seq_along(object.property.list)) {
         Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
       }
       
+        # clean up
         # rm(cur.scen, cur.scen.to.objects)
     }
-  
-  # clean up
-  # rm(elem, cur.table, cur.args)
     
   } else {
     message(sprintf("... %s does not exist ... skipping", 
