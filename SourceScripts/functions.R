@@ -261,8 +261,12 @@ import_table_compact <- function(input.table, object.type) {
 # fuels.to.gens, etc). Including change MaxOutput.MW to Max Capacity
 # NOTE: only handles one property at a time for now
 merge_property_by_fuel <- function(input.table, prop.cols, 
-  mult.by.max.cap = FALSE, cap.band.col = NA, memo.col = NA) {
- 
+  mult.by.max.cap = FALSE, cap.band.col = NA, band.col = NA, memo.col = NA) {
+  
+  all.cols <- colnames(input.table)
+  
+  non.prop.cols <- c("Fuel", cap.band.col, band.col, memo.col)
+  
   # make sure Fuel column exists before merging
   if ( !("Fuel" %in% colnames(input.table))) {
     stop(paste0("There is no 'Fuel' column in the input table. ", 
@@ -334,8 +338,15 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     }
   }
   
+  if (!is.na(band.col)){
+    generator.data.table = merge(generator.data.table,
+                                 input.table[,.SD,.SDcols = c('Fuel',band.col)],
+                                 by='Fuel')
+  }
+  
+  return.cols = c('Generator.Name',prop.cols,band.col)
   # return generator + property
-  return(generator.data.table[,.SD, .SDcols = c("Generator.Name", prop.cols)])
+  return(generator.data.table[,.SD, .SDcols = return.cols[!is.na(return.cols)]])
 }
 
 
