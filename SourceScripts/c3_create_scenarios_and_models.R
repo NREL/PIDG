@@ -457,35 +457,6 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet,
   max.en.penalty.to.properties)
 
 
-if (india.repo){
-#------------------------------------------------------------------------------|
-# [[Scenario archive for other configs]] Change R, X of Delhi import lines ----
-# -----------------------------------------------------------------------------|
-
-scenario.changeRandXDelhiImport.to.objects <- 
-  initialize_table(Objects.prototype, 1, list(class = "Scenario", 
-    name = "For AgTx - change R and X of lines to Delhi", 
-    category = "Scenario archive for other configurations"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-  scenario.changeRandXDelhiImport.to.objects)
-  #scenario1 to properties (change resistance/reactance)
-scenario.changeRandXDelhiImport.to.properties <- 
-  initialize_table(Properties.prototype, 4, list(parent_class = "System", 
-    child_class = "Line", band_id = 1, collection = "Lines", 
-    parent_object = "System", scenario = 
-      "{Object}For AgTx - change R and X of lines to Delhi"))
-scenario.changeRandXDelhiImport.to.properties[, child_object := 
-    c("142004_142046_1_CKT", "142004_142046_1_CKT", "142032_152005_1_CKT", 
-      "142032_152005_1_CKT")]
-scenario.changeRandXDelhiImport.to.properties[, property := c("Resistance", 
-  "Reactance", "Resistance", "Reactance")]
-scenario.changeRandXDelhiImport.to.properties[, value := c(0.00383, 0.0204, 
-  0.00383, 0.0204)]
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-  scenario.changeRandXDelhiImport.to.properties)
-}
-
 #------------------------------------------------------------------------------|
 # [[Scenario archive for other configurations]] Set line reactance to zero ----
 # -----------------------------------------------------------------------------|
