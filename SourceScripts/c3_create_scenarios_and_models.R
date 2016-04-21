@@ -533,19 +533,32 @@ if (exists('enforced.interstate.lines.file')) {
 #------------------------------------------------------------------------------|
 # [[Scen arx for other configs]] Rmve isolated nodes, recalc LPF for others ----
 # -----------------------------------------------------------------------------|
-if (exists('isolated.nodes.to.remove.file')) {
+if (exists('isolated.nodes.to.remove.args')) {
+  isolated.nodes.to.remove.file = isolated.nodes.to.remove.args[1]
   if (file.exists(file.path(inputfiles.dir,
                             isolated.nodes.to.remove.file))) {
-    message(sprintf("... removing isolated nodes from  %s in scenario", 
-                    isolated.nodes.to.remove.file))
-    # scenario to objects
-    scenario.remove.isolated <- 
-      initialize_table(Objects.prototype, 1, 
-                       list(class = "Scenario", 
-                        name = "For PsN/nodal - remove isolated nodes, redo LPFs", 
-                        category = "Scenario archive for other configurations"))
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-                                         scenario.remove.isolated)
+    if (!exists('isolated.nodes.to.remove.args$scenario'))
+      isolated.nodes.to.remove.args$scenario = NA
+    
+    if (!exists('isolated.nodes.to.remove.args$category'))
+      isolated.nodes.to.remove.args$category = NA
+    
+    message(sprintf("... removing isolated nodes from  %s in scenario %s in category %s", 
+                    isolated.nodes.to.remove.file,
+                    isolated.nodes.to.remove.args$scenario,
+                    isolated.nodes.to.remove.args$category))
+    
+    if (!is.na(isolated.nodes.to.remove.args$scenario)) {
+      # scenario to objects
+      scenario.remove.isolated <- 
+        initialize_table(Objects.prototype, 1, 
+                         list(class = "Scenario", 
+                              name = isolated.nodes.to.remove.args$scenario, 
+                              category = isolated.nodes.to.remove.args$category))
+      
+      Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+                                           scenario.remove.isolated)
+    }
     
     # scenario to properties
     # uses isolated.nodes.to.remove.file
@@ -563,8 +576,9 @@ if (exists('isolated.nodes.to.remove.file')) {
     isolated.units.to.zero[,child_object := isolated.nodes.to.remove]
     isolated.units.to.zero[,property := "Units"]
     isolated.units.to.zero[,value := "0"]
-    isolated.units.to.zero[,scenario := 
-                "{Object}For PsN/nodal - remove isolated nodes, redo LPFs"]
+    if(!is.na(isolated.nodes.to.remove.args$scenario)){
+      isolated.units.to.zero[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
+    }
     
     # recalculate relevant LPFs for other nodes 
     # pull node LPFs from properties sheet for all nodes except the ones to be 
@@ -586,8 +600,10 @@ if (exists('isolated.nodes.to.remove.file')) {
     # and attach the scenario
     redo.lpfs.to.properties[,value := new.lpf][,
       c("new.lpf", "RegionName") := NULL]
-    redo.lpfs.to.properties[,scenario := 
-                     "{Object}For PsN/nodal - remove isolated nodes, redo LPFs"]
+    
+    if(!is.na(isolated.nodes.to.remove.args$scenario)){
+      redo.lpfs.to.properties[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
+    }
     
     # add these new tables to the Properties.sheet
     Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
