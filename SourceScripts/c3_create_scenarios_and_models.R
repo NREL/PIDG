@@ -572,12 +572,19 @@ if (exists('isolated.nodes.to.remove.args')) {
       initialize_table(Properties.sheet, 
                        length(isolated.nodes.to.remove), 
                        list(parent_class = "System", parent_object = "System", 
-                            collection = "Nodes",child_class = "Node",band_id=1))
+                            collection = "Nodes",child_class = "Node",band_id="1"))
     isolated.units.to.zero[,child_object := isolated.nodes.to.remove]
     isolated.units.to.zero[,property := "Units"]
     isolated.units.to.zero[,value := "0"]
     if(!is.na(isolated.nodes.to.remove.args$scenario)){
       isolated.units.to.zero[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
+      # add these new tables to the Properties.sheet
+      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                              isolated.units.to.zero)
+    } else {
+      isolated.units.to.zero[,new.value:=value]
+      Properties.sheet[isolated.units.to.zero[,.(parent_class,parent_object,collection,child_class,band_id,child_object,property,new.value)],
+                       value:=new.value,on=c('parent_class','parent_object','collection','child_class','band_id','child_object','property')]
     }
     
     # recalculate relevant LPFs for other nodes 
@@ -603,14 +610,17 @@ if (exists('isolated.nodes.to.remove.args')) {
     
     if(!is.na(isolated.nodes.to.remove.args$scenario)){
       redo.lpfs.to.properties[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
+      # add these new tables to the Properties.sheet
+      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                              redo.lpfs.to.properties)
+    } else {
+      redo.lpfs.to.properties[,new.value:=as.character(value)]
+      Properties.sheet[redo.lpfs.to.properties[,.(parent_class,parent_object,collection,child_class,band_id,child_object,property,new.value)],
+                       value:=new.value,on=c('parent_class','parent_object','collection','child_class','band_id','child_object','property')]
+      
     }
     
-    # add these new tables to the Properties.sheet
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            isolated.units.to.zero)
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            redo.lpfs.to.properties)
-    
+
     # note: at least this first round, this also changes the LPF of 4 nodes in 
     # Daman Diu, Jharkhand, and Nepal because of difference in sig figs. Not sure
     # why this happens only with these.
