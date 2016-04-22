@@ -537,10 +537,10 @@ if (exists('isolated.nodes.to.remove.args')) {
   isolated.nodes.to.remove.file = isolated.nodes.to.remove.args[1]
   if (file.exists(file.path(inputfiles.dir,
                             isolated.nodes.to.remove.file))) {
-    if (!exists('isolated.nodes.to.remove.args$scenario'))
+    if (is.null(isolated.nodes.to.remove.args$scenario))
       isolated.nodes.to.remove.args$scenario = NA
     
-    if (!exists('isolated.nodes.to.remove.args$category'))
+    if (is.null(isolated.nodes.to.remove.args$category))
       isolated.nodes.to.remove.args$category = NA
     
     message(sprintf("... removing isolated nodes from  %s in scenario %s in category %s", 
@@ -560,70 +560,119 @@ if (exists('isolated.nodes.to.remove.args')) {
                                            scenario.remove.isolated)
     }
     
+    # # scenario to properties
+    # # uses isolated.nodes.to.remove.file
+    # # read in isolated nodes to remove file and change it to a veector
+    # isolated.nodes.to.remove <- fread(file.path(inputfiles.dir,
+    #                                             isolated.nodes.to.remove.file))
+    # isolated.nodes.to.remove <- isolated.nodes.to.remove[,Node.Name]
+    # 
+    # # turn off isolated load-only nodes in this scenario
+    # isolated.units.to.zero <- 
+    #   initialize_table(Properties.sheet, 
+    #                    length(isolated.nodes.to.remove), 
+    #                    list(parent_class = "System", parent_object = "System", 
+    #                         collection = "Nodes",child_class = "Node",band_id="1"))
+    # isolated.units.to.zero[,child_object := isolated.nodes.to.remove]
+    # isolated.units.to.zero[,property := "Units"]
+    # isolated.units.to.zero[,value := "0"]
+    # 
+    # 
+    # if(!is.na(isolated.nodes.to.remove.args$scenario)){
+    #   isolated.units.to.zero[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
+    #   # add these new tables to the Properties.sheet
+    #   Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+    #                                           isolated.units.to.zero)
+    # } else {
+    #   isolated.units.to.zero[,new.value:=value]
+    #   Properties.sheet[isolated.units.to.zero[,.(parent_class,parent_object,collection,child_class,band_id,child_object,property,new.value)],
+    #                    value:=new.value,on=c('parent_class','parent_object','collection','child_class','band_id','child_object','property')]
+    # }
+    # 
+    
     # scenario to properties
     # uses isolated.nodes.to.remove.file
     # read in isolated nodes to remove file and change it to a veector
-    isolated.nodes.to.remove <- fread(file.path(inputfiles.dir,
-                                                isolated.nodes.to.remove.file))
-    isolated.nodes.to.remove <- isolated.nodes.to.remove[,Node.Name]
+    isolated.nodes.to.remove = fread(file.path(inputfiles.dir,
+                                               isolated.nodes.to.remove.args[1]))
+    isolated.nodes.to.remove[,Units:="0"]
     
-    # turn off isolated load-only nodes in this scenario
-    isolated.units.to.zero <- 
-      initialize_table(Properties.sheet, 
-                       length(isolated.nodes.to.remove), 
-                       list(parent_class = "System", parent_object = "System", 
-                            collection = "Nodes",child_class = "Node",band_id="1"))
-    isolated.units.to.zero[,child_object := isolated.nodes.to.remove]
-    isolated.units.to.zero[,property := "Units"]
-    isolated.units.to.zero[,value := "0"]
     if(!is.na(isolated.nodes.to.remove.args$scenario)){
-      isolated.units.to.zero[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
-      # add these new tables to the Properties.sheet
-      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                              isolated.units.to.zero)
+        add_to_properties_sheet(isolated.nodes.to.remove, names.col = "Node.Name", 
+                                object.class = "Node", collection.name =  "Nodes",
+                                scenario.name = isolated.nodes.to.remove.args$scenario)
     } else {
-      isolated.units.to.zero[,new.value:=value]
-      Properties.sheet[isolated.units.to.zero[,.(parent_class,parent_object,collection,child_class,band_id,child_object,property,new.value)],
-                       value:=new.value,on=c('parent_class','parent_object','collection','child_class','band_id','child_object','property')]
+        add_to_properties_sheet(isolated.nodes.to.remove, names.col = "Node.Name", 
+                                object.class = "Node", collection.name =  "Nodes",
+                                overwrite = TRUE)
     }
     
+    # # recalculate relevant LPFs for other nodes 
+    # # pull node LPFs from properties sheet for all nodes except the ones to be 
+    # # removed
+    # redo.lpfs.to.properties <- 
+    #   Properties.sheet[property == "Load Participation Factor" & 
+    #                      !(child_object %in% isolated.nodes.to.remove)]
+    # 
+    # # add region for calculating LPF
+    # redo.lpfs.to.properties <-
+    #   merge(redo.lpfs.to.properties, node.data.table[,.(BusName, RegionName)], 
+    #         by.x = "child_object", by.y = "BusName")
+    # 
+    # # recalculate LPF
+    # redo.lpfs.to.properties[,new.lpf := prop.table(as.numeric(value)), 
+    #                         by = "RegionName"]
+    # redo.lpfs.to.properties <- redo.lpfs.to.properties[value != new.lpf]
+    # # for nodes with LPFs that have changed, assign the new LPFs to the nodes
+    # # and attach the scenario
+    # redo.lpfs.to.properties[,value := new.lpf][,
+    #   c("new.lpf", "RegionName") := NULL]
+    # 
+    # if(!is.na(isolated.nodes.to.remove.args$scenario)){
+    #   redo.lpfs.to.properties[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
+    #   # add these new tables to the Properties.sheet
+    #   Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+    #                                           redo.lpfs.to.properties)
+    # } else {
+    #   redo.lpfs.to.properties[,new.value:=as.character(value)]
+    #   Properties.sheet[redo.lpfs.to.properties[,.(parent_class,parent_object,collection,child_class,band_id,child_object,property,new.value)],
+    #                    value:=new.value,on=c('parent_class','parent_object','collection','child_class','band_id','child_object','property')]
+    #   
+    # }
+    
     # recalculate relevant LPFs for other nodes 
-    # pull node LPFs from properties sheet for all nodes except the ones to be 
-    # removed
+    # pull node LPFs in base case (no scenario) from properties sheet for all 
+    # nodes except the ones to be removed
     redo.lpfs.to.properties <- 
       Properties.sheet[property == "Load Participation Factor" & 
-                         !(child_object %in% isolated.nodes.to.remove)]
+                       !(child_object %in% isolated.nodes.to.remove$Node.Name) &
+                       is.na(scenario), 
+                       .(BusName = child_object, value)]
     
     # add region for calculating LPF
     redo.lpfs.to.properties <-
       merge(redo.lpfs.to.properties, node.data.table[,.(BusName, RegionName)], 
-            by.x = "child_object", by.y = "BusName")
+            by = "BusName")
     
     # recalculate LPF
-    redo.lpfs.to.properties[,new.lpf := prop.table(as.numeric(value)), 
+    redo.lpfs.to.properties[,`Load Participation Factor` := prop.table(as.numeric(value)), 
                             by = "RegionName"]
-    redo.lpfs.to.properties <- redo.lpfs.to.properties[value != new.lpf]
+    redo.lpfs.to.properties <- redo.lpfs.to.properties[value != `Load Participation Factor`]
+    
     # for nodes with LPFs that have changed, assign the new LPFs to the nodes
     # and attach the scenario
-    redo.lpfs.to.properties[,value := new.lpf][,
-      c("new.lpf", "RegionName") := NULL]
+    redo.lpfs.to.properties[, c("value", "RegionName") := NULL]
     
     if(!is.na(isolated.nodes.to.remove.args$scenario)){
-      redo.lpfs.to.properties[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
-      # add these new tables to the Properties.sheet
-      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                              redo.lpfs.to.properties)
+        add_to_properties_sheet(redo.lpfs.to.properties, names.col = "BusName", 
+                                object.class = "Node", collection.name =  "Nodes",
+                                scenario.name = isolated.nodes.to.remove.args$scenario)
     } else {
-      redo.lpfs.to.properties[,new.value:=as.character(value)]
-      Properties.sheet[redo.lpfs.to.properties[,.(parent_class,parent_object,collection,child_class,band_id,child_object,property,new.value)],
-                       value:=new.value,on=c('parent_class','parent_object','collection','child_class','band_id','child_object','property')]
-      
+        add_to_properties_sheet(redo.lpfs.to.properties, names.col = "BusName", 
+                                object.class = "Node", collection.name =  "Nodes",
+                                overwrite = TRUE)
     }
     
-
-    # note: at least this first round, this also changes the LPF of 4 nodes in 
-    # Daman Diu, Jharkhand, and Nepal because of difference in sig figs. Not sure
-    # why this happens only with these.
     
   } else {
     message(sprintf("... %s does not exist ... skipping", 
