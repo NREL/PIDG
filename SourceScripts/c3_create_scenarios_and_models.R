@@ -533,154 +533,106 @@ if (exists('enforced.interstate.lines.file')) {
 #------------------------------------------------------------------------------|
 # [[Scen arx for other configs]] Rmve isolated nodes, recalc LPF for others ----
 # -----------------------------------------------------------------------------|
-if (exists('isolated.nodes.to.remove.args')) {
-  isolated.nodes.to.remove.file = isolated.nodes.to.remove.args[1]
-  if (file.exists(file.path(inputfiles.dir,
-                            isolated.nodes.to.remove.file))) {
-    if (is.null(isolated.nodes.to.remove.args$scenario))
-      isolated.nodes.to.remove.args$scenario = NA
-    
-    if (is.null(isolated.nodes.to.remove.args$category))
-      isolated.nodes.to.remove.args$category = NA
-    
-    message(sprintf("... removing isolated nodes from  %s in scenario %s in category %s", 
-                    isolated.nodes.to.remove.file,
-                    isolated.nodes.to.remove.args$scenario,
-                    isolated.nodes.to.remove.args$category))
-    
-    if (!is.na(isolated.nodes.to.remove.args$scenario)) {
-      # scenario to objects
-      scenario.remove.isolated <- 
-        initialize_table(Objects.prototype, 1, 
-                         list(class = "Scenario", 
-                              name = isolated.nodes.to.remove.args$scenario, 
-                              category = isolated.nodes.to.remove.args$category))
-      
-      Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-                                           scenario.remove.isolated)
-    }
-    
-    # # scenario to properties
-    # # uses isolated.nodes.to.remove.file
-    # # read in isolated nodes to remove file and change it to a veector
-    # isolated.nodes.to.remove <- fread(file.path(inputfiles.dir,
-    #                                             isolated.nodes.to.remove.file))
-    # isolated.nodes.to.remove <- isolated.nodes.to.remove[,Node.Name]
-    # 
-    # # turn off isolated load-only nodes in this scenario
-    # isolated.units.to.zero <- 
-    #   initialize_table(Properties.sheet, 
-    #                    length(isolated.nodes.to.remove), 
-    #                    list(parent_class = "System", parent_object = "System", 
-    #                         collection = "Nodes",child_class = "Node",band_id="1"))
-    # isolated.units.to.zero[,child_object := isolated.nodes.to.remove]
-    # isolated.units.to.zero[,property := "Units"]
-    # isolated.units.to.zero[,value := "0"]
-    # 
-    # 
-    # if(!is.na(isolated.nodes.to.remove.args$scenario)){
-    #   isolated.units.to.zero[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
-    #   # add these new tables to the Properties.sheet
-    #   Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-    #                                           isolated.units.to.zero)
-    # } else {
-    #   isolated.units.to.zero[,new.value:=value]
-    #   Properties.sheet[isolated.units.to.zero[,.(parent_class,parent_object,collection,child_class,band_id,child_object,property,new.value)],
-    #                    value:=new.value,on=c('parent_class','parent_object','collection','child_class','band_id','child_object','property')]
-    # }
-    # 
-    
-    # scenario to properties
-    # uses isolated.nodes.to.remove.file
-    # read in isolated nodes to remove file and change it to a veector
-    isolated.nodes.to.remove = fread(file.path(inputfiles.dir,
-                                               isolated.nodes.to.remove.args[1]))
-    isolated.nodes.to.remove[,Units:="0"]
-    
-    if(!is.na(isolated.nodes.to.remove.args$scenario)){
-        add_to_properties_sheet(isolated.nodes.to.remove, names.col = "Node.Name", 
-                                object.class = "Node", collection.name =  "Nodes",
-                                scenario.name = isolated.nodes.to.remove.args$scenario)
-    } else {
-        add_to_properties_sheet(isolated.nodes.to.remove, names.col = "Node.Name", 
-                                object.class = "Node", collection.name =  "Nodes",
-                                overwrite = TRUE)
-    }
-    
-    # # recalculate relevant LPFs for other nodes 
-    # # pull node LPFs from properties sheet for all nodes except the ones to be 
-    # # removed
-    # redo.lpfs.to.properties <- 
-    #   Properties.sheet[property == "Load Participation Factor" & 
-    #                      !(child_object %in% isolated.nodes.to.remove)]
-    # 
-    # # add region for calculating LPF
-    # redo.lpfs.to.properties <-
-    #   merge(redo.lpfs.to.properties, node.data.table[,.(BusName, RegionName)], 
-    #         by.x = "child_object", by.y = "BusName")
-    # 
-    # # recalculate LPF
-    # redo.lpfs.to.properties[,new.lpf := prop.table(as.numeric(value)), 
-    #                         by = "RegionName"]
-    # redo.lpfs.to.properties <- redo.lpfs.to.properties[value != new.lpf]
-    # # for nodes with LPFs that have changed, assign the new LPFs to the nodes
-    # # and attach the scenario
-    # redo.lpfs.to.properties[,value := new.lpf][,
-    #   c("new.lpf", "RegionName") := NULL]
-    # 
-    # if(!is.na(isolated.nodes.to.remove.args$scenario)){
-    #   redo.lpfs.to.properties[,scenario := paste0("{Object}",isolated.nodes.to.remove.args$scenario)]
-    #   # add these new tables to the Properties.sheet
-    #   Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-    #                                           redo.lpfs.to.properties)
-    # } else {
-    #   redo.lpfs.to.properties[,new.value:=as.character(value)]
-    #   Properties.sheet[redo.lpfs.to.properties[,.(parent_class,parent_object,collection,child_class,band_id,child_object,property,new.value)],
-    #                    value:=new.value,on=c('parent_class','parent_object','collection','child_class','band_id','child_object','property')]
-    #   
-    # }
-    
-    # recalculate relevant LPFs for other nodes 
-    # pull node LPFs in base case (no scenario) from properties sheet for all 
-    # nodes except the ones to be removed
-    redo.lpfs.to.properties <- 
-      Properties.sheet[property == "Load Participation Factor" & 
-                       !(child_object %in% isolated.nodes.to.remove$Node.Name) &
-                       is.na(scenario), 
-                       .(BusName = child_object, value)]
-    
-    # add region for calculating LPF
-    redo.lpfs.to.properties <-
-      merge(redo.lpfs.to.properties, node.data.table[,.(BusName, RegionName)], 
-            by = "BusName")
-    
-    # recalculate LPF
-    redo.lpfs.to.properties[,`Load Participation Factor` := prop.table(as.numeric(value)), 
-                            by = "RegionName"]
-    redo.lpfs.to.properties <- redo.lpfs.to.properties[value != `Load Participation Factor`]
-    
-    # for nodes with LPFs that have changed, assign the new LPFs to the nodes
-    # and attach the scenario
-    redo.lpfs.to.properties[, c("value", "RegionName") := NULL]
-    
-    if(!is.na(isolated.nodes.to.remove.args$scenario)){
-        add_to_properties_sheet(redo.lpfs.to.properties, names.col = "BusName", 
-                                object.class = "Node", collection.name =  "Nodes",
-                                scenario.name = isolated.nodes.to.remove.args$scenario)
-    } else {
-        add_to_properties_sheet(redo.lpfs.to.properties, names.col = "BusName", 
-                                object.class = "Node", collection.name =  "Nodes",
-                                overwrite = TRUE)
-    }
-    
-    
-  } else {
-    message(sprintf("... %s does not exist ... skipping", 
-                    isolated.nodes.to.remove.file))
-  }} else {
+if (exists('isolated.nodes.to.remove.args.list')) {
+    for (i in seq_along(isolated.nodes.to.remove.args.list)) {
+        # pull element from the list
+        isolated.nodes.to.remove.args = isolated.nodes.to.remove.args.list[[i]]
+        
+        # get file, scenario, and category names
+        isolated.nodes.to.remove.file = isolated.nodes.to.remove.args[1]
+        cur.scenario = isolated.nodes.to.remove.args["scenario"]
+        cur.category = isolated.nodes.to.remove.args["category"]
+        
+        if (file.exists(file.path(inputfiles.dir,
+                                isolated.nodes.to.remove.file))) {
+        if (is.null(cur.scenario))
+            cur.scenario = NA
+        
+        if (is.null(cur.category))
+          cur.category = NA
+        
+        message(sprintf("... removing isolated nodes from  %s in scenario %s in category %s", 
+                        isolated.nodes.to.remove.file,
+                        cur.scenario,
+                        cur.category))
+        
+        if (!is.na(cur.scenario)) {
+          # scenario to objects
+          scenario.remove.isolated <- 
+            initialize_table(Objects.prototype, 1, 
+                             list(class = "Scenario", 
+                                  name = cur.scenario, 
+                                  category = cur.category))
+          
+          Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+                                               scenario.remove.isolated)
+        }
+        
+        # scenario to properties
+        # uses isolated.nodes.to.remove.file
+        # read in isolated nodes to remove file and change it to a veector
+        isolated.nodes.to.remove = fread(file.path(inputfiles.dir,
+                                                   isolated.nodes.to.remove.file))
+        isolated.nodes.to.remove[,Units:="0"]
+        
+        if(!is.na(cur.scenario)){
+            add_to_properties_sheet(isolated.nodes.to.remove, names.col = "Node.Name", 
+                                    object.class = "Node", collection.name =  "Nodes",
+                                    scenario.name = cur.scenario)
+        } else {
+            add_to_properties_sheet(isolated.nodes.to.remove, names.col = "Node.Name", 
+                                    object.class = "Node", collection.name =  "Nodes",
+                                    overwrite = TRUE)
+        }
+
+        # recalculate relevant LPFs for other nodes 
+        # pull node LPFs in base case (no scenario) from properties sheet for all 
+        # nodes except the ones to be removed
+        redo.lpfs.to.properties <- 
+          Properties.sheet[property == "Load Participation Factor" & 
+                           !(child_object %in% isolated.nodes.to.remove$Node.Name) &
+                           is.na(scenario), 
+                           .(BusName = child_object, value)]
+        
+        # add region for calculating LPF
+        redo.lpfs.to.properties <-
+          merge(redo.lpfs.to.properties, node.data.table[,.(BusName, RegionName)], 
+                by = "BusName")
+        
+        # recalculate LPF
+        redo.lpfs.to.properties[,`Load Participation Factor` := prop.table(as.numeric(value)), 
+                                by = "RegionName"]
+        redo.lpfs.to.properties <- redo.lpfs.to.properties[value != `Load Participation Factor`]
+        
+        # for nodes with LPFs that have changed, assign the new LPFs to the nodes
+        # and attach the scenario
+        redo.lpfs.to.properties[, c("value", "RegionName") := NULL]
+        
+        if(!is.na(cur.scenario)){
+            add_to_properties_sheet(redo.lpfs.to.properties, names.col = "BusName", 
+                                    object.class = "Node", collection.name =  "Nodes",
+                                    scenario.name = cur.scenario)
+        } else {
+            add_to_properties_sheet(redo.lpfs.to.properties, names.col = "BusName", 
+                                    object.class = "Node", collection.name =  "Nodes",
+                                    overwrite = TRUE)
+        }
+        
+        } else {
+        message(sprintf("... %s does not exist ... skipping", 
+                        isolated.nodes.to.remove.file))
+                    
+        # clean up
+        rm(cur.category, cur.scenario, redo.lpfs.to.properties, 
+            isolated.nodes.to.remove.args, isolated.nodes.to.remove, 
+            scenario.remove.isolated)
+        
+  }}} else {
     message("... isolated.nodes.to.remove.file does not exist ... skipping")
   }
 
+
+    
 #------------------------------------------------------------------------------|
 # [[user defined constraint import]]                                       ----
 # -----------------------------------------------------------------------------|
