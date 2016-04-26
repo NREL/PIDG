@@ -6,104 +6,10 @@
 #------------------------------------------------------------------------------|
 # Data cleaning ----
 #------------------------------------------------------------------------------|
-###some min stable levels are less than zero, which Plexos can't handle. 
-###Adjust them to zero.
-if (any(Properties.sheet[property=="Min Stable Level", 
-  as.numeric(value) < 0])) {
-  message('Changing negative min stable levels to 0 MW... hope that is OK')
-  Properties.sheet[property=="Min Stable Level" & as.numeric(value) < 0, 
-    value := "0"] 
-}
-#remove quotes if end up changing numeric col types back to numeric
-#This doesn't matter now since we are reading in min gen files
-
-
-###One fuel type is blank, which Plexos can't handle. Change blanks to BLANK.
-###10/28: have now removed all blanks. Commenting this out.
-#Objects.sheet[class == "Fuel" & (is.na(name) | name == ""), name := "BLANK"]
-#Objects.sheet[class == "Generator" & (is.na(category) | category == ""), 
-#  category := "BLANK"]
-#Memberships.sheet[parent_class == "Generator" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-# child_object == ""), child_object := "BLANK"] 
-#Properties.sheet[parent_class == "System" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-# child_object == ""), child_object := "BLANK"]
-#Properties.sheet[parent_class == "Generator" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-#  child_object == ""), child_object := "BLANK"]
-#Categories.sheet[class == "Generator" & (category == "" | 
-#  is.na(category)), category := "BLANK"]
-
-###Two lines importing into Delhi are congesting all Delhi imports, possible
-###because of a combination of low MW rating and extremely low 
-###resistance/reactance values. <-- only in AgTx scenarios
-# Scenario that decrease congestion enough for the model to be able to serve all 
-# load in Delhi is defined in c3 and not automatically attached to a model.
-### This scen changes the resistance/reactance values of those two lines to the 
-###resistance/reactance values of similar lines that have the same MW rating and 
-###are in a similar region.
-
-###one region doesn't have any nodes. PLEXOS won't run if that's the case. 
-###Remove Region objects with no nodes. NOTE: Looks like this isn't necessary 
-###anymore with cleaner NLDC node-to-region mapping
-#regions.list <- unique(Objects.sheet[get("class") == "Region", name])
-#regions.in.memberships <- unique(Memberships.sheet[parent_class == "Node" & 
-#child_class == "Region", child_object])
-#regions.w.no.node <- regions.list[!(regions.list %in% regions.in.memberships)]
-#if (length(regions.w.no.node > 0)) {Objects.sheet <- Objects.sheet[name != 
-#regions.w.no.node]}
-
-###when importing raw load participation factor from .raw file, there were 
-### repaired infeasibilities at every step. Not sure 
-###exactly what's going on, but replacing LPF < 0 with 0 in c2.
-#Properties.sheet[property == "Load Participation Factor" & as.numeric(value) < 
-#0, value := "0"]
-##NOTE: this correction happens before Load Participation Factor is calculated, 
-##to total regional load participation factors can add up to 1. 
-###WILL BE FIXED AFTER DP's NLDC MEETING: turn off rogue nuke plant
-
 
 #------------------------------------------------------------------------------|
-# Specific adjustments to PPS/e data ----
+# Optional inputs ----
 #------------------------------------------------------------------------------|
-if (india.repo){
-# rogue nuke (w max capacity given as 9999 MW in original .raw file) shoud be 
-# turned off (Mohit, NLDC meeting 10/29)
-Properties.sheet[child_object == "GEN_132005_RAPS_A2_220_1" & 
-    property == "Units", value := "0"]
-
-# There are two generators for which NLDC changed the max capacity, in 
-# spreadsheet "Google Drive\GreeningTheGrid-LBNL-NREL\Data\PLEXOS database 
-# characteristics\Obsolete\Generators_for_PLEXOS_import_05_10_2015_for 
-# NLDC_input_david_checking.xlsx" 
-# This correnction is also in c1, in the creation of the gen.names.table, 
-# because calculation of start costs and min gen levels depends on max capacity
-Properties.sheet[parent_object == "System" & property == "Max Capacity" &
-  (child_object=="GEN_354013_GMR_400_1" | child_object=="GEN_354013_GMR_400_2"),
-  value := "685"]
-
-# This line has a different rating than what's given in the PSS/e onpeak file
-# 11/20: this is no longer necessary b/c this is a zero flow line (see below)
-#Properties.sheet[child_object == "317001_337006_1_CKT" & property == "Max Flow", 
-#  value := "2316"]
-#Properties.sheet[child_object == "317001_337006_1_CKT" & property == "Min Flow", 
-#  value := "-2316"]
-
-# Some nodes are assigned to the wrong region (they serve the region they are
-# assigned to, but are physically located elsewere)
-## 1/7 removing this for now. If we reassign all of these nodes that are 
-## electrically located in one place and physically located in a different 
-## place, this should happen all at once and earlier in the script, or this 
-## code should recategorize the node and all lines associated with it, etc.
-# Memberships.sheet[parent_class == "Node" & child_class == "Region" & 
-#     parent_object == "142046_NARELA_BB_220", child_object := "DELHI"]
-
-# The one node that is assigned to be in Chhattisgarh and also the SR should be
-# changed until further notice. It will make things more difficult when putting
-# wheeling charges on inter-zonal lines, for example. Will check back in on this
-# CORRECTED IN SCRIPT C1 so as to update line categorization (if matters) etc
-}
 
 # retire plants from the "units_retired" file. This means: delete them 
 # completely from the database, since they will not 
@@ -128,9 +34,6 @@ if (exists('units.to.delete.files')) {
 } else {
    message("... units.to.delete.file does not exist ... skipping")
 }
-
-
-
     
 # also need to retire RE plants in the PSSE file, since we ae replacing them 
 # with our own. 
@@ -158,19 +61,41 @@ if (exists('delete.original.RE')) {
 # add standard flow limits to transformers with ratings of zero
 # do this in a scenario (in script d)
 
-# there is one Chattisgarh node that is assigned to SR. This will aggregate 
-# transmission incorrectly. This fix is made in c3 when creating 
-# region-specific scenarios
-# Maybe when fix this, include error check that remove these, warns user, or 
-# asks user to choose which zone a conflicted state is in 
+#------------------------------------------------------------------------------|
+# Alphabetize all categories ----
+#------------------------------------------------------------------------------|
 
-# all RAJASTHA nodes are assigned to NR. DP told Ella to put them in WR. This
-# taken into account with WR regional scenarios (in script c3), but should 
-# probably be fixed in the input data in the long run.
+cat.by.class <- unique(Objects.sheet[!is.na(category),.(class, category)])
+
+# order categories by class and category
+setorder(cat.by.class, class, category)
+
+# add rank of each category by class
+cat.by.class[,rank := 1:.N, by = 'class']
+
+# add this to categories .sheet so categories will be alphabetized
+cat.to.categories <- initialize_table(Categories.prototype, nrow(cat.by.class), 
+  list(class = cat.by.class$class, category = cat.by.class$category, 
+  rank = cat.by.class$rank))
+  
+Categories.sheet <- merge_sheet_w_table(Categories.sheet, cat.to.categories)
+
+# clean up
+rm(cat.by.class, cat.to.categories)
+
 
 #------------------------------------------------------------------------------|
 # Error checking: final database ----
 #------------------------------------------------------------------------------|
+
+###some min stable levels are less than zero, which Plexos can't handle. 
+###Adjust them to zero.
+if (any(Properties.sheet[property=="Min Stable Level",
+  as.numeric(value) < 0])) {
+  message('Changing negative min stable levels to 0 MW... hope that is OK')
+  Properties.sheet[property=="Min Stable Level" & as.numeric(value) < 0,
+    value := "0"]
+}
 
 # make sure there are no missing properties
 if (any(Properties.sheet[,value == "" | is.na(value)])) {
@@ -201,24 +126,30 @@ if (any(Properties.sheet[!is.na(property),
   print(Properties.sheet[property == "Min Stable Level" & value < 0])
 }
 
-#------------------------------------------------------------------------------|
-# Alphabetize all categories ----
-#------------------------------------------------------------------------------|
+###one region doesn't have any nodes. PLEXOS won't run if that's the case. 
+###Remove Region objects with no nodes. NOTE: Looks like this isn't necessary 
+###anymore with cleaner NLDC node-to-region mapping
+#regions.list <- unique(Objects.sheet[get("class") == "Region", name])
+#regions.in.memberships <- unique(Memberships.sheet[parent_class == "Node" & 
+#child_class == "Region", child_object])
+#regions.w.no.node <- regions.list[!(regions.list %in% regions.in.memberships)]
+#if (length(regions.w.no.node > 0)) {Objects.sheet <- Objects.sheet[name != 
+#regions.w.no.node]}
 
-cat.by.class <- unique(Objects.sheet[!is.na(category),.(class, category)])
 
-# order categories by class and category
-setorder(cat.by.class, class, category)
-
-# add rank of each category by class
-cat.by.class[,rank := 1:.N, by = 'class']
-
-# add this to categories .sheet so categories will be alphabetized
-cat.to.categories <- initialize_table(Categories.prototype, nrow(cat.by.class), 
-  list(class = cat.by.class$class, category = cat.by.class$category, 
-  rank = cat.by.class$rank))
-  
-Categories.sheet <- merge_sheet_w_table(Categories.sheet, cat.to.categories)
-
-# clean up
-rm(cat.by.class, cat.to.categories)
+###One fuel type is blank, which Plexos can't handle. Change blanks to BLANK.
+###10/28: have now removed all blanks. Commenting this out.
+#Objects.sheet[class == "Fuel" & (is.na(name) | name == ""), name := "BLANK"]
+#Objects.sheet[class == "Generator" & (is.na(category) | category == ""), 
+#  category := "BLANK"]
+#Memberships.sheet[parent_class == "Generator" & 
+#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
+# child_object == ""), child_object := "BLANK"] 
+#Properties.sheet[parent_class == "System" & 
+#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
+# child_object == ""), child_object := "BLANK"]
+#Properties.sheet[parent_class == "Generator" & 
+#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
+#  child_object == ""), child_object := "BLANK"]
+#Categories.sheet[class == "Generator" & (category == "" | 
+#  is.na(category)), category := "BLANK"]
