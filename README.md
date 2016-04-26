@@ -35,7 +35,7 @@ Then, run **create\_plexos\_db\_from\_raw\_master\_script.R**. This will sequent
 
 This needs to be filled in more, leaving sketches for now. See *functions.R* for more details on required arguments for these functions.
 
-**Fun	ctions for basic interaction with .sheet tables**
+**Functions for basic interaction with .sheet tables**
 
 * **initialize_table:** create empty table in the format of a .sheet table, to be populated with data
 * **merge_sheet_w_table:** merge populated table with existing .sheet table (always use this to add to .sheet table because it preserved column order and class)
@@ -79,6 +79,7 @@ These all refer to variables in input_params
 * units.to.delete.file (filepath): names of objects that should be completely eradiated from the database
 * remap.reference.nodes (logical) / map.ref.node.file (filepath): should reference nodes for regions be assigned based on external file? if set to FALSE or it map.ref.node.file doesn't have all regions, any region without a reference node with have the reference node assigned arbitrarily  
 * interfaces.files.list (list): does specific things with interfaces. should be improved. these input files are the outputs of the india db's interface creation scripts
+* isolated.nodes.to.remove.args.list (list): list of vectors. first element in each vector is filepath to one-column (Node.Name) .csv with list of nodes to turn off. second and third elements are optional names arguments (scenario and category). This csv will be read in, listed nodes' Units will be set to zero, and the LPF of all other nodes will be recalculated. If scenario (and scenario category, optional) is specified, these changes will be tagged with that scenario name; otherwise, they will replace information in the base case. 
 
 
 **********

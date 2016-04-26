@@ -197,9 +197,10 @@ start.cost.file <- "start_cost_by_fuel.csv"
 
 enforced.interstate.lines.file <- "lines_to_enforce.csv"
 
-isolated.nodes.to.remove.args <- list("isolated_nodes_to_remove.csv",
-                                       scenario="For PsN/nodal - remove isolated nodes, redo LPFs",
-                                       category="Scenario archive for other configurations")
+isolated.nodes.to.remove.args <- list(
+    c("isolated_nodes_to_remove.csv",
+      scenario="For PsN/nodal - remove isolated nodes, redo LPFs",
+      category="Scenario archive for other configurations"))
 
 wheeling.charge.cases.files <- list(
   `Add $2 Wheeling Charge` = "wheeling_charges_2.csv", 
