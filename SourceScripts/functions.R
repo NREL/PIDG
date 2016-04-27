@@ -259,9 +259,9 @@ import_table_compact <- function(input.table, object.type) {
 # 
 # NOTE: should clean up standard internal tables (gen.names.table, 
 # fuels.to.gens, etc). Including change MaxOutput.MW to Max Capacity
-# NOTE: only handles one property at a time for now
 merge_property_by_fuel <- function(input.table, prop.cols, 
-  mult.by.max.cap = FALSE, cap.band.col = NA, band.col = NA, memo.col = NA) {
+  mult.by.max.cap = FALSE, mult.by.num.units = FALSE, 
+  cap.band.col = NA, band.col = NA, memo.col = NA) {
   
   all.cols <- colnames(input.table)
   
@@ -335,6 +335,13 @@ merge_property_by_fuel <- function(input.table, prop.cols,
   if (mult.by.max.cap) {
     for (colname in prop.cols) {
       generator.data.table[,c(colname) := get(colname) * MaxOutput.MW]
+    }
+  }
+  
+  # if this property should be multiplied by number of units, do it
+  if (mult.by.num.units) {
+    for (colname in prop.cols) {
+      generator.data.table[,c(colname) := get(colname) * Units]
     }
   }
   
