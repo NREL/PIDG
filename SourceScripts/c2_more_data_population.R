@@ -279,32 +279,35 @@ if (add.RE.gens){
     Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                              RE.lines.to.memberships.to)
     
-    # 3. add data file objects for rating of these gens
-    rating.data.files.to.objects <- 
-      initialize_table(Objects.prototype, nrow(RE.gens), 
-                       list(class = "Data File", 
-                            category = RE.gens[, paste0(Category, " Rating")]))
-    rating.data.files.to.objects[,name := 
-                                   paste(RE.gens[,gsub('GEN_','',Generator.Name)], 
-                                         "Rating File Object")]
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-                                         rating.data.files.to.objects)
-    
-    # add data files to properties (attach filepath to data file objects)
-    rating.data.files.to.properties <- 
-      initialize_table(Properties.prototype, nrow(RE.gens), 
-                       list(parent_class = "System", parent_object = "System", 
-                            collection = "Data Files", child_class = "Data File", 
-                            property = "filename", band_id = 1, value = 0))
-    rating.data.files.to.properties[,child_object := 
-                                      paste(RE.gens[,gsub('GEN_','',
-                                                          Generator.Name)], 
-                                            "Rating File Object")]
-    rating.data.files.to.properties[, filename := RE.gens[,Data.File]]
-    
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            rating.data.files.to.properties)
+    # # 3. add data file objects for rating of these gens
+    # rating.data.files.to.objects <- 
+    #   initialize_table(Objects.prototype, nrow(RE.gens), 
+    #                    list(class = "Data File", 
+    #                         category = RE.gens[, paste0(Category, " Rating")]))
+    # rating.data.files.to.objects[,name := 
+    #                                paste(RE.gens[,gsub('GEN_','',Generator.Name)], 
+    #                                      "Rating File Object")]
+    # 
+    # Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+    #                                      rating.data.files.to.objects)
+    # 
+    # # add data files to properties (attach filepath to data file objects)
+    # rating.data.files.to.properties <- 
+    #   initialize_table(Properties.prototype, nrow(RE.gens), 
+    #                    list(parent_class = "System", parent_object = "System", 
+    #                         collection = "Data Files", child_class = "Data File", 
+    #                         property = "filename", band_id = 1, value = 0))
+    # rating.data.files.to.properties[,child_object := 
+    #                                   paste(RE.gens[,gsub('GEN_','',
+    #                                                       Generator.Name)], 
+    #                                         "Rating File Object")]
+    # rating.data.files.to.properties[, filename := RE.gens[,Data.File]]
+    # 
+    # Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+    #                                         rating.data.files.to.properties)
+    #   
+    # rm( RE.lines.to.memberships.to, rating.data.files.to.objects)
+
     
     # 4. (finally) add in RE gens
     # add RE gens to objects
@@ -324,17 +327,14 @@ if (add.RE.gens){
                             collection.name = 'Generators')
     
     # add RE gens to properties .sheet (Rating and associated datafile)
-    RE.gens.to.properties.rating <- 
-      RE.gens[,.(Generator.Name, Rating = '0', 
-                 ratingfile = paste0("{Object}",
-                                     gsub('GEN_','', Generator.Name), 
-                                     " Rating File Object"))]
+    RE.gens.to.properties.rating <- RE.gens[,.(Generator.Name, Rating = '0', 
+                                                Data.File)]
     
     add_to_properties_sheet(RE.gens.to.properties.rating, 
                             object.class = 'Generator', 
                             names.col = 'Generator.Name', 
                             collection.name = 'Generators', 
-                            datafile.col = 'ratingfile')
+                            datafile.col = 'Data.File')
     
     # add RE gen-fuel to memberships (connecting gens to fuel and nodes)
     RE.gens.to.memberships.nodes <- 
@@ -398,7 +398,6 @@ if (add.RE.gens){
     rm(RE.gens, new.node.table, RE.nodes.to.objects, RE.nodes.to.properties, 
        RE.nodes.to.memberships.regions,RE.nodes.to.memberships.zones,RE.line.table, 
        RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from, 
-       RE.lines.to.memberships.to, rating.data.files.to.objects, 
        rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties, 
        RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data, 
        new.RE.gens.data)
