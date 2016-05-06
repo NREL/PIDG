@@ -184,7 +184,10 @@ rm(load.to.region.map, load.file.to.object, load.to.region.properties,
 # these will be added to generator.data.table
 if (add.RE.gens){
   
-  for (fname in RE.gen.file.list) {
+  for (item in RE.gen.file.list) {
+      
+      fname = item[1]
+      scenname = item["scenario"]
     
     if (file.exists(file.path(inputfiles.dir, fname))) {
       
