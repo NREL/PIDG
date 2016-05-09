@@ -87,9 +87,12 @@ rm(cat.by.class, cat.to.categories)
 #------------------------------------------------------------------------------|
 # Error checking: final database ----
 #------------------------------------------------------------------------------|
+# there is probably a more efficient way to do this than scan through all these
+# tables so many times
 
-###some min stable levels are less than zero, which Plexos can't handle. 
-###Adjust them to zero.
+
+# Plexoscan't handle min stable levels that are less than zero. Change these
+# to zero and notify user.
 if (any(Properties.sheet[property=="Min Stable Level",
   as.numeric(value) < 0])) {
   message('Changing negative min stable levels to 0 MW... hope that is OK')
@@ -121,47 +124,13 @@ all.regions <- Objects.sheet[class == "Region",name]
 regions.w.nodes <- Memberships.sheet[parent_class == "Node" & collection == 
     "Region",child_object]
 if (!all(all.regions %in% regions.w.nodes)) {
-  print("WARNING: the following region(s) have no nodes:")
+  print("WARNING: the following region(s) have no nodes. This will not import.")
   print(all.regions[!(all.regions %in% regions.w.nodes)])
 }
 
 # make sure no object name has more than 50 characters 
 if (any(Objects.sheet[,nchar(name) > 50])) {
-  print("WARNING: the following object(s) have names with > 50 characters:")
+  print("WARNING: the following object(s) have names with > 50 characters. This will not import.")
   print(Objects.sheet[nchar(name) > 50])
 }
 
-# make sure min stable level is less than zero
-if (any(Properties.sheet[!is.na(property),
-  property == "Min Stable Level" & value < 0])) {
-  print("WARNING: the following generator(s) have negative min stable levels:")
-  print(Properties.sheet[property == "Min Stable Level" & value < 0])
-}
-
-###one region doesn't have any nodes. PLEXOS won't run if that's the case. 
-###Remove Region objects with no nodes. NOTE: Looks like this isn't necessary 
-###anymore with cleaner NLDC node-to-region mapping
-#regions.list <- unique(Objects.sheet[get("class") == "Region", name])
-#regions.in.memberships <- unique(Memberships.sheet[parent_class == "Node" & 
-#child_class == "Region", child_object])
-#regions.w.no.node <- regions.list[!(regions.list %in% regions.in.memberships)]
-#if (length(regions.w.no.node > 0)) {Objects.sheet <- Objects.sheet[name != 
-#regions.w.no.node]}
-
-
-###One fuel type is blank, which Plexos can't handle. Change blanks to BLANK.
-###10/28: have now removed all blanks. Commenting this out.
-#Objects.sheet[class == "Fuel" & (is.na(name) | name == ""), name := "BLANK"]
-#Objects.sheet[class == "Generator" & (is.na(category) | category == ""), 
-#  category := "BLANK"]
-#Memberships.sheet[parent_class == "Generator" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-# child_object == ""), child_object := "BLANK"] 
-#Properties.sheet[parent_class == "System" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-# child_object == ""), child_object := "BLANK"]
-#Properties.sheet[parent_class == "Generator" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-#  child_object == ""), child_object := "BLANK"]
-#Categories.sheet[class == "Generator" & (category == "" | 
-#  is.na(category)), category := "BLANK"]
