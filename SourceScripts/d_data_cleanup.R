@@ -108,6 +108,14 @@ if (any(problem.row.mask)) {
     .(parent_object, child_object, property, value, scenario)])
 }
 
+# make sure there are no blanks in Memberships.sheet
+problem.row.mask = !complete.cases(Memberships.sheet)
+
+if (any(problem.row.mask)) {
+  print("WARNING: the following membership sheet value(s) are missing. This will not import.")
+  print(Memberships.sheet[problem.row.mas])
+}
+
 # make sure no region has no nodes
 all.regions <- Objects.sheet[class == "Region",name]
 regions.w.nodes <- Memberships.sheet[parent_class == "Node" & collection == 
