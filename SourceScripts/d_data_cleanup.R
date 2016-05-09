@@ -97,11 +97,15 @@ if (any(Properties.sheet[property=="Min Stable Level",
     value := "0"]
 }
 
-# make sure there are no missing properties
-if (any(Properties.sheet[,value == "" | is.na(value)])) {
-  print("WARNING: the following property value(s) are missing:")
-  print(Properties.sheet[value == "" | is.na(value),
-    .(child_object, property, value, scenario)])
+# make sure there are no required values missing in properties.sheet
+problem.row.mask = Properties.sheet[, 
+    !complete.cases(list(parent_object, child_object, parent_class, 
+                         child_class, collection, property, value, band_id))]
+    
+if (any(problem.row.mask)) {
+  print("WARNING: the following property sheet value(s) are missing. This will not import.")
+  print(Properties.sheet[problem.row.mask,
+    .(parent_object, child_object, property, value, scenario)])
 }
 
 # make sure no region has no nodes
