@@ -181,3 +181,18 @@ if (any(dupes)) {
                  "will not run."))
     print(Properties.sheet[dupes])
 }
+
+rm(dupes)
+
+# check to make sure that all objects mentioned in properties sheet also exist
+# as objects
+object.list = Properties.sheet[,unique(child_object)]
+
+object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+
+if (length(object.list) > 0) {
+    print("WARNING: the following object(s) have defined properties but are ",
+          "defined in Objects.sheet. This may result in PLEXOS assigning ",
+          "these properties to other object. This may not run.")
+    print(object.list)
+}
