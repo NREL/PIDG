@@ -115,8 +115,11 @@ if (any(problem.row.mask)) {
 problem.row.mask = !complete.cases(Memberships.sheet)
 
 if (any(problem.row.mask)) {
-  print("WARNING: the following membership sheet value(s) are missing. This will not import.")
-  print(Memberships.sheet[problem.row.mas])
+  print("WARNING: the following membership sheet value(s) are missing. ",
+        "This will not import.", 
+        "This may be caused by models being multiply defined in generic import ",
+        "sheets, among other things.")
+  print(Memberships.sheet[problem.row.mask])
 }
 
 # make sure no region has no nodes
@@ -191,8 +194,8 @@ object.list = Properties.sheet[,unique(child_object)]
 object.list = object.list[!(object.list %in% Objects.sheet[,name])]
 
 if (length(object.list) > 0) {
-    print("WARNING: the following object(s) have defined properties but are ",
-          "defined in Objects.sheet. This may result in PLEXOS assigning ",
-          "these properties to other object. This may not run.")
+    print(paste0("WARNING: the following object(s) have defined properties but ",
+          "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
+          "these properties to other object. This may not run."))
     print(object.list)
 }

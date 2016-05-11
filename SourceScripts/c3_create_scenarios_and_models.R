@@ -297,7 +297,7 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet,
 
 
 #------------------------------------------------------------------------------|
-# IMPORT GENERIC FILES (CREATE HORIZONS AND MODELS) ----
+# IMPORT GENERIC FILES ----
 # -----------------------------------------------------------------------------|
 
 #uses generic.import.files
@@ -350,7 +350,7 @@ rm(import_and_merge, read_tab, all.sheets)
 #------------------------------------------------------------------------------|
    # uses compact.generic.import.files
    # loop through compact generic input files and read in tables
-  
+
 if (exists('compact.generic.import.files')) {
 for (i in seq_along(compact.generic.import.files)) {
   if (file.exists(file.path(inputfiles.dir,
