@@ -134,3 +134,39 @@ if (any(Objects.sheet[,nchar(name) > 50])) {
   print(Objects.sheet[nchar(name) > 50])
 }
 
+# check for properties that periods that require non-NA period_type_ids
+# have only tested a couple of these,
+period_id_props = Properties.sheet[grepl("(Hour|Day|Week|Month|Year)$", property)]
+period_id_table = data.table(period_id = c(6, 1, 2, 3, 4),
+                             period = c("Hour$", "Day$", "Week$", "Month$", "Year$"))
+
+period_id_props[, problem := NA]
+period_id_props[grepl("Hour$", property) & period_type_id != "6", problem := TRUE]
+period_id_props[grepl("Day$", property) & period_type_id != "1", problem := TRUE]
+period_id_props[grepl("Week$", property) & period_type_id != "2", problem := TRUE]
+period_id_props[grepl("Month$", property) & period_type_id != "3", problem := TRUE]
+period_id_props[grepl("Year$", property) & period_type_id != "4", problem := TRUE]
+
+period_id_props = period_id_props[problem == TRUE]
+
+# we know that this doesn't work for max energy and target. 
+known.issues = period_id_props[grepl("^(Max Energy|Target)", property)]
+
+if (nrow(known.issues) > 0) {
+    print(paste0("WARNING: the following property does not correspond to the ",
+        "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
+        "This will not run properly."))
+    print(known.issues)
+}
+
+# it problem doesn't work for these others, but we haven't checked
+unknown.issues = period_id_props[!grepl("^(Max Energy|Target)", property)]
+
+if (nrow(unknown.issues) > 0) {
+    print(paste0("WARNING: the following property does not correspond to the ",
+        "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
+        "This is untested but may not run properly."))
+    print(unknown.issues)
+}
+
+rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
