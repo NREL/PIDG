@@ -149,7 +149,7 @@ period_id_props[grepl("Year$", property) & period_type_id != "4", problem := TRU
 
 period_id_props = period_id_props[problem == TRUE]
 
-# we know that this doesn't work for max energy and target. 
+    # we know that this doesn't work for max energy and target. 
 known.issues = period_id_props[grepl("^(Max Energy|Target)", property)]
 
 if (nrow(known.issues) > 0) {
@@ -159,7 +159,7 @@ if (nrow(known.issues) > 0) {
     print(known.issues)
 }
 
-# it problem doesn't work for these others, but we haven't checked
+    # it problem doesn't work for these others, but we haven't checked
 unknown.issues = period_id_props[!grepl("^(Max Energy|Target)", property)]
 
 if (nrow(unknown.issues) > 0) {
@@ -170,3 +170,14 @@ if (nrow(unknown.issues) > 0) {
 }
 
 rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
+
+# check to see if a property is defined twice for on object in one scenario
+dupes = duplicated(Properties.sheet, 
+                   by = c("parent_object", "child_object", "property", "scenario"))
+
+if (any(dupes)) {
+    print(paste0("WARNING: the following properties are defined twice for ", 
+                 "the same object in the same scenario. This may import but ",
+                 "will not run."))
+    print(Properties.sheet[dupes])
+}
