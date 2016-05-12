@@ -203,11 +203,11 @@ if (add.RE.gens){
       RE.gens[,Num.Units.Scn := Num.Units]
       RE.gens[,Num.Units := 0]
       
-      if(!("Scenario" %in% Objects.sheet[,class])){
+      if(!(scenname %in% Objects.sheet[,name])){
         # Add scenario to objects .sheet
         Scenario.to.objects <- 
           initialize_table(Objects.prototype, length(item[2]), 
-                           list(name = item["scenario"], 
+                           list(name = scenname, 
                                 class = "Scenario", category = "Generator status"))
         
         Objects.sheet <- merge_sheet_w_table(Objects.sheet, Scenario.to.objects)
