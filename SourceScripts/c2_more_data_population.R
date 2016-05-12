@@ -186,128 +186,120 @@ if (add.RE.gens){
   
   for (item in RE.gen.file.list) {
       
-      fname = item[1]
-      scenname = item["scenario"]
-    
+    fname = item[1]
+    scenname = item["scenario"]
+
     if (file.exists(file.path(inputfiles.dir, fname))) {
       
     # read in information about RE gens
-    message(sprintf("... Adding properties for RE gens from  %s", fname))
+    message(sprintf("... Adding properties for RE gens from %s", fname))
     
     RE.gens <- 
       fread(file.path(inputfiles.dir, fname), colClasses = 'numeric')
     
-    # 1. create nodes to put new RE on
-    new.node.table <- unique(RE.gens, by = c('Node.Name', 'Category'))
-    
-    # add RE nodes to objects .sheet
-    RE.nodes.to.objects <- 
-      initialize_table(Objects.prototype, nrow(new.node.table), 
-                       list(class = "Node", name = new.node.table[,Node.Name], 
-                            category  = new.node.table[,Node.Region]))
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.nodes.to.objects)
-    
-    # add RE nodes to properties .sheet
-    RE.nodes.to.properties <- new.node.table[,.(Node.Name, Voltage = Node.kV, 
-                                                Units = 1)]
-    
-    add_to_properties_sheet(RE.nodes.to.properties, names.col = 'Node.Name', 
-                            collection.name = 'Nodes', object.class = 'Node')
-    
-    # add RE node-region and node-zone membership to memberships .sheet
-    RE.nodes.to.memberships.regions <- 
-      initialize_table(Memberships.prototype, nrow(new.node.table), 
-                       list(parent_class = "Node", 
-                            parent_object = new.node.table[,Node.Name],
-                            collection = "Region", child_class = "Region", 
-                            child_object = new.node.table[, Node.Region]))
-    
-    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                             RE.nodes.to.memberships.regions)
-    
-    RE.nodes.to.memberships.zones <- 
-      initialize_table(Memberships.prototype, nrow(new.node.table), 
-                       list(parent_class = "Node", 
-                            parent_object = new.node.table[,Node.Name], 
-                            collection = "Zone", child_class = "Zone", 
-                            child_object = new.node.table[,Node.Zone]))
-    
-    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                             RE.nodes.to.memberships.zones)
-    
-    # 2. create new lines with no congestion to connect new nodes to existing nodes
-    RE.line.table <- new.node.table[,.(Node.From = Node.Name, 
-                                       Node.To = Node.To.Connect, kV = Node.kV)]
-    RE.line.table[, To.Node.Number := tstrsplit(Node.To, "_")[1]]
-    RE.line.table[, Line.Name:= paste0(Node.From, "_", To.Node.Number, "_1_CKT")]
-    RE.line.table[, Region := RE.gens[,Node.Region]]
-    
-    # add lines to objects .sheet 
-    RE.lines.to.objects <- 
-      initialize_table(Objects.prototype, nrow(RE.line.table), 
-                       list(name = RE.line.table[, Line.Name], 
-                            class = "Line", category = RE.line.table[,Region]))
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.lines.to.objects)
-    
-    # add new lines to properties .sheet
-    RE.lines.to.properties <-
-      RE.line.table[,.(Line.Name, Units = 1, `Max Flow` = 99999, 
-                       `Min Flow` = -99999)]
-    
-    add_to_properties_sheet(RE.lines.to.properties, names.col = 'Line.Name', 
-                            collection.name = 'Lines', object.class = 'Line')
-    
-    #  add RE Node To/Node From lines to memberships
-    RE.lines.to.memberships.from <- 
-      initialize_table(Memberships.prototype,nrow(new.node.table), 
-                       list(parent_class = "Line", collection = "Node From", 
-                            child_class = "Node"))
-    RE.lines.to.memberships.from[, parent_object := RE.line.table[,Line.Name]]
-    RE.lines.to.memberships.from[, child_object := RE.line.table[,Node.From]]
-    
-    RE.lines.to.memberships.to <- 
-      initialize_table(Memberships.prototype, nrow(new.node.table), 
-                       list(parent_class = "Line", collection = "Node To",
-                            child_class = "Node"))
-    RE.lines.to.memberships.to[, parent_object := RE.line.table[,Line.Name]]
-    RE.lines.to.memberships.to[, child_object := RE.line.table[,Node.To]]
-    
-    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                             RE.lines.to.memberships.from)
-    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                             RE.lines.to.memberships.to)
-    
-    # # 3. add data file objects for rating of these gens
-    # rating.data.files.to.objects <- 
-    #   initialize_table(Objects.prototype, nrow(RE.gens), 
-    #                    list(class = "Data File", 
-    #                         category = RE.gens[, paste0(Category, " Rating")]))
-    # rating.data.files.to.objects[,name := 
-    #                                paste(RE.gens[,gsub('GEN_','',Generator.Name)], 
-    #                                      "Rating File Object")]
-    # 
-    # Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-    #                                      rating.data.files.to.objects)
-    # 
-    # # add data files to properties (attach filepath to data file objects)
-    # rating.data.files.to.properties <- 
-    #   initialize_table(Properties.prototype, nrow(RE.gens), 
-    #                    list(parent_class = "System", parent_object = "System", 
-    #                         collection = "Data Files", child_class = "Data File", 
-    #                         property = "filename", band_id = 1, value = 0))
-    # rating.data.files.to.properties[,child_object := 
-    #                                   paste(RE.gens[,gsub('GEN_','',
-    #                                                       Generator.Name)], 
-    #                                         "Rating File Object")]
-    # rating.data.files.to.properties[, filename := RE.gens[,Data.File]]
-    # 
-    # Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-    #                                         rating.data.files.to.properties)
-    #   
-    # rm( RE.lines.to.memberships.to, rating.data.files.to.objects)
-
+    # create scenario if input file sceanrio is indicated in input_params*.R
+    if(!is.na(scenname)){
+      
+      RE.gens[,Num.Units.Scn := Num.Units]
+      RE.gens[,Num.Units := 0]
+      
+      if(!("Scenario" %in% Objects.sheet[,class])){
+        # Add scenario to objects .sheet
+        Scenario.to.objects <- 
+          initialize_table(Objects.prototype, length(item[2]), 
+                           list(name = item["scenario"], 
+                                class = "Scenario", category = "Generator status"))
+        
+        Objects.sheet <- merge_sheet_w_table(Objects.sheet, Scenario.to.objects)
+      }
+    }
+  
+    if(make.new.nodes){ 
+        # 1. create nodes to put new RE on
+        new.node.table <- unique(RE.gens, by = c('New.Node', 'Category'))
+        
+        # add new RE nodes to objects .sheet
+        RE.nodes.to.objects <- 
+          initialize_table(Objects.prototype, nrow(new.node.table), 
+                           list(class = "Node", name = new.node.table[,New.Node], 
+                                category  = new.node.table[,Node.Region]))
+        
+        Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.nodes.to.objects)
+      
+        # add new RE nodes to properties .sheet
+        RE.nodes.to.properties <- new.node.table[,.(New.Node, Voltage = Node.kV, 
+                                                    Units = 1)]
+        
+        add_to_properties_sheet(RE.nodes.to.properties, names.col = 'New.Node', 
+                                collection.name = 'Nodes', object.class = 'Node')
+        
+        # add RE node-region and node-zone membership to memberships .sheet
+        RE.nodes.to.memberships.regions <- 
+          initialize_table(Memberships.prototype, nrow(new.node.table), 
+                           list(parent_class = "Node", 
+                                parent_object = new.node.table[,New.Node],
+                                collection = "Region", child_class = "Region", 
+                                child_object = new.node.table[, Node.Region]))
+        
+        Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                                 RE.nodes.to.memberships.regions)
+        
+        RE.nodes.to.memberships.zones <- 
+          initialize_table(Memberships.prototype, nrow(new.node.table), 
+                           list(parent_class = "Node", 
+                                parent_object = new.node.table[,New.Node], 
+                                collection = "Zone", child_class = "Zone", 
+                                child_object = new.node.table[,Node.Zone]))
+        
+        Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                                 RE.nodes.to.memberships.zones)
+        
+        # 2. create new lines with no congestion to connect new nodes to existing nodes
+        RE.line.table <- new.node.table[,.(Node.From = New.Node, 
+                                           Node.To = Node.To.Connect, kV = Node.kV)]
+        RE.line.table[, To.Node.Number := tstrsplit(Node.To, "_")[1]]
+        RE.line.table[, Line.Name:= paste0(Node.From, "_", To.Node.Number, "_1_CKT")]
+        RE.line.table[, Region := new.node.table[,Node.Region]]
+        
+        # add lines to objects .sheet 
+        RE.lines.to.objects <- 
+          initialize_table(Objects.prototype, nrow(RE.line.table), 
+                           list(name = RE.line.table[, Line.Name], 
+                                class = "Line", category = RE.line.table[,Region]))
+        
+        Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.lines.to.objects)
+        
+        # add new lines to properties .sheet
+        RE.lines.to.properties <-
+          RE.line.table[,.(Line.Name, Units = 1, `Max Flow` = 99999, 
+                           `Min Flow` = -99999)]
+        
+        add_to_properties_sheet(RE.lines.to.properties, names.col = 'Line.Name', 
+                                collection.name = 'Lines', object.class = 'Line')
+        
+        #  add RE Node To/Node From lines to memberships
+        RE.lines.to.memberships.from <- 
+          initialize_table(Memberships.prototype,nrow(new.node.table), 
+                           list(parent_class = "Line", collection = "Node From", 
+                                child_class = "Node"))
+        RE.lines.to.memberships.from[, parent_object := RE.line.table[,Line.Name]]
+        RE.lines.to.memberships.from[, child_object := RE.line.table[,Node.From]]
+        
+        RE.lines.to.memberships.to <- 
+          initialize_table(Memberships.prototype, nrow(new.node.table), 
+                           list(parent_class = "Line", collection = "Node To",
+                                child_class = "Node"))
+        RE.lines.to.memberships.to[, parent_object := RE.line.table[,Line.Name]]
+        RE.lines.to.memberships.to[, child_object := RE.line.table[,Node.To]]
+        
+        Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                                 RE.lines.to.memberships.from)
+        Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                                 RE.lines.to.memberships.to)
+        
+        RE.gens[,Node.To.Connect := New.Node] # Reassigned Node.To.Connect with New.Node if new nodes created
+                                              # Generators will connect to Node.To.Connect
+    }
     
     # 4. (finally) add in RE gens
     # add RE gens to objects
@@ -319,13 +311,26 @@ if (add.RE.gens){
     Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.gens.to.objects)
     
     # add RE gens to properties .sheet (Units, Max Capacity)
-    RE.gens.to.properties <- RE.gens[,.(Generator.Name, Units = Num.Units, 
+    RE.gens.to.properties <- RE.gens[,.(Generator.Name, Units = Num.Units,
                                         `Max Capacity` = Max.Capacity)]
     
     add_to_properties_sheet(RE.gens.to.properties, object.class = 'Generator', 
                             names.col = 'Generator.Name', 
                             collection.name = 'Generators')
     
+    # add RE gens to properties .sheet (Units, Max Capacity) -- Scenario
+    if(!is.na(scenname)){
+      RE.gens.to.properties <- RE.gens[,.(Generator.Name, 
+                                          Units = Num.Units.Scn)] 
+      
+      add_to_properties_sheet(RE.gens.to.properties, object.class = 'Generator', 
+                              names.col = 'Generator.Name', 
+                              collection.name = 'Generators',
+                              scenario.name = item[[2]])
+      
+      RE.gens[,Num.Units := Num.Units.Scn]
+    }
+  
     # add RE gens to properties .sheet (Rating and associated datafile)
     RE.gens.to.properties.rating <- RE.gens[,.(Generator.Name, Rating = '0', 
                                                 Data.File)]
@@ -343,7 +348,7 @@ if (add.RE.gens){
                                            collection = "Nodes", 
                                            child_class = "Node"))
     RE.gens.to.memberships.nodes[, parent_object := RE.gens[,Generator.Name]]
-    RE.gens.to.memberships.nodes[, child_object := RE.gens[,Node.Name]]
+    RE.gens.to.memberships.nodes[, child_object := RE.gens[,Node.To.Connect]]
     
     RE.gens.to.memberships.fuel <- 
       initialize_table(Memberships.prototype, 
@@ -362,7 +367,7 @@ if (add.RE.gens){
     # need to put each in right format before merging
     
     # nodes
-    new.RE.nodes.data <- new.node.table[,.(BusName = Node.Name, 
+    new.RE.nodes.data <- new.node.table[,.(BusName = New.Node, 
                                            Voltage.kV = Node.kV, 
                                            RegionName = Node.Region, 
                                            ZoneName = Node.Zone)]
@@ -386,7 +391,7 @@ if (add.RE.gens){
     line.data.table <- rbind(line.data.table, new.RE.lines.data, fill = TRUE)
     
     # generators - can also add bus number, ID, an implied min cap of 0
-    new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = Node.Name, 
+    new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = New.Node, 
                                    RegionName = Node.Region, ZoneName = Node.Zone, 
                                    Voltage.kV = Node.kV, 
                                    Fuel, MaxOutput.MW = Max.Capacity, 
@@ -411,7 +416,7 @@ if (add.RE.gens){
 }
 
 #------------------------------------------------------------------------------|
-# generator properties ----
+# generator properties by fuel----
 #------------------------------------------------------------------------------|
 
 # uses generator.property.by.fuel.list
@@ -470,9 +475,8 @@ for (elem in seq_along(generator.property.by.fuel.list)) {
 # clean up
 rm(cur.table, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
 
-
 #----------------------------------------------------------------------------|
-# add generic generator properties (in scenarios)----
+# add object properties by object ----
 #----------------------------------------------------------------------------|
 # uses generator.property.file.list
 
@@ -513,7 +517,6 @@ for (elem in seq_along(object.property.list)) {
                     object.property.list[[elem]][1]))
   }
 }
-
 
 
 #------------------------------------------------------------------------------|
@@ -583,7 +586,6 @@ if (exists('turn.off.except.in.scen.list')) {
 } else {
   message('... turn.off.except.in.scen.list does not exist ... skipping')
 }
-
 
 #------------------------------------------------------------------------------|
 # add interfaces from interface file list ----
@@ -690,3 +692,5 @@ if(exists('interfaces.files.list')) {
 } else {
   message('... no interface files defined ... skipping')
 }
+
+
