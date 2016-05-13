@@ -188,6 +188,7 @@ if (add.RE.gens){
       
     fname = item[1]
     scenname = item["scenario"]
+    make.new.nodes = item["make.new.nodes"]
 
     if (file.exists(file.path(inputfiles.dir, fname))) {
       
@@ -214,30 +215,30 @@ if (add.RE.gens){
       }
     }
   
-    if(make.new.nodes){ 
+    if(!is.na(make.new.nodes)){ 
         # 1. create nodes to put new RE on
-        new.node.table <- unique(RE.gens, by = c('New.Node', 'Category'))
+        new.node.table <- unique(RE.gens, by = c('Node.Name', 'Category'))
         
         # add new RE nodes to objects .sheet
         RE.nodes.to.objects <- 
           initialize_table(Objects.prototype, nrow(new.node.table), 
-                           list(class = "Node", name = new.node.table[,New.Node], 
+                           list(class = "Node", name = new.node.table[,Node.Name], 
                                 category  = new.node.table[,Node.Region]))
         
         Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.nodes.to.objects)
       
         # add new RE nodes to properties .sheet
-        RE.nodes.to.properties <- new.node.table[,.(New.Node, Voltage = Node.kV, 
+        RE.nodes.to.properties <- new.node.table[,.(Node.Name, Voltage = Node.kV, 
                                                     Units = 1)]
         
-        add_to_properties_sheet(RE.nodes.to.properties, names.col = 'New.Node', 
+        add_to_properties_sheet(RE.nodes.to.properties, names.col = 'Node.Name', 
                                 collection.name = 'Nodes', object.class = 'Node')
         
         # add RE node-region and node-zone membership to memberships .sheet
         RE.nodes.to.memberships.regions <- 
           initialize_table(Memberships.prototype, nrow(new.node.table), 
                            list(parent_class = "Node", 
-                                parent_object = new.node.table[,New.Node],
+                                parent_object = new.node.table[,Node.Name],
                                 collection = "Region", child_class = "Region", 
                                 child_object = new.node.table[, Node.Region]))
         
@@ -247,7 +248,7 @@ if (add.RE.gens){
         RE.nodes.to.memberships.zones <- 
           initialize_table(Memberships.prototype, nrow(new.node.table), 
                            list(parent_class = "Node", 
-                                parent_object = new.node.table[,New.Node], 
+                                parent_object = new.node.table[,Node.Name], 
                                 collection = "Zone", child_class = "Zone", 
                                 child_object = new.node.table[,Node.Zone]))
         
@@ -255,7 +256,7 @@ if (add.RE.gens){
                                                  RE.nodes.to.memberships.zones)
         
         # 2. create new lines with no congestion to connect new nodes to existing nodes
-        RE.line.table <- new.node.table[,.(Node.From = New.Node, 
+        RE.line.table <- new.node.table[,.(Node.From = Node.Name, 
                                            Node.To = Node.To.Connect, kV = Node.kV)]
         RE.line.table[, To.Node.Number := tstrsplit(Node.To, "_")[1]]
         RE.line.table[, Line.Name:= paste0(Node.From, "_", To.Node.Number, "_1_CKT")]
@@ -297,9 +298,35 @@ if (add.RE.gens){
         Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                                  RE.lines.to.memberships.to)
         
-        RE.gens[,Node.To.Connect := New.Node] # Reassigned Node.To.Connect with New.Node if new nodes created
-                                              # Generators will connect to Node.To.Connect
-    }
+        RE.gens[,Node.To.Connect := Node.Name] # Reassigned Node.To.Connect with Node.Name if new nodes created
+        
+        # add new nodes, gens, and lines to *.data.tables so can be accessed later
+        # need to put each in right format before merging
+        
+        # nodes
+        new.RE.nodes.data <- new.node.table[,.(BusName = Node.Name, 
+                                               Voltage.kV = Node.kV, 
+                                               RegionName = Node.Region, 
+                                               ZoneName = Node.Zone)]
+        
+        node.data.table <- rbind(node.data.table, new.RE.nodes.data, fill = TRUE)
+        
+        # lines - pull table in right format, then add zones
+        # doesn't fill in RatingB, ID, Status, ToKV, FromKV, category, ACorDC. should?
+        # doesn't have resistance
+        new.RE.lines.data <- RE.line.table[,.(name = Line.Name, ToRegion = Region, 
+                                              FromRegion = Region, 
+                                              BranchToBus = To.Node.Number, 
+                                              FromBusName = Node.From, 
+                                              ToBusName = Node.To)]
+        new.RE.lines.data <- merge(new.RE.lines.data, 
+                                   new.RE.nodes.data[,.(BusName, ZoneName)], 
+                                   by.x = 'FromBusName', by.y = 'BusName', 
+                                   all.x = TRUE)
+        new.RE.lines.data[,c('ToZone', 'FromZone') := ZoneName][,ZoneName := NULL]
+        
+        line.data.table <- rbind(line.data.table, new.RE.lines.data, fill = TRUE)
+      }
     
     # 4. (finally) add in RE gens
     # add RE gens to objects
@@ -318,7 +345,7 @@ if (add.RE.gens){
                             names.col = 'Generator.Name', 
                             collection.name = 'Generators')
     
-    # add RE gens to properties .sheet (Units, Max Capacity) -- Scenario
+    # add RE gens to properties .sheet (Units) -- Scenario
     if(!is.na(scenname)){
       RE.gens.to.properties <- RE.gens[,.(Generator.Name, 
                                           Units = Num.Units.Scn)] 
@@ -326,7 +353,7 @@ if (add.RE.gens){
       add_to_properties_sheet(RE.gens.to.properties, object.class = 'Generator', 
                               names.col = 'Generator.Name', 
                               collection.name = 'Generators',
-                              scenario.name = item[[2]])
+                              scenario.name = scenname)
       
       RE.gens[,Num.Units := Num.Units.Scn]
     }
@@ -363,35 +390,10 @@ if (add.RE.gens){
     Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                              RE.gens.to.memberships.fuel)
     
-    # add new nodes, gens, and lines to *.data.tables so can be accessed later
-    # need to put each in right format before merging
-    
-    # nodes
-    new.RE.nodes.data <- new.node.table[,.(BusName = New.Node, 
-                                           Voltage.kV = Node.kV, 
-                                           RegionName = Node.Region, 
-                                           ZoneName = Node.Zone)]
-    
-    node.data.table <- rbind(node.data.table, new.RE.nodes.data, fill = TRUE)
-    
-    # lines - pull table in right format, then add zones
-    # doesn't fill in RatingB, ID, Status, ToKV, FromKV, category, ACorDC. should?
-    # doesn't have resistance
-    new.RE.lines.data <- RE.line.table[,.(name = Line.Name, ToRegion = Region, 
-                                          FromRegion = Region, 
-                                          BranchToBus = To.Node.Number, 
-                                          FromBusName = Node.From, 
-                                          ToBusName = Node.To)]
-    new.RE.lines.data <- merge(new.RE.lines.data, 
-                               new.RE.nodes.data[,.(BusName, ZoneName)], 
-                               by.x = 'FromBusName', by.y = 'BusName', 
-                               all.x = TRUE)
-    new.RE.lines.data[,c('ToZone', 'FromZone') := ZoneName][,ZoneName := NULL]
-    
-    line.data.table <- rbind(line.data.table, new.RE.lines.data, fill = TRUE)
+
     
     # generators - can also add bus number, ID, an implied min cap of 0
-    new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = New.Node, 
+    new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = Node.Name, 
                                    RegionName = Node.Region, ZoneName = Node.Zone, 
                                    Voltage.kV = Node.kV, 
                                    Fuel, MaxOutput.MW = Max.Capacity, 
@@ -400,12 +402,13 @@ if (add.RE.gens){
                                   fill = T)
     
     # clean up
-    rm(RE.gens, new.node.table, RE.nodes.to.objects, RE.nodes.to.properties, 
+    suppressWarnings({
+      rm(RE.gens, new.node.table, RE.nodes.to.objects, RE.nodes.to.properties, 
        RE.nodes.to.memberships.regions,RE.nodes.to.memberships.zones,RE.line.table, 
        RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from, 
        rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties, 
        RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data, 
-       new.RE.gens.data)
+       new.RE.gens.data)})
   } else {
        message(sprintf("... %s does not exist ... skipping", fname))
     }
