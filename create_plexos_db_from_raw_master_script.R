@@ -52,8 +52,8 @@ runAllFiles <- function () {
   source(file.path(master.script.dir, 
     "SourceScripts/d_data_cleanup.R"))
   message("exporting tables...")
-  # source(file.path(master.script.dir,
-  #   "SourceScripts/e_export_to_excel.R"))
+  source(file.path(master.script.dir,
+    "SourceScripts/e_export_to_excel.R"))
 }
 
 
