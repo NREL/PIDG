@@ -104,7 +104,7 @@ if (exists('Bus.table')) {
              "BusTypeCode", "Region", "Zone", "Owner", "BusVoltageMagnitude.pu", 
              "BusVoltageAngle.degrees"))
 } else {
-  warning("No Bus Table exists")
+  message("No Bus Table exists ... skipping")
 }
 
 #Load.table, p.5-9
@@ -121,7 +121,7 @@ if (exists('Load.table')) {
              "ActivePowerOfConstAdmittance.MW", 
              "ReactivePowerOfConstAdmittance.MVAR", "Owner"))
 } else {
-  warning("No Loax Table exists")
+  message("No Loax Table exists ... skipping")
 }
 
 
@@ -132,7 +132,7 @@ if (exists('Fixed.shunt.table')) {
            c("BusNumber", "ID", "Status", "ActiveCompShuntAdmToGrnd.MW", 
              "ReactiveCompShuntAdmToGrnd.MVAR"))
 } else {
-  warning("No Fixed Shunt Table exists")
+  message("No Fixed Shunt Table exists ... skipping")
 }
 
 
@@ -168,7 +168,7 @@ if (exists('Generator.table')) {
   setnames(Generator.table, colnames(Generator.table), generator.tablenames)
   
 } else {
-  warning("No Gen Table exists")
+  message("No Gen Table exists ... skipping")
 }
 
 
@@ -198,7 +198,7 @@ if (exists('Branch.table')) {
     setnames(Branch.table, colnames(Branch.table),branch.tablenames)
   }
 } else {
-  warning("No Branch Table exists")
+  message("No Branch Table exists ... skipping")
 }
 
 
@@ -211,7 +211,7 @@ if (exists('Area.interchange.table')){
              "SlackBusNumber", "DesiredNetInterchange.MW", 
              "InterchangeTolerance.MW", "RegionName"))
 } else {
-  warning("No Area Interchange Table Exists")
+  message("No Area Interchange Table Exists ... skipping")
 }
 
 
@@ -219,14 +219,14 @@ if (exists('Area.interchange.table')){
 if (exists('Owner.table')) {
   setnames(Owner.table, colnames(Owner.table), c("Owner", "OwnerName"))
 } else {
-  warning("No Owner Table exists")
+  message("No Owner Table exists ... skipping")
 }
 
 #Zone.table
 if (exists('Zone.table')) {
   setnames(Zone.table, colnames(Zone.table), c("Zone", "ZoneName"))
 } else {
-  warning("No Zone Table exists")
+  message("No Zone Table exists ... skipping")
 }
 
 
