@@ -334,7 +334,7 @@ if (add.RE.gens & exists("RE.gen.file.list")){
     RE.gens.to.objects <- 
       initialize_table(Objects.prototype, nrow(RE.gens), 
                        list(class = "Generator", name = RE.gens[,Generator.Name], 
-                            category = RE.gens[,paste(Category, Fuel)]))
+                            category = RE.gens[,Category]))
     
     Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.gens.to.objects)
     
