@@ -182,7 +182,7 @@ rm(load.to.region.map, load.file.to.object, load.to.region.properties,
 # add RE generators ----
 #------------------------------------------------------------------------------|
 # these will be added to generator.data.table
-if (add.RE.gens){
+if (add.RE.gens & exists("RE.gen.file.list")){
   
   for (item in RE.gen.file.list) {
       
