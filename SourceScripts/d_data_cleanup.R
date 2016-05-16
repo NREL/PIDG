@@ -87,9 +87,12 @@ rm(cat.by.class, cat.to.categories)
 #------------------------------------------------------------------------------|
 # Error checking: final database ----
 #------------------------------------------------------------------------------|
+# there is probably a more efficient way to do this than scan through all these
+# tables so many times
 
-###some min stable levels are less than zero, which Plexos can't handle. 
-###Adjust them to zero.
+
+# Plexoscan't handle min stable levels that are less than zero. Change these
+# to zero and notify user.
 if (any(Properties.sheet[property=="Min Stable Level",
   as.numeric(value) < 0])) {
   message('Changing negative min stable levels to 0 MW... hope that is OK')
@@ -97,11 +100,26 @@ if (any(Properties.sheet[property=="Min Stable Level",
     value := "0"]
 }
 
-# make sure there are no missing properties
-if (any(Properties.sheet[,value == "" | is.na(value)])) {
-  print("WARNING: the following property value(s) are missing:")
-  print(Properties.sheet[value == "" | is.na(value),
-    .(child_object, property, value, scenario)])
+# make sure there are no required values missing in properties.sheet
+problem.row.mask = Properties.sheet[, 
+    !complete.cases(list(parent_object, child_object, parent_class, 
+                         child_class, collection, property, value, band_id))]
+    
+if (any(problem.row.mask)) {
+  print("WARNING: the following property sheet value(s) are missing. This will not import.")
+  print(Properties.sheet[problem.row.mask,
+    .(parent_object, child_object, property, value, scenario)])
+}
+
+# make sure there are no blanks in Memberships.sheet
+problem.row.mask = !complete.cases(Memberships.sheet)
+
+if (any(problem.row.mask)) {
+  print("WARNING: the following membership sheet value(s) are missing. ",
+        "This will not import.", 
+        "This may be caused by models being multiply defined in generic import ",
+        "sheets, among other things.")
+  print(Memberships.sheet[problem.row.mask])
 }
 
 # make sure no region has no nodes
@@ -109,47 +127,75 @@ all.regions <- Objects.sheet[class == "Region",name]
 regions.w.nodes <- Memberships.sheet[parent_class == "Node" & collection == 
     "Region",child_object]
 if (!all(all.regions %in% regions.w.nodes)) {
-  print("WARNING: the following region(s) have no nodes:")
+  print("WARNING: the following region(s) have no nodes. This will not import.")
   print(all.regions[!(all.regions %in% regions.w.nodes)])
 }
 
 # make sure no object name has more than 50 characters 
 if (any(Objects.sheet[,nchar(name) > 50])) {
-  print("WARNING: the following object(s) have names with > 50 characters:")
+  print("WARNING: the following object(s) have names with > 50 characters. This will not import.")
   print(Objects.sheet[nchar(name) > 50])
 }
 
-# make sure min stable level is less than zero
-if (any(Properties.sheet[!is.na(property),
-  property == "Min Stable Level" & value < 0])) {
-  print("WARNING: the following generator(s) have negative min stable levels:")
-  print(Properties.sheet[property == "Min Stable Level" & value < 0])
+# check for properties that periods that require non-NA period_type_ids
+# have only tested a couple of these,
+period_id_props = Properties.sheet[grepl("(Hour|Day|Week|Month|Year)$", property)]
+period_id_table = data.table(period_id = c(6, 1, 2, 3, 4),
+                             period = c("Hour$", "Day$", "Week$", "Month$", "Year$"))
+
+period_id_props[, problem := NA]
+period_id_props[grepl("Hour$", property) & period_type_id != "6", problem := TRUE]
+period_id_props[grepl("Day$", property) & period_type_id != "1", problem := TRUE]
+period_id_props[grepl("Week$", property) & period_type_id != "2", problem := TRUE]
+period_id_props[grepl("Month$", property) & period_type_id != "3", problem := TRUE]
+period_id_props[grepl("Year$", property) & period_type_id != "4", problem := TRUE]
+
+period_id_props = period_id_props[problem == TRUE]
+
+    # we know that this doesn't work for max energy and target. 
+known.issues = period_id_props[grepl("^(Max Energy|Target)", property)]
+
+if (nrow(known.issues) > 0) {
+    print(paste0("WARNING: the following property does not correspond to the ",
+        "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
+        "This will not run properly."))
+    print(known.issues)
 }
 
-###one region doesn't have any nodes. PLEXOS won't run if that's the case. 
-###Remove Region objects with no nodes. NOTE: Looks like this isn't necessary 
-###anymore with cleaner NLDC node-to-region mapping
-#regions.list <- unique(Objects.sheet[get("class") == "Region", name])
-#regions.in.memberships <- unique(Memberships.sheet[parent_class == "Node" & 
-#child_class == "Region", child_object])
-#regions.w.no.node <- regions.list[!(regions.list %in% regions.in.memberships)]
-#if (length(regions.w.no.node > 0)) {Objects.sheet <- Objects.sheet[name != 
-#regions.w.no.node]}
+    # it problem doesn't work for these others, but we haven't checked
+unknown.issues = period_id_props[!grepl("^(Max Energy|Target)", property)]
 
+if (nrow(unknown.issues) > 0) {
+    print(paste0("WARNING: the following property does not correspond to the ",
+        "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
+        "This is untested but may not run properly."))
+    print(unknown.issues)
+}
 
-###One fuel type is blank, which Plexos can't handle. Change blanks to BLANK.
-###10/28: have now removed all blanks. Commenting this out.
-#Objects.sheet[class == "Fuel" & (is.na(name) | name == ""), name := "BLANK"]
-#Objects.sheet[class == "Generator" & (is.na(category) | category == ""), 
-#  category := "BLANK"]
-#Memberships.sheet[parent_class == "Generator" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-# child_object == ""), child_object := "BLANK"] 
-#Properties.sheet[parent_class == "System" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-# child_object == ""), child_object := "BLANK"]
-#Properties.sheet[parent_class == "Generator" & 
-#  child_class == "Fuel" & collection == "Fuels" & (is.na(child_object) | 
-#  child_object == ""), child_object := "BLANK"]
-#Categories.sheet[class == "Generator" & (category == "" | 
-#  is.na(category)), category := "BLANK"]
+rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
+
+# check to see if a property is defined twice for on object in one scenario
+dupes = duplicated(Properties.sheet, 
+                   by = c("parent_object", "child_object", "property", "scenario"))
+
+if (any(dupes)) {
+    print(paste0("WARNING: the following properties are defined twice for ", 
+                 "the same object in the same scenario. This may import but ",
+                 "will not run."))
+    print(Properties.sheet[dupes])
+}
+
+rm(dupes)
+
+# check to make sure that all objects mentioned in properties sheet also exist
+# as objects
+object.list = Properties.sheet[,unique(child_object)]
+
+object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+
+if (length(object.list) > 0) {
+    print(paste0("WARNING: the following object(s) have defined properties but ",
+          "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
+          "these properties to other object. This may not run."))
+    print(object.list)
+}

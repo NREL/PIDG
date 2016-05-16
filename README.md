@@ -59,11 +59,14 @@ These functions read in inputfiles of specific formats and add properties contai
         * if the table has columns with information on pattern (timeslice), datafile, or band, the names of those can be passed in to the function as well, and it will add them to Properties.sheet appropriately
         * character strings corresponding to a scenario or period type id that should be associated with these properties can also be passed in
 
-* **merge_property_by_fuel:** assigns properties to generators, but by fuel type instead of object name. Requires a column named Fuel. All other columns will be taken to be Plexos properties (again, names must be exact matches to Plexos properties). It will spit out a table in the right format to be read in by **add_to_properties_sheet.** In these scripts, results are automatically fed to the **add_to_properties_sheet** function.
+* **merge_property_by_fuel:** assigns properties to generators, but by fuel type instead of object name. Requires a column named Fuel. All other columns will be taken to be Plexos properties (again, names must be exact matches to Plexos properties). It will spit out a table in the right format to be read in by **add_to_properties_sheet.** In these scripts, results are automatically fed to the **add_to_properties_sheet** function. 
     * Other options:
         * set "mult.by.max.cap" to TRUE if value in table should be multiplied by the max capacity of the generator before setting the property (ex: useful for things like min gen, where input file will say that coal units can turn down to 70% of max capacity)
-	* set "cap.band.col" to the name of a banded column if have a property that depends on fuel and size. This will merge by fuel type and size, based on the breaks defined in that column (each property is given to generators with capacities *less* than or equal to the break listed)
-	* set "mult.by.num.units" to TRUE if value in table should be multiplied by the number of units of that generator
+		* set "cap.band.col" to the name of a banded column if have a property that depends on fuel and size. This will merge by fuel type and size, based on the breaks defined in that column (each property is given to generators with capacities *less* than or equal to the break listed)
+		* set "mult.by.num.units" to TRUE if value in table should be multiplied by the number of units of that generator
+	* Input object:
+		* input should be a list of lists. Each sublist corresponds to one file to be read in, where the first element is the file path, the second is a list *fuel.map.args*, containing arguments to **merge_property_by_fuel**, and the third is a list *add.to.prop.args*, containing arguments to add_to_properties_sheet. 
+		* *add.to.prop.args* can have any argument that **add_to_properties_sheet** takes. If one is ''scenario'' and that scenario does not exist, it will be created.
 
 
 **Other inputs**
