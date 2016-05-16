@@ -298,7 +298,8 @@ if (add.RE.gens & exists("RE.gen.file.list")){
         Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                                  RE.lines.to.memberships.to)
         
-        RE.gens[,Node.To.Connect := Node.Name] # Reassigned Node.To.Connect with Node.Name if new nodes created
+        # Reassigned Node.To.Connect with Node.Name if new nodes created
+        RE.gens[,Node.To.Connect := Node.Name] 
         
         # add new nodes, gens, and lines to *.data.tables so can be accessed later
         # need to put each in right format before merging
@@ -393,11 +394,17 @@ if (add.RE.gens & exists("RE.gen.file.list")){
 
     
     # generators - can also add bus number, ID, an implied min cap of 0
-    new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = Node.Name, 
-                                   RegionName = Node.Region, ZoneName = Node.Zone, 
-                                   Voltage.kV = Node.kV, 
+    # must pull node's region and zone from node.data.table, in case new nodes
+    # didn't get added
+    node.info <- node.data.table[BusName %in% RE.gens$Node.To.Connect]
+    
+    new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = Node.To.Connect, 
+                                   RegionName = node.info$RegionName, 
+                                   ZoneName = node.info$ZoneName, 
+                                   Voltage.kV = node.info$Voltage.kV, 
                                    Fuel, MaxOutput.MW = Max.Capacity, 
                                    Units = Num.Units)]
+
     generator.data.table <- rbind(generator.data.table, new.RE.gens.data, 
                                   fill = T)
     
@@ -408,7 +415,7 @@ if (add.RE.gens & exists("RE.gen.file.list")){
        RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from, 
        rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties, 
        RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data, 
-       new.RE.gens.data)})
+       new.RE.gens.data, node.info)})
   } else {
        message(sprintf("... %s does not exist ... skipping", fname))
     }
