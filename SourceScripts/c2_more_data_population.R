@@ -396,25 +396,23 @@ if (add.RE.gens & exists("RE.gen.file.list")){
     # generators - can also add bus number, ID, an implied min cap of 0
     # must pull node's region and zone from node.data.table, in case new nodes
     # didn't get added
-    node.info <- node.data.table[BusName %in% RE.gens$Node.To.Connect]
-    
     new.RE.gens.data <- RE.gens[,.(Generator.Name, BusName = Node.To.Connect, 
-                                   RegionName = node.info$RegionName, 
-                                   ZoneName = node.info$ZoneName, 
-                                   Voltage.kV = node.info$Voltage.kV, 
                                    Fuel, MaxOutput.MW = Max.Capacity, 
                                    Units = Num.Units)]
+    
+    new.RE.gens.data <- merge(new.RE.gens.data, node.data.table, by = "BusName", 
+                              all.x = T)
 
     generator.data.table <- rbind(generator.data.table, new.RE.gens.data, 
                                   fill = T)
     
     # clean up
     suppressWarnings({
-      rm(RE.gens, new.node.table, RE.nodes.to.objects, RE.nodes.to.properties, 
-       RE.nodes.to.memberships.regions,RE.nodes.to.memberships.zones,RE.line.table, 
-       RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from, 
-       rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties, 
-       RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data, 
+      rm(RE.gens, new.node.table, RE.nodes.to.objects, RE.nodes.to.properties,
+       RE.nodes.to.memberships.regions,RE.nodes.to.memberships.zones,RE.line.table,
+       RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from,
+       rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties,
+       RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data,
        new.RE.gens.data, node.info)})
   } else {
        message(sprintf("... %s does not exist ... skipping", fname))
