@@ -47,14 +47,6 @@ if (rename.zones) {
   #!duplicated(node.data.table),] #commenting out b/c input file is clean
 }
 
-# correction for one SR CHHATTISGARH node. Looking at the network around this 
-# node, it really looks like this node is supposed to be in AP/Telangana. 
-# Changing it now.
-node.data.table[BusName == "414019_LANCO_400" & ZoneName == "SR" &
-    RegionName == "CHHATTISGARH", 
-  RegionName := "ANDHRA PRADESH & TELANGANA"]
-
-
 #------------------------------------------------------------------------------|
 # Add nodes ----
 #------------------------------------------------------------------------------|
