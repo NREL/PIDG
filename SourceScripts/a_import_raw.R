@@ -277,8 +277,9 @@ Transformer.table.edit[,Resistance.pu := Transformer.table[, .(V1)][
 Transformer.table.edit[,Reactance.pu := Transformer.table[, .(V2)][
   1:nrow(Transformer.table) %% 4 == 2]] 
 
-Transformer.table.edit[,Rating.MW := Transformer.table[, .(as.numeric(V4))][
-  1:nrow(Transformer.table) %% 4 == 3]] 
+Transformer.table.edit[,Rating.MW := Transformer.table[, 
+    .(suppressWarnings(as.numeric(V4)))][
+    1:nrow(Transformer.table) %% 4 == 3]] 
 Transformer.table.edit[,OverloadRating.MW := Transformer.table[, .(V6)][
   1:nrow(Transformer.table) %% 4 == 3]] 
 #This results in some of the overload ratings being 0. Change them to the 
