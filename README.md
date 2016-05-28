@@ -58,6 +58,7 @@ These functions read in inputfiles of specific formats and add properties contai
         * set "overwrite" to TRUE if want it to overwrite existing properties instead of simply adding new properties
         * if the table has columns with information on pattern (timeslice), datafile, or band, the names of those can be passed in to the function as well, and it will add them to Properties.sheet appropriately
         * character strings corresponding to a scenario or period type id that should be associated with these properties can also be passed in
+		* if these properties belong in a collection that is the child of an object that isn't System (ex: Interface.Lines), identify the appropriate collection like normal (ex: Lines) and include a column in the input csv with the parent objects. The name of the column must be the parent object class. Include the optional parameter "parent.col" when running the function.
 
 * **merge_property_by_fuel:** assigns properties to generators, but by fuel type instead of object name. Requires a column named Fuel. All other columns will be taken to be Plexos properties (again, names must be exact matches to Plexos properties). It will spit out a table in the right format to be read in by **add_to_properties_sheet.** In these scripts, results are automatically fed to the **add_to_properties_sheet** function. 
     * Other options:

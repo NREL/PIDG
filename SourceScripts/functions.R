@@ -367,14 +367,15 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 # 
 # NOTE: doesn't handle scenarios or filepaths yet
 add_to_properties_sheet <- function(input.table, object.class, names.col, 
-  collection.name, scenario.name = NA, pattern.col = NA, period.id = NA, 
+  collection.name, parent.col = NA,
+  scenario.name = NA, pattern.col = NA, period.id = NA, 
   datafile.col = NA, date_from.col = NA, overwrite = FALSE, band.col = NA, memo.col = NA) {
   
   # get all property column names (everything but object names column and 
   # pattern column, if applicable)
   all.cols <- colnames(input.table)
   
-  non.prop.cols <- c(names.col, pattern.col, period.id, datafile.col, 
+  non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, datafile.col, 
                      date_from.col,band.col, memo.col)
   
   prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
@@ -389,8 +390,8 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   # create properties table with these properties
   props.tab <- initialize_table(Properties.prototype, nrow(input.table), 
     list(
-      parent_class = "System", 
-      parent_object = "System", 
+      parent_class = ifelse(is.na(parent.col), "System", parent.col),
+      parent_object = ifelse(is.na(parent.col), "System",input.table[,get(parent.col)]),
       collection = collection.name, 
       child_class = object.class, 
       child_object = input.table[, .SD, .SDcols = names.col], 
