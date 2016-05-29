@@ -396,7 +396,7 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
     list(
       parent_class = ifelse(is.na(parent.col), "System", parent.col),
       parent_object = ifelse(is.na(parent.col), "System", 
-                             input.table[,get(parent.col)]),
+                             list(input.table[,get(parent.col)])),
       collection = collection.name, 
       child_class = object.class, 
       child_object = input.table[, .SD, .SDcols = names.col], 
