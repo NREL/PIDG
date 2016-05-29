@@ -109,15 +109,18 @@ load.scens <- load.scens[!(load.scens %in% c('Region', 'DataFile'))]
 for (name in load.scens) {
   # create small table to pass to add_to_properties_sheet
   cur.tab <- load.to.region.map[,.SD, .SDcols = c('DataFile', name)]
-  cur.tab[,filename := 0]
+  
+  setnames(cur.tab, name, "filename")
   
   add_to_properties_sheet(cur.tab, names.col = 'DataFile', 
                           object.class = 'Data File', 
                           collection.name = 'Data Files', 
-                          datafile.col = name, 
+                          datafile.col = "filename", 
                           scenario.name = ifelse(tolower(name) == 'base', 
                                                  NA, name))
 }
+
+setnames(cur.tab, "filename_datafile_tmp", name) #hacky. fix this later
 
 # add any scenarios associated with load as objects
 load.scens <- load.scens[tolower(load.scens) != 'base']

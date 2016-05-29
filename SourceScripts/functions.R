@@ -375,11 +375,15 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   # pattern column, if applicable)
   all.cols <- colnames(input.table)
   
-  non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, datafile.col, 
+  non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
                      date_from.col,band.col, memo.col)
   
+  # if any columns contain datafiles, mark them here to can deal with later
+  if (!is.na(datafile.col)) {
+      setnames(input.table, datafile.col, paste0(datafile.col, "_datafile_tmp"))}
+  
   prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
-
+  
   # melt input table. results in table with 3 columns: (names.col), 
   # property, value
   input.table <- melt(input.table, measure.vars = prop.cols, 
@@ -391,22 +395,28 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   props.tab <- initialize_table(Properties.prototype, nrow(input.table), 
     list(
       parent_class = ifelse(is.na(parent.col), "System", parent.col),
-      parent_object = ifelse(is.na(parent.col), "System",input.table[,get(parent.col)]),
+      parent_object = ifelse(is.na(parent.col), "System", 
+                             input.table[,get(parent.col)]),
       collection = collection.name, 
       child_class = object.class, 
       child_object = input.table[, .SD, .SDcols = names.col], 
       property = input.table[, property], 
       value = input.table[, value], 
       band_id = ifelse(is.na(band.col),1,list(input.table[,get(band.col)]))))
-
+  
+  # if have datafile cols, move the filepointer to the datafile column and set 
+  # property value to zero
+  
+  if (!is.na(datafile.col)) {
+      props.tab[grepl("_datafile_tmp", property), filename := value]
+      props.tab[grepl("_datafile_tmp", property), 
+                c("value", "property") := 
+                .("0", gsub("_datafile_tmp", "", property))]
+  }
+  
   # add pattern column if specified
   if (!is.na(pattern.col)) props.tab[, pattern := input.table[, 
       .SD, .SDcols = pattern.col] ] 
-  
-  # add datafile column if specified - only useful if putting in one property
-  # at a time (because all will be associated with the datafile)
-  if (!is.na(datafile.col)) props.tab[, filename := input.table[, 
-      .SD, .SDcols = datafile.col] ] 
   
   #adding a date_from col if specified
   if (!is.na(date_from.col)) props.tab[, date_from := input.table[, .SD, .SDcols = date_from.col] ] 
