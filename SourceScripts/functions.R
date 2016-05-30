@@ -369,7 +369,8 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 add_to_properties_sheet <- function(input.table, object.class, names.col, 
   collection.name, parent.col = NA,
   scenario.name = NA, pattern.col = NA, period.id = NA, 
-  datafile.col = NA, date_from.col = NA, overwrite = FALSE, band.col = NA, memo.col = NA) {
+  datafile.col = NA, date_from.col = NA, overwrite = FALSE, band.col = NA, 
+  memo.col = NA) {
   
   # get all property column names (everything but object names column and 
   # pattern column, if applicable)
@@ -379,7 +380,7 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
                      date_from.col,band.col, memo.col)
   
   # if any columns contain datafiles, mark them here to can deal with later
-  if (!is.na(datafile.col)) {
+  if (!is.na(datafile.col[1])) {
       setnames(input.table, datafile.col, paste0(datafile.col, "_datafile_tmp"))}
   
   prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
@@ -389,7 +390,8 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   input.table <- melt(input.table, measure.vars = prop.cols, 
     variable.name = "property")
   # remove missing values
-  input.table <- input.table[!(is.na(value) | is.na(property))]
+  input.table <- input.table[!(is.na(value) | is.na(property) | value == "" |
+                             property == "")]
   
   # create properties table with these properties
   props.tab <- initialize_table(Properties.prototype, nrow(input.table), 
@@ -407,7 +409,7 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   # if have datafile cols, move the filepointer to the datafile column and set 
   # property value to zero
   
-  if (!is.na(datafile.col)) {
+  if (!is.na(datafile.col[1])) {
       props.tab[grepl("_datafile_tmp", property), filename := value]
       props.tab[grepl("_datafile_tmp", property), 
                 c("value", "property") := 
