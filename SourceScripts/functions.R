@@ -522,4 +522,75 @@ import_constraint = function(constraint.table,obj.col = 'generator.name',constra
   Properties.sheet <<- merge_sheet_w_table(Properties.sheet,new.properties.table)
 }
 
+# create interleave pointers
+make_interleave_pointers <- function(parent.model, child.model, scenario.name, 
+                                     template, add.scen.to.model = TRUE) {
+    
+    # check to make sure both models exist (warn, skip if not)
+    if (!(parent.model %in% Objects.sheet$name & 
+          child.model %in% Objects.sheet$name)) {
+        message(sprintf(paste0(">>  attempted to add interleaved models %s and",
+                        " %s, but at least one does not exist in the database"), 
+                        parent.model, child.model))
+        return()
+    }
+    
+    # create interleaved membership between models - maybe consider 
+    # restructuring so that don't have to merge each time with 
+    # Memberships.sheet?
+    int.to.memberships = initialize_table(Memberships.prototype, 1, 
+        list(parent_class = "Model", child_class = "Model", 
+            collection = "Interleaved", parent_object = parent.model, 
+            child_object = child.model))
+    
+    Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, 
+                                             int.to.memberships)
+    
+    # use template to create properties with pointers under scenario
+    # for now, this can only handle mapping objects by fuel, but can add 
+    # something to be object-specific if needed
+    
+    # first, replace the placeholder "[DA MODEL]" in placeholders filepointers
+    # with name of parent model (in a copy of the template)
+    template.copy <- copy(template)
+    
+    template.cols = colnames(template)
+    template.cols = template.cols[template.cols != "Fuel"]
+    template.copy[, (template.cols) := 
+            lapply(.SD, function(x) gsub("\\[DA MODEL\\]", parent.model, x)), 
+                .SDcols = template.cols]
+    
+    # map by fuel, then add to properties sheet with given scenario
+    cur.mapped.tab = merge_property_by_fuel(template.copy, 
+                                            prop.cols = template.cols)
+    
+    add_to_properties_sheet(cur.mapped.tab, object.class = "Generator",
+                            names.col = "Generator.Name", 
+                            collection.name = "Generators", 
+                            datafile.col = template.cols,
+                            scenario.name = scenario.name)
+    
+    # create scenario if it doesn't exist
+    if (!(scenario.name %in% Objects.sheet[,name])) {
+        cur.scen.to.objects <- initialize_table(Objects.sheet, 1, 
+            list(name = scenario.name, category = 'Interleaved filepointers',
+                 class = 'Scenario'))
+    
+        Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
+    } 
+    
+    # optionally add scenario to model
+    # note: there is currently no way to pass in FALSE to this variable, but
+    # I'm putting this is so we can add that option later if needed
+    if (add.scen.to.model) {
+        RTscen.to.memberships = initialize_table(Memberships.prototype, 1, 
+            list(parent_class = "Model", child_class = "Scenario", 
+                 collection = "Scenarios", parent_object = child.model, 
+                 child_object = scenario.name))
+    
+        Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, 
+                                                  RTscen.to.memberships)
+    }
+
+}
 

@@ -652,3 +652,42 @@ if (exists('constraint.import.files')) {
     }
   }
 } else { message('... no constraint import files defined ... skipping')}
+
+
+#------------------------------------------------------------------------------|
+# Import model interleave                                       ----
+#------------------------------------------------------------------------------|
+
+if (exists("interleave.models.list")) {
+    # go through all files in this list
+    for (item in interleave.models.list) {
+        cur.fname = item[1]
+        cur.template = item["template"]
+        
+        # make sure interleave file and template file both exist 
+        if (file.exists(file.path(inputfiles.dir, cur.fname)) & 
+            file.exists(file.path(inputfiles.dir, cur.template))) {
+            
+            message(sprintf("... interleaving models in %s, using template in %s",
+                            cur.fname, cur.template))
+            
+            # parse this file
+            cur.tab = fread(file.path(inputfiles.dir, cur.fname))
+            cur.template = fread(file.path(inputfiles.dir, cur.template))
+            
+            for (i in 1:nrow(cur.tab)) {
+                make_interleave_pointers(
+                    parent.model = cur.tab[i, parent.model],
+                    child.model = cur.tab[i, child.model],
+                    scenario.name = cur.tab[i, scenario.name],
+                    template = cur.template)
+            }
+            
+        } else {
+            message(sprintf(">>  %s or %s does not exist ... skipping", 
+                            cur.fname, cur.template))
+        }
+    }
+} else {
+    message('>>  interleave.models.list does not exist ... skipping')
+}
