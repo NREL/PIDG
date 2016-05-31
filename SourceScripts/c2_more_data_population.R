@@ -363,14 +363,13 @@ if (add.RE.gens & exists("RE.gen.file.list")){
     }
   
     # add RE gens to properties .sheet (Rating and associated datafile)
-    RE.gens.to.properties.rating <- RE.gens[,.(Generator.Name, Rating = '0', 
-                                                Data.File)]
+    RE.gens.to.properties.rating <- RE.gens[,.(Generator.Name, Rating)]
     
     add_to_properties_sheet(RE.gens.to.properties.rating, 
                             object.class = 'Generator', 
                             names.col = 'Generator.Name', 
                             collection.name = 'Generators', 
-                            datafile.col = 'Data.File')
+                            datafile.col = 'Rating')
     
     # add RE gen-fuel to memberships (connecting gens to fuel and nodes)
     RE.gens.to.memberships.nodes <- 
@@ -632,39 +631,11 @@ if(exists('interfaces.files.list')) {
       # add_to_properties_sheet(interface.properties, object.class = "Interface", 
       #   collection.name = "Interfaces", names.col = "Interface.Name")
       
-      # add max flow data files
-      
-      interface.to.properties <- initialize_table(
-        Properties.prototype, nrow(interface.names), list(
-          parent_class = 'System', parent_object = 'System', 
-          collection = 'Interfaces', child_class = 'Interface', band_id = 1))
-      
-      interface.to.properties[,property := 'Max Flow']
-      interface.to.properties[,value := '0']
-      interface.to.properties[,child_object := 
-                                interface.properties[,Interface.Name]]
-      interface.to.properties[,filename := 
-                                interface.properties[,MaxFlow_datafile]]
-      
-      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                              interface.to.properties)
-      
-      # add min flow data files
-      
-      interface.to.properties <- initialize_table(
-        Properties.prototype, nrow(interface.names), list(
-          parent_class = 'System', parent_object = 'System', 
-          collection = 'Interfaces', child_class = 'Interface', band_id = 1))
-      
-      interface.to.properties[,property := 'Min Flow']
-      interface.to.properties[,value := '0']
-      interface.to.properties[,child_object := 
-                                interface.properties[,Interface.Name]]
-      interface.to.properties[,filename := 
-                                interface.properties[,MinFlow_datafile]]
-      
-      Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                              interface.to.properties)
+      # add min and max flow datafile pointers 
+      add_to_properties_sheet(interface.properties, object.class = "Interface", 
+                              names.col = "Interface.Name", 
+                              collection.name = "Interfaces", 
+                              datafile.col = c("Min Flow", "Max Flow"))
       
       # Add interface-line memberships
       interface.to.memberships <- initialize_table(
