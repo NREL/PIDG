@@ -576,7 +576,7 @@ make_interleave_pointers <- function(parent.model, child.model, scenario.name,
             list(name = scenario.name, category = 'Interleaved filepointers',
                  class = 'Scenario'))
     
-        Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
+        Objects.sheet <<- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
     } 
     
     # optionally add scenario to model
