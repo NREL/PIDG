@@ -549,8 +549,11 @@ import_constraint = function(constraint.table,obj.col = 'generator.name',constra
 }
 
 # create interleave pointers
-make_interleave_pointers <- function(parent.model, child.model, scenario.name, 
-                                     template, add.scen.to.model = TRUE) {
+make_interleave_pointers <- function(parent.model, child.model, 
+                                     filepointer.scenario, datafileobj.scenario, 
+                                     template.fuel = NA, 
+                                     template.object = NA,
+                                     add.scen.to.model = TRUE) {
     
     # check to make sure both models exist (warn, skip if not)
     if (!(parent.model %in% Objects.sheet$name & 
@@ -573,33 +576,114 @@ make_interleave_pointers <- function(parent.model, child.model, scenario.name,
                                              int.to.memberships)
     
     # use template to create properties with pointers under scenario
-    # for now, this can only handle mapping objects by fuel, but can add 
-    # something to be object-specific if needed
+
+    if (is.data.table(template.fuel)) {
+        template.fuel.copy <- copy(template.fuel)
+        
+        # first, replace the placeholder "[DA MODEL]" in placeholders filepointers
+        # with name of parent model (in a copy of the template)
+        template.fuel.cols = colnames(template.fuel.copy)
+        template.fuel.cols = template.fuel.cols[template.fuel.cols != "Fuel"]
+        template.fuel.copy[, (template.fuel.cols) := 
+                lapply(.SD, function(x) gsub("\\[DA MODEL\\]", parent.model, x)), 
+                       .SDcols = template.fuel.cols]
+        
+        # get the filepointer associated with each property and add it to the
+        # datafile under current scenario
+        pointers = template.fuel.copy[,lapply(.SD, function(x) na.omit(x)[1]), 
+                                       .SDcols = -1] 
+        setnames(pointers, names(pointers), 
+                           paste("Pass", names(pointers), "property"))
+        pointers = melt(pointers, measure.vars = colnames(pointers), 
+                   variable.name = "DataFileObj", value.name = "filename")
+        
+        add_to_properties_sheet(pointers, object.class = "Data File", 
+            names.col = "DataFileObj", collection.name = "Data Files", 
+            datafile.col = "filename",
+            scenario.name = filepointer.scenario)
+        
+        # what needs to be attached to the actual properties is the name of the
+        # datafile object, not the file path. change values in the table from 
+        # file paths to name of datafile objects, then add these to properties 
+        # sheet, overwriting what already exists
+
+        for (j in names(template.fuel.copy)[-1])
+            set(template.fuel.copy, 
+                which(!is.na(template.fuel.copy[[j]])), j, 
+                paste("{Object}Pass", j, "property"))        
+                
+        # map by fuel, then add to properties sheet with given scenario
+        cur.mapped.tab = merge_property_by_fuel(template.fuel.copy, 
+                                                prop.cols = template.fuel.cols)
     
-    # first, replace the placeholder "[DA MODEL]" in placeholders filepointers
-    # with name of parent model (in a copy of the template)
-    template.copy <- copy(template)
+        add_to_properties_sheet(cur.mapped.tab, object.class = "Generator",
+                                names.col = "Generator.Name", 
+                                collection.name = "Generators", 
+                                datafile.col = template.fuel.cols,
+                                overwrite = TRUE, 
+                                overwrite.cols = "filename",
+                                scenario.name = datafileobj.scenario)
+    }
     
-    template.cols = colnames(template)
-    template.cols = template.cols[template.cols != "Fuel"]
-    template.copy[, (template.cols) := 
-            lapply(.SD, function(x) gsub("\\[DA MODEL\\]", parent.model, x)), 
-                .SDcols = template.cols]
+    if (is.data.table(template.object[1])) {
+        # template.object is a list, so loop through
+        # assume first column is objects and object class is name of column
+        
+        for (template.object.table in template.object) {
+            # check to make sure this hasn't been changed to NA
+            if (!is.data.table(template.object.table)) next 
+            
+            # proceed
+            template.object.copy <- copy(template.object.table)
+            
+            template.object.cols = colnames(template.object.copy)
+            object.class.col = template.object.cols[1]
+            template.object.cols = template.object.cols[-1]
+            template.object.copy[, (template.object.cols) := 
+                    lapply(.SD, function(x) gsub("\\[DA MODEL\\]", parent.model, x)), 
+                           .SDcols = template.object.cols]
+            
+            # get the filepointer associated with each property and add it to the
+            # datafile under current scenario
+            pointers = template.object.copy[,lapply(.SD, function(x) na.omit(x)[1]), 
+                                           .SDcols = -1] 
+            setnames(pointers, names(pointers), 
+                               paste("Pass", names(pointers), "property"))
+            pointers = melt(pointers, measure.vars = colnames(pointers), 
+                       variable.name = "DataFileObj", value.name = "filename")
+            
+            add_to_properties_sheet(pointers, object.class = "Data File", 
+                names.col = "DataFileObj", collection.name = "Data Files", 
+                datafile.col = "filename",
+                scenario.name = filepointer.scenario)
+            
+            # what needs to be attached to the actual properties is the name of the
+            # datafile object, not the file path. change values in the table from 
+            # file paths to name of datafile objects, then add these to properties 
+            # sheet, overwriting what already exists
     
-    # map by fuel, then add to properties sheet with given scenario
-    cur.mapped.tab = merge_property_by_fuel(template.copy, 
-                                            prop.cols = template.cols)
-    
-    add_to_properties_sheet(cur.mapped.tab, object.class = "Generator",
-                            names.col = "Generator.Name", 
-                            collection.name = "Generators", 
-                            datafile.col = template.cols,
-                            scenario.name = scenario.name)
-    
+            for (j in names(template.object.copy)[-1])
+                set(template.object.copy, 
+                    which(!is.na(template.object.copy[[j]])), j, 
+                    paste("{Object}Pass", j, "property")) 
+                
+            add_to_properties_sheet(template.object.copy, 
+                                    object.class = object.class.col,
+                                    names.col = object.class.col, 
+                                    collection.name = paste0(object.class.col, "s"), 
+                                    datafile.col = template.object.cols,
+                                    overwrite = TRUE, 
+                                    overwrite.cols = "filename",
+                                    scenario.name = datafileobj.scenario)
+        } 
+    }
+        
     # create scenario if it doesn't exist
-    if (!(scenario.name %in% Objects.sheet[,name])) {
-        cur.scen.to.objects <- initialize_table(Objects.sheet, 1, 
-            list(name = scenario.name, category = 'Interleaved filepointers',
+    scens.to.create <- c(filepointer.scenario, datafileobj.scenario)
+    scens.to.create <- scens.to.create[!(scens.to.create %in% Objects.sheet$name)]
+    if (length(scens.to.create) > 0) {
+        cur.scen.to.objects <- initialize_table(Objects.sheet, length(scens.to.create), 
+            list(name = scens.to.create, category = 'Interleaved filepointers',
                  class = 'Scenario'))
     
         Objects.sheet <<- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
@@ -609,10 +693,10 @@ make_interleave_pointers <- function(parent.model, child.model, scenario.name,
     # note: there is currently no way to pass in FALSE to this variable, but
     # I'm putting this is so we can add that option later if needed
     if (add.scen.to.model) {
-        RTscen.to.memberships = initialize_table(Memberships.prototype, 1, 
+        RTscen.to.memberships = initialize_table(Memberships.prototype, 2, 
             list(parent_class = "Model", child_class = "Scenario", 
                  collection = "Scenarios", parent_object = child.model, 
-                 child_object = scenario.name))
+                 child_object = c(filepointer.scenario, datafileobj.scenario)))
     
         Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, 
                                                   RTscen.to.memberships)
