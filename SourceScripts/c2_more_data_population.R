@@ -679,21 +679,30 @@ if(exists('interfaces.files.list')) {
 # add reserves ----
 #------------------------------------------------------------------------------|
 
+if(exists("choose.db")){
+  db = paste0("_",choose.db)
+}else{
+  db = ""
+}
+
 reserves.path <- file.path(inputfiles.dir,"reserves")
-reserves.files.list <- list.files(reserves.path)
+
+# choose reserves files with tag matching choose.db
+reserves.files.list <- list.files(reserves.path,pattern = db)
 
 # read in files from reserves.files.list
 if(length(reserves.files.list) > 0) {
-  path <- 
+  
   for (i in reserves.files.list) {
     if (file.exists(file.path(reserves.path,i))) {
       message(
         sprintf("... Adding reserves from reserves/%s", i))
     }
   }
+  
   # read and combine reserves on generators
-  reserve.gens.table <- data.table()
   rsv.gens.files <- reserves.files.list[grep("generators",reserves.files.list)]
+  reserve.gens.table <- data.table()
   
   for(i in rsv.gens.files){
     rsv.gen.tble <- fread(file.path(reserves.path,i))
@@ -701,8 +710,8 @@ if(length(reserves.files.list) > 0) {
   }
   
   # read and combine reserves on regions
+  rsv.reg.files <- reserves.files.list[grep("plxregions",reserves.files.list)]
   reserve.region.table <- data.table()
-  rsv.reg.files <- reserves.files.list[grep("regions",reserves.files.list)]
   
   for(i in rsv.reg.files){
     rsv.gen.tble <- fread(file.path(reserves.path,i))
@@ -710,7 +719,8 @@ if(length(reserves.files.list) > 0) {
   }
   
   # add reserves to objects .sheet
-  reserve.table <- fread(file.path(reserves.path,"import_reserves.csv"))
+  reserve.import.file <- paste0("import_reserves",db,".csv")
+  reserve.table <- fread(file.path(reserves.path,reserve.import.file))
   
   all.reserves <- unique(reserve.table[,Reserve])
   
@@ -722,28 +732,41 @@ if(length(reserves.files.list) > 0) {
   Objects.sheet <- merge_sheet_w_table(Objects.sheet, reserve.to.objects)
   
   # add reserve properties to properties .sheet
-  add_to_properties_sheet(reserve.table, object.class = 'Reserve', 
+  reserve.table.props <- reserve.table[,!c("Is Enabled","Scenario"),with = F]
+  
+  add_to_properties_sheet(reserve.table.props, object.class = 'Reserve', 
                           names.col = 'Reserve', 
                           collection.name = 'Reserves')
   
-  # create scenario for each reserve product
+  # add scenario on 'Is Enabled' property
+  all.scenarios <- unique(reserve.table[,Scenario])
+  for(i in all.scenarios){
+  
+    reserve.enabled <- reserve.table[Scenario == i,.(Reserve,`Is Enabled`)]
+  
+    add_to_properties_sheet(reserve.enabled, object.class = 'Reserve', 
+                            names.col = 'Reserve', 
+                            collection.name = 'Reserves',
+                            scenario.name = i)
+  }
+  
+    # turn off reserve when scenario not selected
   reserve.table.scenario <- reserve.table[,.(Reserve,`Is Enabled`)]
   reserve.table.scenario[,`Is Enabled` := 0]
 
   add_to_properties_sheet(reserve.table.scenario, object.class = 'Reserve',
                           names.col = 'Reserve',
                           collection.name = 'Reserves')
-
-  Properties.sheet[property == "Is Enabled" & value == -1,
-                   scenario := paste0("{Object}",child_object)]
   
   # add reserve scenarios to objects .sheet
+  reserve.scenarios <- unique(reserve.table[,Scenario])
+  
   reserve.scenario.to.objects <- initialize_table(Objects.prototype, 
-                                                  length(all.reserves),
+                                                  length(reserve.scenarios),
                                                   list(class = "Scenario",
                                                        category = "Reserves"))
   
-  reserve.scenario.to.objects[, name := all.reserves]
+  reserve.scenario.to.objects[, name := reserve.scenarios]
                                                   
   Objects.sheet <- merge_sheet_w_table(Objects.sheet,reserve.scenario.to.objects)
   
@@ -789,4 +812,3 @@ if(length(reserves.files.list) > 0) {
 }else {
   message('... no reserves files found ... skipping')
 }
-
