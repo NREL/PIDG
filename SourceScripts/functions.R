@@ -367,11 +367,13 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 # plexos property name are the column names), name of object class and 
 # collection, melts this into long form, then merges with Properties.sheet
 # 
-# NOTE: doesn't handle scenarios or filepaths yet
+# overwrite.cols can be any column in Properties sheet except value. That column
+# will also be overwritten
 add_to_properties_sheet <- function(input.table, object.class, names.col, 
   collection.name, parent.col = NA,
   scenario.name = NA, pattern.col = NA, period.id = NA, 
-  datafile.col = NA, date_from.col = NA, overwrite = FALSE, band.col = NA, 
+  datafile.col = NA, date_from.col = NA, overwrite = FALSE, overwrite.cols = NA,
+  band.col = NA, 
   memo.col = NA) {
   
   # get all property column names (everything but object names column and 
@@ -441,8 +443,19 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
     Properties.sheet <<- merge_sheet_w_table(Properties.sheet, props.tab)
  
   } else {
+
+     # if given, check to make sure all overwrite.cols are in Properties.sheet
+     if (!is.na(overwrite.cols[1])) {
+        if (!all(overwrite.cols %in% colnames(Properties.sheet))) {
+          message(sprintf(">>  Not all overwrite columns %s are in Properties.sheet; cannot merge ... skipping"), 
+              paste0(overwrite.cols, collapse = ", "))
+            
+          return()
+        }
+     }
+          
     # merge everything but the value column, allow new data to overwrite old 
-    # value col
+    # value col (or any specified excluded columns)
     
     sheet.cols <- colnames(Properties.sheet) 
     props.tab.cols <- colnames(props.tab)
@@ -452,14 +465,25 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
     props.tab <- props.tab[, lapply(.SD, as.character)] 
     
     Properties.sheet <- merge(Properties.sheet, props.tab, 
-      by = props.tab.cols[props.tab.cols != 'value'], all = TRUE)
+      by = props.tab.cols[!(props.tab.cols %in% na.omit(c('value', overwrite.cols)))], all = TRUE)
     
     # this should give two value columns. where data exists in value.y, use it
+    # then delete duplicate columns
     Properties.sheet[!is.na(value.y), value.x := value.y]
-    
-    # delete duplicate columns
     Properties.sheet[,value := value.x][,c('value.x', 'value.y') := NULL]
     
+    # do the same for other excluded columns
+    if (!is.na(overwrite.cols)) {
+        for (cname in overwrite.cols) {
+            Properties.sheet[!is.na(get(paste0(cname, ".y"))), 
+                             paste0(cname, ".x") := get(paste0(cname, ".y"))]
+            Properties.sheet[,(cname) := get(paste0(cname, ".x"))]
+            Properties.sheet[,paste0(cname, c(".x", ".y")) := NULL]
+
+        }
+    }
+    
+    # set Properties sheet back to normal
     setcolorder(Properties.sheet, sheet.cols)
     
     # reassign Properties.sheet
