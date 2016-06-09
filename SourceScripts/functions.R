@@ -281,8 +281,13 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     
     # if cap.band.col is NA, then don't need to split properties by max
     # capacity, so can do a regular merge with generator.data.table
+    # if band.col exists, include it in the merge and allow.cartesian, b/c
+    # merged table will probably be big enough to throw an error
     generator.data.table <- merge(generator.data.table, 
-      input.table[,.SD, .SDcols = c("Fuel", prop.cols)], by = "Fuel")
+      input.table[,.SD, 
+          .SDcols = c("Fuel", if(!is.na(band.col)) band.col, prop.cols)], 
+        by = "Fuel", 
+        allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
 
   } else {
     
@@ -311,6 +316,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     
     # now that we have breaks for each fuel, add column to generator.data.table 
     # and input.table that sorts gens, so can merge by that and fuel
+    suppressWarnings(generator.data.table[, breaks.col := NULL]) # reset
     for (fuel in all.fuels) {
       # add capacity even to NA cols in input.table, so they get sorted right
       input.table[Fuel == fuel & is.na(get(cap.band.col)), 
@@ -324,12 +330,14 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     }
     
     # finally, merge input.table with generator.data.table
+    # similarly, if there is a band col, include it and allow.cartesian
     generator.data.table <- merge(generator.data.table, 
-      input.table[,.SD, .SDcols = c("Fuel", prop.cols, "breaks.col")], 
-      by = c("Fuel", "breaks.col"), all.x = T)
+      input.table[,.SD, 
+          .SDcols = c("Fuel", if(!is.na(band.col)) band.col, prop.cols, "breaks.col")], 
+      by = c("Fuel", "breaks.col"), all.x = T,
+        allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
   
   }
-
   
   # if this property should be multiplied by max capacity, do it
   if (mult.by.max.cap) {
@@ -344,13 +352,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
       generator.data.table[,c(colname) := get(colname) * Units]
     }
   }
-  
-  if (!is.na(band.col)){
-    generator.data.table = merge(generator.data.table,
-                                 input.table[,.SD,.SDcols = c('Fuel',band.col)],
-                                 by='Fuel')
-  }
-  
+ 
   return.cols = c('Generator.Name',prop.cols,band.col)
   # return generator + property
   return(generator.data.table[,.SD, .SDcols = return.cols[!is.na(return.cols)]])
