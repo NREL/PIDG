@@ -180,3 +180,31 @@ if (length(object.list) > 0) {
           "these properties to other object. This may not run."))
     print(object.list)
 }
+
+rm(object.list)
+
+# check to make sure all scenarios have {Object} in front of them
+non.object.scens = Properties.sheet[,
+    !(grepl("^\\{Object\\}", scenario) | is.na(scenario))]
+
+if (any(non.object.scens)) {
+    print(paste0("WARNING: the following scenario entries need an object tag ",
+                 "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
+                 " not be read correctly by PLEXOS."))
+    print(Properties.sheet[non.object.scens])
+}
+
+rm(non.object.scens)
+
+# check to make sure all data files have either slashes or {Object}
+non.object.dfs = Properties.sheet[,
+    !(grepl("^\\{Object\\}", filename) | is.na(filename) | grepl("[/\\\\]", filename))]
+
+if (any(non.object.dfs)) {
+    print(paste0("WARNING: the following datafile entries need an object tag ",
+                 "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
+                 " not be read correctly by PLEXOS."))
+    print(Properties.sheet[non.object.dfs])
+}
+
+rm(non.object.dfs)
