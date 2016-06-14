@@ -701,7 +701,8 @@ if(length(reserves.files.list) > 0) {
   }
   
   # read and combine reserves on generators
-  rsv.gens.files <- reserves.files.list[grep("generators",reserves.files.list)]
+  rsv.gens.files <- reserves.files.list[grep("reserve_generators",
+                                             reserves.files.list)]
   reserve.gens.table <- data.table()
   
   for(i in rsv.gens.files){
@@ -709,8 +710,18 @@ if(length(reserves.files.list) > 0) {
     reserve.gens.table <- rbind(reserve.gens.table,rsv.gen.tble,fill=TRUE)
   }
   
+  # read and combine reserves on generator contingencies
+  rsv.contigencies.files <- reserves.files.list[grep("reserve_generator_contingencies",
+                                             reserves.files.list)]
+  reserve.contingencies.table <- data.table()
+  
+  for(i in rsv.contingencies.files){
+    rsv.contingencies.tble <- fread(file.path(reserves.path,i))
+    reserve.contingencies.table <- rbind(reserve.gens.table,rsv.gen.tble,fill=TRUE)
+  }
+  
   # read and combine reserves on regions
-  rsv.reg.files <- reserves.files.list[grep("plxregions",reserves.files.list)]
+  rsv.reg.files <- reserves.files.list[grep("reserve_regions",reserves.files.list)]
   reserve.region.table <- data.table()
   
   for(i in rsv.reg.files){
@@ -795,6 +806,20 @@ if(length(reserves.files.list) > 0) {
   
   Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                            reserve.to.gens.to.memberships)
+  
+  # add reserve-generator contingencies to memberships
+  reserve.to.contingencies.to.memberships <- 
+    initialize_table(Memberships.prototype, nrow(reserve.contingencies.table), 
+                     list(parent_class = "Reserve", child_class = "Generator", 
+                          collection = "Generators"))
+  
+  reserve.to.contingencies.to.memberships[,parent_object :=
+                                            reserve.contingencies.table[,Reserve]]
+  reserve.to.contingencies.to.memberships[,child_object := 
+                                            reserve.contingencies.table[,`Generator Contingencies`]]
+  
+  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                           reserve.to.contingencies.to.memberships)
   
   # add reserve by region properties to properties .sheet
   reserve.by.region.properties <- reserve.region.table
