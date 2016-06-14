@@ -327,7 +327,7 @@ invisible(lapply(generic.import.files, function (x) {
   
   if (file.exists(file.path(inputfiles.dir,x))) {
     
-    message(sprintf("... importing from  %s", x))
+    message(sprintf("... importing from %s", x))
     
     # read in data and import into .sheet tables
     imported.file <- read_tab(x)
@@ -355,7 +355,7 @@ if (exists('compact.generic.import.files')) {
 for (i in seq_along(compact.generic.import.files)) {
   if (file.exists(file.path(inputfiles.dir,
                             compact.generic.import.files[[i]][1]))) {
-    message(sprintf("... importing from  %s", 
+    message(sprintf("... importing from %s", 
                     compact.generic.import.files[[i]][1]))
     
     cur.tab <- fread(file.path(inputfiles.dir, 
@@ -662,30 +662,146 @@ if (exists("interleave.models.list")) {
     # go through all files in this list
     for (item in interleave.models.list) {
         cur.fname = item[1]
-        cur.template = item["template"]
+        cur.template.fuel.name = item[["template.fuel"]]
+        cur.template.object.name = item[["template.object"]]
         
         # make sure interleave file and template file both exist 
-        if (file.exists(file.path(inputfiles.dir, cur.fname)) & 
-            file.exists(file.path(inputfiles.dir, cur.template))) {
+        if (all(
+            file.exists(file.path(inputfiles.dir, cur.fname)) & 
+            file.exists(file.path(inputfiles.dir, cur.template.fuel.name)) &
+            ifelse(!is.null(cur.template.object.name[1]), 
+                file.exists(file.path(inputfiles.dir, cur.template.object.name)),
+                TRUE) # only check for cur.template.obj if it exists
+            )) {
             
-            message(sprintf("... interleaving models in %s, using template in %s",
-                            cur.fname, cur.template))
-            
+            if (is.null(cur.template.object.name[1])) {
+                message(sprintf("... interleaving models in %s, using template in %s",
+                                cur.fname, cur.template.fuel.name))
+            } else {
+                message(sprintf("... interleaving models in %s, using templates in %s and %s",
+                                cur.fname, cur.template.fuel.name, 
+                                paste0(cur.template.object.name, collapse = ", ")))
+            }
+           
+            # do actual work  
             # parse this file
             cur.tab = fread(file.path(inputfiles.dir, cur.fname))
-            cur.template = fread(file.path(inputfiles.dir, cur.template))
+            cur.template.fuel = fread(file.path(inputfiles.dir, cur.template.fuel.name))
+            
+            # if cur.template.object exists, grab it, handling as a list since
+            # could be any number of templates
+            if (!is.null(cur.template.object.name[1])) (
+                cur.template.object = lapply(cur.template.object.name, 
+                                             function(x) fread(file.path(inputfiles.dir, x)))
+            )
+            
+            # need to make a datafile object for each property to be passed down
+            # it will have filepointers to the datafile to be passed, in 
+            # scenarios.
+            # this datafile object will be attached with no scenario to that 
+            # property of all applicable objects
+            # NOTE tihs means that this formulation does not currently support
+            #   one scenario where a property is passed to all generators and
+            #   another scenario where the same property is passed to only half
+            #   the generators (since the datafile object will be attached to
+            #   all of the generators)
+            
+            # ---- first, process templates
+            
+            # look at all templates and check whether all datafile objects 
+            # already exist. if they don't, create them.
+            # objects will always be named "Pass _____ property" 
+            # properties are in column names of templates
+            all.propnames = colnames(cur.template.fuel[,.SD, .SDcols = -1])
+            if (!is.null(cur.template.object.name)) {
+                all.propnames = c(all.propnames, 
+                    sapply(cur.template.object, 
+                           function(x) colnames(x[,.SD, .SDcols = -1])))
+            }
+            
+            all.propnames = paste("Pass", all.propnames, "property")
+            
+            # check if any of these datafile objets aren't in objects sheet. 
+            # if they aren't, add them
+            missing.propnames = all.propnames[
+                !(all.propnames %in% Objects.sheet[class == "Data File", name])]
+            
+            if (length(missing.propnames) > 0) {
+                dfobj.to.obects = initialize_table(Objects.prototype, 
+                    length(missing.propnames), list(class = "Data File",
+                        name = missing.propnames, category = "Pass properties"))
+                
+                Objects.sheet <- merge_sheet_w_table(Objects.sheet, dfobj.to.obects)
+                
+                rm(dfobj.to.obects)
+            }
+            
+            # change blanks to NAs (easier to handle) and check that template 
+            # doesn't have more than one file pointer per col
+            for (j in seq_len(ncol(cur.template.fuel)))
+                set(cur.template.fuel,which(cur.template.fuel[[j]] == ""),j,NA)
+            
+            if (cur.template.fuel[,
+                any(sapply(.SD, function(x) length(unique(na.omit(x))) > 1)), .SDcols = -1]) {
+                
+                message(sprintf(paste(">>  all filepointers in template %s are",
+                    "not identical. this will not be read correctly ... skipping"),
+                    cur.template.fuel.name))
+                
+                cur.template.fuel <- NA
+            }
+            
+            # same, but for object templates if they exist
+            if (!is.null(cur.template.object.name)) {
+                for (i in seq_along(cur.template.object)) {
+                    
+                    for (j in seq_len(ncol(i)))
+                        set(i,which(i[[j]] == ""),j,NA)
+                    
+                    if (cur.template.object[[i]][,
+                        any(sapply(.SD, function(x) length(unique(na.omit(x))) > 1)), .SDcols = -1]) {
+                        
+                        message(sprintf(paste(">>  all filepointers in template %s are",
+                            "not identical. this will not be read correctly ... skipping"),
+                            cur.template.object.name[i]))
+                        
+                        cur.template.object[[i]] <- NA
+                    }
+                }
+                rm(i,j)
+            }
+            
+            # ---- second, interleave models using templates
             
             for (i in 1:nrow(cur.tab)) {
+                # pass to function that will add filepointers to datafile 
+                # objects under the right scenario and add datafile objects to 
+                # properties (with no scenario) if they aren't already there
+                # NOTE this will overwrite data in these properties that is
+                #   already defined
                 make_interleave_pointers(
                     parent.model = cur.tab[i, parent.model],
                     child.model = cur.tab[i, child.model],
-                    scenario.name = cur.tab[i, scenario.name],
-                    template = cur.template)
+                    filepointer.scenario = cur.tab[i, filepointer.scenario],
+                    datafileobj.scenario = cur.tab[i, datafileobj.scenario],
+                    template.fuel = cur.template.fuel,
+                    template.object = ifelse(exists("cur.template.object"), 
+                                             cur.template.object, NA))
             }
             
+            # rm(cur.fname, cur.template.fuel, cur.tab, 
+            # all.propnames, missing.propnames, cur.template.fuel.name,
+            # cur.template.object.name)
+            # 
+            # if (exists("cur.template.object)) rm(cur.template.object)
+            
         } else {
-            message(sprintf(">>  %s or %s does not exist ... skipping", 
-                            cur.fname, cur.template))
+            if (is.null(cur.template.object.name)) {
+                message(sprintf(">>  %s or %s does not exist ... skipping", 
+                                cur.fname, cur.template.fuel.name))
+            } else 
+               message(sprintf(">>  %s or %s or %s does not exist ... skipping", 
+                                cur.fname, cur.template.fuel.name, paste0(cur.template.object.name, collapse = ", ")))
         }
     }
 } else {
