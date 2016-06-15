@@ -385,110 +385,121 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
   
   # if any columns contain datafiles, mark them here to can deal with later
   if (!is.na(datafile.col[1])) {
-      setnames(input.table, datafile.col, paste0(datafile.col, "_datafile_tmp"))}
+    setnames(input.table, datafile.col, paste0(datafile.col, "_datafile"))}
   
   prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
   
-  # melt input table. results in table with 3 columns: (names.col), 
-  # property, value
-  input.table <- melt(input.table, measure.vars = prop.cols, 
-    variable.name = "property")
-  # remove missing values
-  input.table <- input.table[!(is.na(value) | is.na(property) | value == "" |
-                             property == "")]
-  
-  # create properties table with these properties
-  props.tab <- initialize_table(Properties.prototype, nrow(input.table), 
-    list(
-      parent_class = ifelse(is.na(parent.col), "System", parent.col),
-      parent_object = ifelse(is.na(parent.col), "System", 
-                             list(input.table[,get(parent.col)])),
-      collection = collection.name, 
-      child_class = object.class, 
-      child_object = input.table[, .SD, .SDcols = names.col], 
-      property = input.table[, property], 
-      value = input.table[, value], 
-      band_id = ifelse(is.na(band.col),1,list(input.table[,get(band.col)]))))
-  
-  # if have datafile cols, move the filepointer to the datafile column and set 
-  # property value to zero
-  
-  if (!is.na(datafile.col[1])) {
-      props.tab[grepl("_datafile_tmp", property), filename := value]
-      props.tab[grepl("_datafile_tmp", property), 
-                c("value", "property") := 
-                .("0", gsub("_datafile_tmp", "", property))]
-  }
-  
-  # add pattern column if specified
-  if (!is.na(pattern.col)) props.tab[, pattern := input.table[, 
-      .SD, .SDcols = pattern.col] ] 
-  
-  #adding a date_from col if specified
-  if (!is.na(date_from.col)) props.tab[, date_from := input.table[, .SD, .SDcols = date_from.col] ] 
-  
-  # add period type id column if specified
-  if (!is.na(period.id)) props.tab[, period_type_id := period.id]
-  
-  # add scenario name if specified
-  if (!is.na(scenario.name)) {
-    props.tab[,scenario := paste0("{Object}", scenario.name)] }
-  
-  # add memo column if specified
-  if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
-  
-  # merge with Properties.sheet
-  if (overwrite == FALSE) {
-    # merge
-    Properties.sheet <<- merge_sheet_w_table(Properties.sheet, props.tab)
- 
-  } else {
-
-     # if given, check to make sure all overwrite.cols are in Properties.sheet
-     if (!is.na(overwrite.cols[1])) {
-        if (!all(overwrite.cols %in% colnames(Properties.sheet))) {
-          message(sprintf(">>  Not all overwrite columns %s are in Properties.sheet; cannot merge ... skipping"), 
-              paste0(overwrite.cols, collapse = ", "))
-            
-          return()
-        }
-     }
-          
-    # merge everything but the value column, allow new data to overwrite old 
-    # value col (or any specified excluded columns)
+    if(length(prop.cols) > 0){
     
-    sheet.cols <- colnames(Properties.sheet) 
-    props.tab.cols <- colnames(props.tab)
-
-    # convert all columns to character so that they will be same data type 
-    # as .sheet table
-    props.tab <- props.tab[, lapply(.SD, as.character)] 
+    # change all variables to character
+    input.table <- input.table[,lapply(.SD,as.character)]
     
-    Properties.sheet <- merge(Properties.sheet, props.tab, 
-      by = props.tab.cols[!(props.tab.cols %in% na.omit(c('value', overwrite.cols)))], all = TRUE)
+    # melt input table. results in table with 3 columns: (names.col), 
+    # property, value
+    input.table <- melt(input.table, measure.vars = prop.cols, 
+      variable.name = "property")
+    # remove missing values
+    input.table <- input.table[!(is.na(value) | is.na(property) | value == "" |
+                               property == "")]
     
-    # this should give two value columns. where data exists in value.y, use it
-    # then delete duplicate columns
-    Properties.sheet[!is.na(value.y), value.x := value.y]
-    Properties.sheet[,value := value.x][,c('value.x', 'value.y') := NULL]
+    # create properties table with these properties
+    props.tab <- initialize_table(Properties.prototype, nrow(input.table), 
+      list(
+        parent_class = ifelse(is.na(parent.col), "System", parent.col),
+        parent_object = ifelse(is.na(parent.col), "System", 
+                               list(input.table[,get(parent.col)])),
+        collection = collection.name, 
+        child_class = object.class, 
+        child_object = input.table[, .SD, .SDcols = names.col], 
+        property = input.table[, property], 
+        value = input.table[, value], 
+        band_id = ifelse(is.na(band.col),1,list(input.table[,get(band.col)]))))
     
-    # do the same for other excluded columns
-    if (!is.na(overwrite.cols)) {
-        for (cname in overwrite.cols) {
-            Properties.sheet[!is.na(get(paste0(cname, ".y"))), 
-                             paste0(cname, ".x") := get(paste0(cname, ".y"))]
-            Properties.sheet[,(cname) := get(paste0(cname, ".x"))]
-            Properties.sheet[,paste0(cname, c(".x", ".y")) := NULL]
-
-        }
+    # if have datafile cols, move the filepointer to the datafile column and set 
+    # property value to zero
+    
+    props.tab[grepl("_datafile",property),filename := value]
+    props.tab[grepl("_datafile",property),
+              c("value", "property") := 
+                .("0", gsub("_datafile", "", property))]
+    
+    if (!is.na(datafile.col[1])) {
+        props.tab[grepl("_datafile", property), filename := value]
+        props.tab[grepl("_datafile", property), 
+                  c("value", "property") := 
+                  .("0", gsub("_datafile", "", property))]
     }
     
-    # set Properties sheet back to normal
-    setcolorder(Properties.sheet, sheet.cols)
+    # add pattern column if specified
+    if (!is.na(pattern.col)) props.tab[, pattern := input.table[, 
+        .SD, .SDcols = pattern.col] ] 
     
-    # reassign Properties.sheet
-    Properties.sheet <<- Properties.sheet
-
+    #adding a date_from col if specified
+    if (!is.na(date_from.col)) props.tab[, date_from := input.table[, .SD, .SDcols = date_from.col] ] 
+    
+    # add period type id column if specified
+    if (!is.na(period.id)) props.tab[, period_type_id := period.id]
+    
+    # add scenario name if specified
+    if (!is.na(scenario.name)) {
+      props.tab[,scenario := paste0("{Object}", scenario.name)] }
+    
+    # add memo column if specified
+    if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
+    
+    # merge with Properties.sheet
+    if (overwrite == FALSE) {
+      # merge
+      Properties.sheet <<- merge_sheet_w_table(Properties.sheet, props.tab)
+   
+    } else {
+  
+       # if given, check to make sure all overwrite.cols are in Properties.sheet
+       if (!is.na(overwrite.cols[1])) {
+          if (!all(overwrite.cols %in% colnames(Properties.sheet))) {
+            message(sprintf(">>  Not all overwrite columns %s are in Properties.sheet; cannot merge ... skipping"), 
+                paste0(overwrite.cols, collapse = ", "))
+              
+            return()
+          }
+       }
+            
+      # merge everything but the value column, allow new data to overwrite old 
+      # value col (or any specified excluded columns)
+      
+      sheet.cols <- colnames(Properties.sheet) 
+      props.tab.cols <- colnames(props.tab)
+  
+      # convert all columns to character so that they will be same data type 
+      # as .sheet table
+      props.tab <- props.tab[, lapply(.SD, as.character)] 
+      
+      Properties.sheet <- merge(Properties.sheet, props.tab, 
+        by = props.tab.cols[!(props.tab.cols %in% na.omit(c('value', overwrite.cols)))], all = TRUE)
+      
+      # this should give two value columns. where data exists in value.y, use it
+      # then delete duplicate columns
+      Properties.sheet[!is.na(value.y), value.x := value.y]
+      Properties.sheet[,value := value.x][,c('value.x', 'value.y') := NULL]
+      
+      # do the same for other excluded columns
+      if (!is.na(overwrite.cols)) {
+          for (cname in overwrite.cols) {
+              Properties.sheet[!is.na(get(paste0(cname, ".y"))), 
+                               paste0(cname, ".x") := get(paste0(cname, ".y"))]
+              Properties.sheet[,(cname) := get(paste0(cname, ".x"))]
+              Properties.sheet[,paste0(cname, c(".x", ".y")) := NULL]
+  
+          }
+      }
+      
+      # set Properties sheet back to normal
+      setcolorder(Properties.sheet, sheet.cols)
+      
+      # reassign Properties.sheet
+      Properties.sheet <<- Properties.sheet
+  
+    }
   }
 }
 

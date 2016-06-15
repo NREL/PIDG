@@ -120,7 +120,7 @@ for (name in load.scens) {
                                                  NA, name))
 }
 
-setnames(cur.tab, "filename_datafile_tmp", name) #hacky. fix this later
+setnames(cur.tab, "filename_datafile", name) #hacky. fix this later
 
 # add any scenarios associated with load as objects
 load.scens <- load.scens[tolower(load.scens) != 'base']
@@ -369,7 +369,8 @@ if (add.RE.gens & exists("RE.gen.file.list")){
                             object.class = 'Generator', 
                             names.col = 'Generator.Name', 
                             collection.name = 'Generators', 
-                            datafile.col = 'Rating')
+                            datafile.col = 'Rating'
+                            )
     
     # add RE gen-fuel to memberships (connecting gens to fuel and nodes)
     RE.gens.to.memberships.nodes <- 
@@ -636,6 +637,7 @@ if(exists('interfaces.files.list')) {
                               names.col = "Interface.Name", 
                               collection.name = "Interfaces", 
                               datafile.col = c("Min Flow", "Max Flow"))
+                              
       
       # Add interface-line memberships
       interface.to.memberships <- initialize_table(
@@ -693,13 +695,6 @@ reserves.files.list <- list.files(reserves.path,pattern = db)
 # read in files from reserves.files.list
 if(length(reserves.files.list) > 0) {
   
-  for (i in reserves.files.list) {
-    if (file.exists(file.path(reserves.path,i))) {
-      message(
-        sprintf("... Adding reserves from reserves/%s", i))
-    }
-  }
-  
   # read and combine reserves on generators
   rsv.gens.files <- reserves.files.list[grep("reserve_generators",
                                              reserves.files.list)]
@@ -708,16 +703,21 @@ if(length(reserves.files.list) > 0) {
   for(i in rsv.gens.files){
     rsv.gen.tble <- fread(file.path(reserves.path,i))
     reserve.gens.table <- rbind(reserve.gens.table,rsv.gen.tble,fill=TRUE)
+    message(
+      sprintf("... Adding reserves from reserves/%s", i))
   }
   
   # read and combine reserves on generator contingencies
-  rsv.contigencies.files <- reserves.files.list[grep("reserve_generator_contingencies",
+  rsv.contingencies.files <- reserves.files.list[grep("reserve_generator_contingencies",
                                              reserves.files.list)]
   reserve.contingencies.table <- data.table()
   
   for(i in rsv.contingencies.files){
     rsv.contingencies.tble <- fread(file.path(reserves.path,i))
-    reserve.contingencies.table <- rbind(reserve.gens.table,rsv.gen.tble,fill=TRUE)
+    reserve.contingencies.table <- rbind(reserve.contingencies.table,
+                                         rsv.contingencies.tble,fill=TRUE)
+    message(
+      sprintf("... Adding reserves from reserves/%s", i))
   }
   
   # read and combine reserves on regions
@@ -725,16 +725,22 @@ if(length(reserves.files.list) > 0) {
   reserve.region.table <- data.table()
   
   for(i in rsv.reg.files){
-    rsv.gen.tble <- fread(file.path(reserves.path,i))
-    reserve.region.table <- rbind(reserve.region.table,rsv.gen.tble,fill=TRUE)
+    rsv.reg.tble <- fread(file.path(reserves.path,i))
+    reserve.region.table <- rbind(reserve.region.table,rsv.reg.tble,fill=TRUE)
+    message(
+      sprintf("... Adding reserves from reserves/%s", i))
   }
   
-  # add reserves to objects .sheet
+  # read key reserves file
   reserve.import.file <- paste0("import_reserves",db,".csv")
+  
   reserve.table <- fread(file.path(reserves.path,reserve.import.file))
+  message(
+    sprintf("... Adding reserves from reserves/%s", reserve.import.file))
   
   all.reserves <- unique(reserve.table[,Reserve])
   
+  # add reserves to objects .sheet
   reserve.to.objects <- initialize_table(Objects.prototype, length(all.reserves), 
                                          list(class = "Reserve"))
   
@@ -781,59 +787,68 @@ if(length(reserves.files.list) > 0) {
                                                   
   Objects.sheet <- merge_sheet_w_table(Objects.sheet,reserve.scenario.to.objects)
   
-  # add reserve-region membership to memberships
-  reserve.to.regs.to.memberships <- 
-    initialize_table(Memberships.prototype, nrow(reserve.region.table), 
-                     list(parent_class = "Reserve", child_class = "Region", 
-                          collection = "Regions"))
+  if(nrow(reserve.region.table) > 0){
+    
+    # add reserve-region membership to memberships
+    reserve.to.regs.to.memberships <- 
+      initialize_table(Memberships.prototype, nrow(reserve.region.table), 
+                       list(parent_class = "Reserve", child_class = "Region", 
+                            collection = "Regions"))
+    
+    reserve.to.regs.to.memberships[,parent_object := 
+                                   reserve.region.table[,Reserve]]
+    reserve.to.regs.to.memberships[,child_object := reserve.region.table[,Region]]
+    
+    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                             reserve.to.regs.to.memberships)
+    
+    # add reserve by region properties to properties .sheet
+    reserve.by.region.properties <- reserve.region.table
+    
+    add_to_properties_sheet(reserve.by.region.properties, parent.col = "Reserve",
+                            object.class = 'Region', 
+                            names.col = 'Region', collection.name = 'Regions')
+  }
   
-  reserve.to.regs.to.memberships[,parent_object := 
-                                 reserve.region.table[,Reserve]]
-  reserve.to.regs.to.memberships[,child_object := reserve.region.table[,Region]]
+  if(nrow(reserve.gens.table) > 0){
+    
+    # add reserve-generator membership to memberships
+    reserve.to.gens.to.memberships <- 
+      initialize_table(Memberships.prototype, nrow(reserve.gens.table), 
+                       list(parent_class = "Reserve", child_class = "Generator", 
+                            collection = "Generators"))
+    
+    reserve.to.gens.to.memberships[,parent_object := 
+                                     reserve.gens.table[,Reserve]]
+    reserve.to.gens.to.memberships[,child_object := reserve.gens.table[,Generator]]
+    
+    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                             reserve.to.gens.to.memberships)
+    
+    # add reserve by generator properties to properties .sheet
+    reserve.by.gen.properties <- reserve.gens.table
+    
+    add_to_properties_sheet(reserve.by.gen.properties, parent.col = "Reserve",
+                            object.class = 'Generator', 
+                            names.col = 'Generator', collection.name = 'Generators')
+  }
   
-  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                           reserve.to.regs.to.memberships)
+  if(nrow(reserve.contingencies.table) > 0){
+    # add reserve-generator contingencies to memberships
+    reserve.to.contingencies.to.memberships <- 
+      initialize_table(Memberships.prototype, nrow(reserve.contingencies.table), 
+                       list(parent_class = "Reserve", child_class = "Generator", 
+                            collection = "Generator Contingencies"))
+    
+    reserve.to.contingencies.to.memberships[,parent_object :=
+                                              reserve.contingencies.table[,Reserve]]
+    reserve.to.contingencies.to.memberships[,child_object := 
+                                              reserve.contingencies.table[,`Generator Contingencies`]]
+    
+    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                             reserve.to.contingencies.to.memberships)
+  }
   
-  # add reserve-generator membership to memberships
-  reserve.to.gens.to.memberships <- 
-    initialize_table(Memberships.prototype, nrow(reserve.gens.table), 
-                     list(parent_class = "Reserve", child_class = "Generator", 
-                          collection = "Generators"))
-  
-  reserve.to.gens.to.memberships[,parent_object := 
-                                   reserve.gens.table[,Reserve]]
-  reserve.to.gens.to.memberships[,child_object := reserve.gens.table[,Generator]]
-  
-  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                           reserve.to.gens.to.memberships)
-  
-  # add reserve-generator contingencies to memberships
-  reserve.to.contingencies.to.memberships <- 
-    initialize_table(Memberships.prototype, nrow(reserve.contingencies.table), 
-                     list(parent_class = "Reserve", child_class = "Generator", 
-                          collection = "Generators"))
-  
-  reserve.to.contingencies.to.memberships[,parent_object :=
-                                            reserve.contingencies.table[,Reserve]]
-  reserve.to.contingencies.to.memberships[,child_object := 
-                                            reserve.contingencies.table[,`Generator Contingencies`]]
-  
-  Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                           reserve.to.contingencies.to.memberships)
-  
-  # add reserve by region properties to properties .sheet
-  reserve.by.region.properties <- reserve.region.table
-  
-  add_to_properties_sheet(reserve.by.region.properties, parent.col = "Reserve",
-                          object.class = 'Region', 
-                          names.col = 'Region', collection.name = 'Regions')
-  
-  # add reserve by generator properties to properties .sheet
-  reserve.by.region.properties <- reserve.region.table
-  
-  add_to_properties_sheet(reserve.by.region.properties, parent.col = "Reserve",
-                          object.class = 'Region', 
-                          names.col = 'Region', collection.name = 'Regions')
 }else {
   message('... no reserves files found ... skipping')
 }
