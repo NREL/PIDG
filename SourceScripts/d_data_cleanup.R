@@ -185,7 +185,7 @@ rm(object.list)
 
 # check to make sure all scenarios have {Object} in front of them
 non.object.scens = Properties.sheet[,
-    !(grepl("^\\{Object\\}", scenario) | is.na(scenario))]
+    !(grepl("^\\{Object\\}", scenario) | is.na(scenario) | scenario == "")]
 
 if (any(non.object.scens)) {
     print(paste0("WARNING: the following scenario entries need an object tag ",

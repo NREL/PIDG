@@ -372,6 +372,23 @@ if (add.RE.gens & exists("RE.gen.file.list")){
                             datafile.col = 'Rating'
                             )
     
+    # if fuel objects don't exist, add them
+    missing.fuels = RE.gens[,unique(Fuel)]
+    existing.fuels = generator.data.table[,unique(Fuel)]
+    
+    missing.fuels = missing.fuels[!(missing.fuels %in% existing.fuels)]
+    
+    if (length(missing.fuels) > 0) {
+        new.fuels.to.objects <- initialize_table(Objects.prototype, 
+                                                 length(missing.fuels), 
+                                                 list(class = "Fuel", 
+                                                      name = missing.fuels))
+
+        Objects.sheet <- merge_sheet_w_table(Objects.sheet, new.fuels.to.objects)
+        
+        rm(new.fuels.to.objects)
+    }
+    
     # add RE gen-fuel to memberships (connecting gens to fuel and nodes)
     RE.gens.to.memberships.nodes <- 
       initialize_table(Memberships.prototype, 
@@ -416,7 +433,7 @@ if (add.RE.gens & exists("RE.gen.file.list")){
        RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from,
        rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties,
        RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data,
-       new.RE.gens.data, node.info)})
+       new.RE.gens.data, node.info, existing.fuels, missing.fuels)})
   } else {
        message(sprintf("... %s does not exist ... skipping", fname))
     }
@@ -734,7 +751,9 @@ if(length(reserves.files.list) > 0) {
   # read key reserves file
   reserve.import.file <- paste0("import_reserves",db,".csv")
   
-  reserve.table <- fread(file.path(reserves.path,reserve.import.file))
+  reserve.table <- suppressWarnings(fread(file.path(reserves.path,
+                                                    reserve.import.file)))
+  
   message(
     sprintf("... Adding reserves from reserves/%s", reserve.import.file))
   

@@ -329,8 +329,12 @@ invisible(lapply(generic.import.files, function (x) {
     
     message(sprintf("... importing from %s", x))
     
-    # read in data and import into .sheet tables
+    # read in data, change blanks to NA, and import into .sheet tables
     imported.file <- read_tab(x)
+    
+    for (j in seq_len(ncol(imported.file)))
+        set(imported.file, which(imported.file[[j]] == ""), j, NA)
+    
     lapply(all.sheets, function(y) import_and_merge(imported.file, y))
     
   } else {
