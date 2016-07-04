@@ -1,4 +1,4 @@
-2016-07-03 22:36:38
+2016-07-04 09:34:25
 
 psse file parsed: Base Case_2021-22-Peak-Demand_edit.raw 
 psse version: 31 
@@ -24,4 +24,17 @@ empty tables:
 	- Impedance.correction.table.table
 	- Multi.terminal.dc.line.table
 	- Multi.section.line.table
-	- Inter.area.transfer.table
+	- Inter.area.transfer.table 
+
+----------
+
+other information:
+	- Number of Area interchanges: 8
+	- Number of Branches: 12290
+	- Number of Buses: 6704
+	- Number of DC lines: 28
+	- Number of Fixed shunts: 1556
+	- Number of Generators: 2694
+	- Number of Loads: 4241
+	- Number of Owners: 108
+	- Number of Zones: 43
