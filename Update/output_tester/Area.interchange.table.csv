@@ -1,0 +1,9 @@
+region.number,slacknode.number,desired.net.interchange.MW,interchange.tolerance.MW,region.name
+1,0,-12360,50,NORTH
+2,0,0,10,NRTHEAST
+3,0,0,10,WEST
+4,0,0,10,EAST
+5,522071,4000,10,SOUTH
+6,0,0,10,BHUTAN
+7,0,0,10,BANGLADESH
+8,0,0,10,PAKISTAN

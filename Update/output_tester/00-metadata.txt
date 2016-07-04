@@ -1,0 +1,27 @@
+2016-07-03 22:36:38
+
+psse file parsed: Base Case_2021-22-Peak-Demand_edit.raw 
+psse version: 31 
+mva base: 100 
+
+tables processed:
+	- Area.interchange.table
+	- Branch.table
+	- Bus.table
+	- DC.line.table
+	- Fixed.shunt.table
+	- Generator.table
+	- Load.table
+	- Owner.table
+	- Zone.table 
+
+tables skipped:
+	- FACTS.device.table
+	- Switched.shunt.table 
+
+empty tables:
+	- VSC.dc.line.table
+	- Impedance.correction.table.table
+	- Multi.terminal.dc.line.table
+	- Multi.section.line.table
+	- Inter.area.transfer.table
