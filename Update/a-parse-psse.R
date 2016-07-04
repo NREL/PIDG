@@ -11,7 +11,7 @@
 # outputs: 
 #   * all renamed tables in the file as separate csv files
 #   * metadata (original file name, psse version, mva base, names of tables, 
-#       empty tables, etc)
+#       empty tables, skipped tables, size of tables)
 #   
 # constraints and assumptions:
 #   * assumes psse version 31. to change this, alter the column-renaming step
@@ -361,7 +361,7 @@ DC.line.table$id.num           <- Two.terminal.dc.line.table[i %% 3 == 1, .(V1)]
 # id skipped tables ----
 #------------------------------------------------------------------------------|
 
-# find tables that haven't been processed (i.e. colnames are stil V1, V2, ...)
+## find tables that haven't been processed (i.e. colnames are stil V1, V2, ...)
 all.tables <- ls(pattern = "^[A-Z].*(table)$")
 done.tables <- character()
 skip.tables <- character()
@@ -387,6 +387,24 @@ for (tab.name in all.tables) {
 # clean up
 rm(all.tables, tab.name)
 
+## get length of all done tables
+tab.info <- c()
+
+for (tab.name in done.tables) {
+    info <- gsub("\\.table", "", tab.name)
+    info <- gsub("\\.", " ", info)
+    info <- paste0("Number of ", info,
+                   ifelse((substr(info, nchar(info), nchar(info)) == "s" | 
+                           substr(info, nchar(info) - 1, nchar(info)) == "ch"),
+                       "es: ", "s: "),
+                   nrow(get(tab.name)))
+    
+    tab.info <- c(tab.info, info)
+}
+
+# clean up
+rm(tab.name, info)
+
 
 #------------------------------------------------------------------------------|
 # write out ----
@@ -409,7 +427,9 @@ writeLines(c(as.character(Sys.time()), "\n\n",
              paste("mva base:", mva.base, "\n\n"),
              paste("tables processed:\n\t-", paste0(done.tables, collapse = "\n\t- "), "\n\n"),
              paste("tables skipped:\n\t-", paste0(skip.tables, collapse = "\n\t- "), "\n\n"),
-             paste("empty tables:\n\t-", paste0(no.data.vec, collapse = "\n\t- "))
+             paste("empty tables:\n\t-", paste0(no.data.vec, collapse = "\n\t- "), "\n\n"),
+             "----------\n\n",
+             paste("other information:\n\t-", paste0(tab.info, collapse = "\n\t- "))
              ), 
            conn, 
            sep = "")
