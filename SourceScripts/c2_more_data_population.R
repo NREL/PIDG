@@ -143,7 +143,11 @@ message('... Adding load participation factor from current raw file')
 # correctly and for PLEXOS to read them in correctly
 # remove any negative loads and replace them with zero
 # convert NaNs to zero for PLEXOS to read them in correctly
-load.part.fact.table <- Load.table[, .(BusNumber,ActivePower.MW)] 
+load.part.fact.table <- Load.table[, .(BusNumber,ActivePower.MW, Status)] 
+
+# remove Status = 0 load
+load.part.fact.table[,ActivePower.MW := ActivePower.MW * Status]
+
 # remove negative LPFs
 if (any(load.part.fact.table[,ActivePower.MW < 0])) {
   message("Removing negative load participation factors... hope that is OK")
