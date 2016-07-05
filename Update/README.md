@@ -3,7 +3,7 @@
 There are currently four scripts in this folder
 
 `a-parse-psse.R`
-* parse psse file, export all possible tables into some user-defined folder
+* parse psse file, export all possible tables into some user-defined folder. also export some metadata about the data that was parsed (what tables do and don't exist, how much data is in each, etc)
 
 `b-call-input-process.R`
 * optional - call input processing scripts on data. could also exogenously 
