@@ -28,10 +28,8 @@
 
 root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update"
 
-raw.file <- file.path(root.dir, 
-                     "output_tester/Base Case_2021-22-Peak-Demand_edit.raw")
-output.dir <- file.path(root.dir, 
-                        "output_tester")
+raw.file <- file.path(root.dir, "inputs/Base Case_2021-22-Peak-Demand_edit.raw")
+output.dir <- file.path(root.dir, "outputs_a-1_raw_psse")
 
 
 #------------------------------------------------------------------------------|
@@ -341,6 +339,11 @@ Transformer.table.v2$reactance.pu     <- Transformer.table[i %% 4 == 2, .(V2)]
 Transformer.table.v2$rating.MW        <- Transformer.table[i %% 4 == 3, .(V4)]
 Transformer.table.v2$overload.rating.MW <- Transformer.table[i %% 4 == 3, .(V6)] 
 
+Transformer.table <- Transformer.table.v2
+
+# clean up
+rm(Transformer.table.v2)
+
 # Two.terminal.dc.line.table
 # this table has three lines of data per DC line
 Two.terminal.dc.line.table[,i := 1:.N]
@@ -378,8 +381,7 @@ for (tab.name in all.tables) {
     }
 
     # transformers and DC lines have been handled
-    skip.tables <- skip.tables[!(skip.tables %in% c("Transformer.table",
-                                                    "Two.terminal.dc.line.table"))]
+    skip.tables <- skip.tables[skip.tables != "Two.terminal.dc.line.table"]
     
 }
 
