@@ -367,14 +367,20 @@ if (add.RE.gens & exists("RE.gen.file.list")){
     }
   
     # add RE gens to properties .sheet (Rating and associated datafile)
-    RE.gens.to.properties.rating <- RE.gens[,.(Generator.Name, Rating)]
-    
-    add_to_properties_sheet(RE.gens.to.properties.rating, 
-                            object.class = 'Generator', 
-                            names.col = 'Generator.Name', 
-                            collection.name = 'Generators', 
-                            datafile.col = 'Rating'
-                            )
+    # note: it is better to add rating separately, but leaving in the option
+    # for backwards compatability reasons
+    if ("Rating" %in% colnames(RE.gens)) {
+        
+        RE.gens.to.properties.rating <- RE.gens[,.(Generator.Name, Rating)]
+        
+        add_to_properties_sheet(RE.gens.to.properties.rating, 
+                                object.class = 'Generator', 
+                                names.col = 'Generator.Name', 
+                                collection.name = 'Generators', 
+                                datafile.col = 'Rating'
+                                )
+        rm(RE.gens.to.properties.rating)
+    }
     
     # if fuel objects don't exist, add them
     missing.fuels = RE.gens[,unique(Fuel)]
@@ -436,7 +442,7 @@ if (add.RE.gens & exists("RE.gen.file.list")){
        RE.nodes.to.memberships.regions,RE.nodes.to.memberships.zones,RE.line.table,
        RE.lines.to.objects, RE.lines.to.properties, RE.lines.to.memberships.from,
        rating.data.files.to.properties, RE.gens.to.objects, RE.gens.to.properties,
-       RE.gens.to.properties.rating, new.RE.nodes.data, new.RE.lines.data,
+       new.RE.nodes.data, new.RE.lines.data,
        new.RE.gens.data, node.info, existing.fuels, missing.fuels)})
   } else {
        message(sprintf("... %s does not exist ... skipping", fname))
