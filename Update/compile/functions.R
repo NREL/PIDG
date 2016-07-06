@@ -633,7 +633,7 @@ make_interleave_pointers <- function(parent.model, child.model,
                                                 prop.cols = template.fuel.cols)
     
         add_to_properties_sheet(cur.mapped.tab, object.class = "Generator",
-                                names.col = "Generator.Name", 
+                                names.col = "Generator", 
                                 collection.name = "Generators", 
                                 datafile.col = template.fuel.cols,
                                 overwrite = TRUE, 
