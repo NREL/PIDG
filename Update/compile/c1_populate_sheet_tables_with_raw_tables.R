@@ -271,8 +271,8 @@ transformer.data.table <- merge(transformer.data.table,
                                 all.x = TRUE)
 
 # add category
-transformer.data.table[Region.From == Region.From, category := Region.From]
-transformer.data.table[Region.From != Region.From, category := "Interstate_tfmr"]
+transformer.data.table[Region.From == Region.To, category := Region.From]
+transformer.data.table[Region.From != Region.To, category := "Interstate_tfmr"]
 
 
 #------------------------------------------------------------------------------|
