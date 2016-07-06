@@ -24,6 +24,9 @@ zones <- file.path(root.dir, "inputs/node_zone_cea.csv")
 
 regzones <- file.path(root.dir, "inputs/node_region_zone_cea.csv")
 
+copy.data.loc <- file.path(root.dir, "../../InputFiles_tester/base_network")
+
+
 #------------------------------------------------------------------------------|
 # setup ----
 #------------------------------------------------------------------------------|
@@ -34,6 +37,11 @@ pacman::p_load(data.table)
 # make sure output.dir exists
 if (!dir.exists(output.dir)) {
     dir.create(output.dir, recursive = TRUE)
+}
+
+# make sure copy.data.loc exists
+if (!dir.exists(copy.data.loc)) {
+    dir.create(copy.data.loc, recursive = TRUE)
 }
 
 generator.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/generator.data.csv"))
@@ -186,6 +194,15 @@ for (tab.name in to.write) {
               file.path(output.dir, paste0(tab.name, ".csv")),
               row.names = FALSE, 
               quote = FALSE)
+}
+
+if (exists("copy.data.loc")) {
+    for (tab.name in to.write) {
+        write.csv(get(tab.name), 
+              file.path(copy.data.loc, paste0(tab.name, ".csv")),
+              row.names = FALSE, 
+              quote = FALSE)
+    }
 }
 
 rm(tab.name, to.write)
