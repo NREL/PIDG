@@ -17,7 +17,7 @@
 
 root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update"
 
-output.dir <- file.path(root.dir, "output_tester-c")
+output.dir <- file.path(root.dir, "outputs_a-3_corrected_psse")
 
 regions <- file.path(root.dir, "inputs/node_region_cea.csv")
 zones <- file.path(root.dir, "inputs/node_zone_cea.csv")
@@ -36,11 +36,11 @@ if (!dir.exists(output.dir)) {
     dir.create(output.dir, recursive = TRUE)
 }
 
-generator.data <- fread(file.path(root.dir, "output_tester-b/generator.data.csv"))
-line.data <- fread(file.path(root.dir, "output_tester-b/line.data.csv"))
-load.data <- fread(file.path(root.dir, "output_tester-b/load.data.csv"))
-node.data <- fread(file.path(root.dir, "output_tester-b/node.data.csv"))
-transformer.data <- fread(file.path(root.dir, "output_tester-b/transformer.data.csv"))
+generator.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/generator.data.csv"))
+line.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/line.data.csv"))
+load.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/load.data.csv"))
+node.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/node.data.csv"))
+transformer.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/transformer.data.csv"))
 
 
 # Node, Region, Zone (Zone optional). if any data is missing, original will be 
@@ -59,7 +59,7 @@ col.names <- col.names[col.names != "Node"]
 setnames(regzones, col.names, paste0(col.names, "_new"))
 
 # add Zone column if needed
-if ("Zone_new" %in% col.names & !("Zone" %in% colnames(node.data))) {
+if ("Zone" %in% col.names & !("Zone" %in% colnames(node.data))) {
     node.data[, Zone := NA]
 }
 
@@ -69,9 +69,13 @@ node.data <- merge(node.data, regzones, by = "Node", all.x = TRUE)
 node.data[!is.na(Region_new), Region := Region_new]
 node.data[, Region_new := NULL]
  
-if ("Zone_new" %in% col.names) {
+if ("Zone" %in% col.names) {
     node.data[!is.na(Zone_new), Zone := Zone_new]
     node.data[, Zone_new := NULL]
+}
+
+if (node.data[,all(is.na(Zone))]) {
+    node.data[,Zone := NULL]
 }
 
 # clean up
@@ -124,6 +128,44 @@ line.data[Line %in% c("374019_374021_1_CKT",
                       "374020_374021_1_CKT"), 
           `:=`(`Max Flow` = 28, `Min Flow` = -28)] # these are in Ella's
 
-# standard data
+## standard data
+# defines stadards with [name = kV level] = [element = MW flow limit]
+standard.flow.lims <- c("132" = "80", "220" = "200", "400" = "870", 
+  "765" = "2200", 
+  # these next ones are from looking at most commnon flow limits on these lines
+  "11" = "30", "33" = "33", "66" = "28", "100" = "80", "110" = "80", 
+  "230" = "200",
+  #and these ones are rough guesses
+  "0.6" = "10", "69" = "30", "115" = "80", "22.9" = "20", "34.5" = "34.5",
+  "13.8" = "30", "138" = "150")
+
+standard.flow.lims <- data.table(Voltage = as.numeric(names(standard.flow.lims)), 
+                                 corrected_maxflow = as.numeric(standard.flow.lims))
+
+line.data <- merge(line.data,
+                   standard.flow.lims, 
+                   by = "Voltage",
+                   all.x = TRUE)
+
+line.data[`Max Flow` == 0 & !is.na(corrected_maxflow), 
+          `Max Flow` := corrected_maxflow]
+
+line.data[,corrected_maxflow := NULL]
+
 # adjust_max_cap_cea?
 
+
+#------------------------------------------------------------------------------|
+# write out for now ----
+#------------------------------------------------------------------------------|
+
+to.write <- ls(pattern = "\\.data$")
+
+for (tab.name in to.write) {
+    write.csv(get(tab.name), 
+              file.path(output.dir, paste0(tab.name, ".csv")),
+              row.names = FALSE, 
+              quote = FALSE)
+}
+
+rm(tab.name, to.write)

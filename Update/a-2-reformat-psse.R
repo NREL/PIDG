@@ -184,6 +184,7 @@ reformatted.tables <- c(reformatted.tables, "node.data")
 if (exists("load.data")) {
     load.data <- load.data[,.(node.number, 
                               Status = status, 
+                              Type = load.type,
                               Load = active.power.MW)]
     
     # add node name
@@ -194,6 +195,8 @@ if (exists("load.data")) {
     
     # clean up
     load.data[,node.number := NULL]
+    
+    setcolorder(load.data, c("Node", "Type", "Status", "Load"))
 }
 
 # add to list to write out
@@ -259,6 +262,10 @@ line.data[Type == "DC", Line := paste0(Line, "_DC")]
 # clean up
 line.data[,c("node.from.number", "node.to.number") := NULL]
 
+setcolorder(line.data, c("Line", "Node From", "Node To", "Type", "Voltage", 
+                         "Max Flow", "Min Flow", "Resistance", "Reactance",
+                         "Status", "Length"))
+
 # add to list to write out
 reformatted.tables <- c(reformatted.tables, "line.data")
 
@@ -270,6 +277,7 @@ reformatted.tables <- c(reformatted.tables, "line.data")
 generator.data <- generator.data[,.(node.number,
                                     id, 
                                     `Max Capacity` = max.capacity.MW,
+                                    `Min Stable Level` = min.output.MW,
                                     Status = status)]
 
 # change to generator name
@@ -282,8 +290,12 @@ generator.data <- merge(generator.data,
 
 generator.data[,Generator := paste("GEN", Node, id, sep = "_")]
 
+
 # clean up
 generator.data[,c("node.number", "id", "Node") := NULL]
+
+setcolorder(generator.data, c("Generator", "Max Capacity", 
+                              "Min Stable Level", "Status"))
 
 # add to list to write out
 reformatted.tables <- c(reformatted.tables, "generator.data")
@@ -324,11 +336,16 @@ if (exists("transformer.data")) {
     # clean up
     transformer.data[,c("node.to.number", "node.from.number") := NULL]
     
+    setcolorder(transformer.data, c("Transformer", "Node From", "Node To",
+                                    "kV.From", "kV.To", "Rating", 
+                                    "Resistance", "Reactance", "Status"))
+    
     # add to list to write out
     reformatted.tables <- c(reformatted.tables, "transformer.data")
 }
 
-
+# clean up node
+node.data[, node.number := NULL]
 
 #------------------------------------------------------------------------------|
 
