@@ -143,42 +143,43 @@ message('... Adding load participation factor from current raw file')
 # correctly and for PLEXOS to read them in correctly
 # remove any negative loads and replace them with zero
 # convert NaNs to zero for PLEXOS to read them in correctly
-load.part.fact.table <- Load.table[, .(BusNumber,ActivePower.MW, Status)] 
+load.data <- fread(load.file)
+
+load.part.fact.table <- load.data[, .(Node, Load, Status)] 
 
 # remove Status = 0 load
-load.part.fact.table[,ActivePower.MW := ActivePower.MW * Status]
+load.part.fact.table[, Load := Load * Status]
 
 # remove negative LPFs
-if (any(load.part.fact.table[,ActivePower.MW < 0])) {
+if (any(load.part.fact.table[,Load < 0])) {
   message("Removing negative load participation factors... hope that is OK")
-  load.part.fact.table[ActivePower.MW < 0, ActivePower.MW := 0] 
+  load.part.fact.table[Load < 0, Load := 0] 
 }
 # if there are multiple LPFs for a given node, sum those
-if (any(load.part.fact.table[,length(ActivePower.MW) > 1, by = "BusNumber"][,V1]
+if (any(load.part.fact.table[,length(Load) > 1, by = "Node"][,V1]
 )) {
   message(
     "Summing multiple load participation factors at same node... hope that is OK")
   load.part.fact.table <- 
-    load.part.fact.table[,list(ActivePower.MW = sum(ActivePower.MW)), 
-                         by = "BusNumber"]
+      load.part.fact.table[,list(Load = sum(Load)), by = "Node"]
 }
 
 # merge with nodes table
-load.part.fact.table <- 
-  merge(load.part.fact.table, 
-        node.data.table[, .(BusNumber, BusName, RegionName)], 
-        by = "BusNumber", all.y = TRUE)
-load.part.fact.table[is.na(ActivePower.MW), ActivePower.MW := 0] 
+load.part.fact.table <-
+    merge(load.part.fact.table, 
+        node.data.table[, .(Node, Region)], 
+        by = "Node", all.y = TRUE)
+load.part.fact.table[is.na(Load), Load := 0] 
 
-load.part.fact.table[, LPF := prop.table(ActivePower.MW), by = "RegionName"]
+load.part.fact.table[, LPF := prop.table(Load), by = "RegionName"]
 load.part.fact.table[is.nan(LPF), LPF := 0] 
 
 # add LPFs to properties .sheet
 lpf.to.node.properties <- 
-  load.part.fact.table[,.(BusName, `Load Participation Factor` = LPF)]
+  load.part.fact.table[,.(Node, `Load Participation Factor` = LPF)]
 
 add_to_properties_sheet(lpf.to.node.properties, object.class = 'Node', 
-                        names.col = 'BusName', collection.name = 'Nodes')
+                        names.col = 'Node', collection.name = 'Nodes')
 
 # clean up
 rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
