@@ -256,9 +256,6 @@ import_table_compact <- function(input.table, object.type) {
 # 
 # If property.name is NULL, take property name to be the name of the column
 # Note: Name of fuel column must be "Fuel"
-# 
-# NOTE: should clean up standard internal tables (gen.names.table, 
-# fuels.to.gens, etc). Including change MaxOutput.MW to Max Capacity
 merge_property_by_fuel <- function(input.table, prop.cols, 
   mult.by.max.cap = FALSE, mult.by.num.units = FALSE, 
   cap.band.col = NA, band.col = NA, memo.col = NA) {
@@ -277,20 +274,11 @@ merge_property_by_fuel <- function(input.table, prop.cols,
   #if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
   
   # split property by max capacity if needed
-  if (is.na(cap.band.col)) {
+  if (!is.na(cap.band.col)) {
     
-    # if cap.band.col is NA, then don't need to split properties by max
+    # if cap.band.col is NA, need to split properties by max
     # capacity, so can do a regular merge with generator.data.table
-    # if band.col exists, include it in the merge and allow.cartesian, b/c
-    # merged table will probably be big enough to throw an error
-    generator.data.table <- merge(generator.data.table, 
-      input.table[,.SD, 
-          .SDcols = c("Fuel", if(!is.na(band.col)) band.col, prop.cols)], 
-        by = "Fuel", 
-        allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
-
-  } else {
-    
+      
     # is a cap.band.col is give, use that to split up property distribution
     # when merging
     
@@ -328,21 +316,30 @@ merge_property_by_fuel <- function(input.table, prop.cols,
       generator.data.table[Fuel == fuel, breaks.col := cut(MaxOutput.MW, 
         breaks = fuel.breaks[[fuel]])]
     }
-    
-    # finally, merge input.table with generator.data.table
-    # similarly, if there is a band col, include it and allow.cartesian
-    generator.data.table <- merge(generator.data.table, 
-      input.table[,.SD, 
-          .SDcols = c("Fuel", if(!is.na(band.col)) band.col, prop.cols, "breaks.col")], 
-      by = c("Fuel", "breaks.col"), all.x = T,
-        allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
-  
   }
   
+   # finally, merge input.table with generator.data.table
+    # similarly, if there is a band col, include it and allow.cartesian
+    generator.data.table <- merge(generator.data.table,
+                                  input.table[,.SD,
+                                              .SDcols = c("Fuel", 
+                                                          if(!is.na(band.col)) band.col, 
+                                                          prop.cols, 
+                                                          "breaks.col")],
+                                  by = ifelse(is.na(cap.band.col), "Fuel", c("Fuel", "breaks.col")), 
+                                  all.x = T,
+                                  allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
+  
+  
+  return(generator.data.table)
   # if this property should be multiplied by max capacity, do it
   if (mult.by.max.cap) {
     for (colname in prop.cols) {
-      generator.data.table[,c(colname) := get(colname) * MaxOutput.MW]
+        
+        message(colname)
+        message(generator.data.table)
+        
+      generator.data.table[,c(colname) := get(colname) * `Max Capacity`]
     }
   }
   
