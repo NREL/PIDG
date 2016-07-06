@@ -47,6 +47,14 @@ transformer.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/tran
 # used
 regzones <- fread(regzones, colClasses = "character")
 
+## get colorders
+node.colorder <- colnames(node.data)
+generator.colorder <- colnames(generator.data)
+line.colorder <- colnames(line.data)
+
+if (exists("transformer.data")) transformer.colorder <- colnames(transformer.data)
+if (exists("load.data")) load.colorder <- colnames(load.data)
+
 
 #------------------------------------------------------------------------------|
 # corrections ----
@@ -153,6 +161,18 @@ line.data[`Max Flow` == 0 & !is.na(corrected_maxflow),
 line.data[,corrected_maxflow := NULL]
 
 # adjust_max_cap_cea?
+
+
+#------------------------------------------------------------------------------|
+# set orders again. do this from the original order (w poss addition of zone in node) ----
+#------------------------------------------------------------------------------|
+
+setcolorder(node.data, node.colorder)
+setcolorder(line.data, line.colorder)
+setcolorder(generator.data, generator.colorder)
+
+if (exists("transformer.data")) setcolorder(transformer.data, transformer.colorder)
+if (exists("load.data")) setcolorder(load.data, load.colorder)
 
 
 #------------------------------------------------------------------------------|
