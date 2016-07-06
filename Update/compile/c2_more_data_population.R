@@ -445,7 +445,7 @@ if (add.RE.gens & exists("RE.gen.file.list")){
 } else {
   message('... no RE gen info to be added... skipping')
 }
-akjadsfhkjfdsa
+
 #------------------------------------------------------------------------------|
 # generator properties by fuel----
 #------------------------------------------------------------------------------|
@@ -668,7 +668,7 @@ if(exists('interfaces.files.list')) {
       interface.to.memberships[,parent_object := 
                                  interface.memberships[,Interface.Name]]
       interface.to.memberships[,child_object := 
-                                 interface.memberships[,Line]]
+                                 interface.memberships[,Line.Name]]
       
       Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                                interface.to.memberships)
@@ -683,7 +683,7 @@ if(exists('interfaces.files.list')) {
       interface.coefficients.to.props[, parent_object := 
                                         interface.coefficients[, Interface.Name]]
       interface.coefficients.to.props[, child_object := 
-                                        interface.coefficients[, Line]]
+                                        interface.coefficients[, Line.Name]]
       
       Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
                                               interface.coefficients.to.props)
