@@ -18,7 +18,7 @@
 message("importing node data")
 
 # read in 
-node.data.table <- fread(node.file)
+node.data.table <- fread(file.path(inputfiles.dir, node.file))
 
 node.data.table[, Units := 1]
 
@@ -118,7 +118,7 @@ rm(all.zones, zones.to.objects, zones.to.nodes.to.memberships)
 
 message("importing line data")
 
-line.data.table <- fread(line.file)
+line.data.table <- fread(file.path(inputfiles.dir, line.file))
 
 line.data.table[, Units := 1]
 
@@ -196,7 +196,9 @@ rm(lines.to.objects, lines.to.properties, lines.to.nodes.to.memberships)
 message("importing generator data")
 
 # get data
-generator.data.table <- fread(generator.file)
+generator.data.table <- fread(file.path(inputfiles.dir, generator.file))
+
+generator.data.table[, Units := 1]
 
 # add region
 generator.data.table <- merge(generator.data.table, 
@@ -204,7 +206,6 @@ generator.data.table <- merge(generator.data.table,
                               by = "Node", 
                               all.x = TRUE)
 
-generator.data.table[, Units := 1]
 
 
 #------------------------------------------------------------------------------|
@@ -252,7 +253,7 @@ rm(gens.to.objects, gens.to.properties, gens.to.memberships)
 
 message("importing transformer data")
 
-transformer.data.table <- fread(transformer.file)
+transformer.data.table <- fread(file.path(inputfiles.dir, transformer.file))
 
 transformer.data.table[, Units := 1]
 
