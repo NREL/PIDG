@@ -41,6 +41,8 @@
 # assumes no load is turned off; only active power; ignoring owner <- do this 
 #       all in corrections
 # add owner later
+# 
+# line flow is ratingB or, if that is zero, the max of ratings A and B
 #  
 
 #------------------------------------------------------------------------------|
@@ -214,11 +216,18 @@ line.data <- line.data[,.(Line = paste(node.from.number, node.to.number,
                           node.to.number,
                           Resistance = resistance.pu,
                           Reactance = reactance.pu,
-                          `Max Flow` = ratingB, 
-                          `Min Flow` = as.numeric(ratingB) * -1,
+                          ratingA = as.numeric(ratingA), 
+                          ratingB = as.numeric(ratingB),
+                          ratingC = as.numeric(ratingC),
                           Status = status,
                           Length = length)]
 
+# choose line rating (either ratingB or the max of ratings A and C)
+line.data[,`Max Flow` := {temp = apply(line.data[,.(ratingA,ratingC)],1,max);
+                          ifelse(ratingB != "0", ratingB, temp)}]
+
+line.data[,c("ratingA", "ratingB", "ratingC") := NULL]
+               
 # if DC lines exist, add them
 if (exists("line.dc.data")) {
     
@@ -286,15 +295,12 @@ generator.data <- merge(generator.data,
                         by = "node.number", 
                         all.x = TRUE)
 
-
-
 generator.data[,Generator := paste("GEN", Node, id, sep = "_")]
 
-
 # clean up
-generator.data[,c("node.number", "id", "Node") := NULL]
+generator.data[,c("node.number", "id") := NULL]
 
-setcolorder(generator.data, c("Generator", "Max Capacity", 
+setcolorder(generator.data, c("Generator", "Node", "Max Capacity",  
                               "Min Stable Level", "Status"))
 
 # add to list to write out
