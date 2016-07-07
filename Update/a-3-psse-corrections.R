@@ -22,9 +22,17 @@ output.dir <- file.path(root.dir, "outputs_a-3_corrected_psse")
 regions <- file.path(root.dir, "inputs/node_region_cea.csv")
 zones <- file.path(root.dir, "inputs/node_zone_cea.csv")
 
-regzones <- file.path(root.dir, "inputs/node_region_zone_cea.csv")
+remap.nodes <- file.path(root.dir, "inputs/node_region_zone_cea.csv")
 
 copy.data.loc <- file.path(root.dir, "../../InputFiles_tester/base_network")
+
+# types of corrections
+
+# node region/zone remapping
+remap.node.file <- file.path(root.dir, "correction_inputs/node_region_zone_cea.csv")
+
+# individual properties
+# brief script
 
 
 #------------------------------------------------------------------------------|
@@ -53,7 +61,6 @@ transformer.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/tran
 
 # Node, Region, Zone (Zone optional). if any data is missing, original will be 
 # used
-regzones <- fread(regzones, colClasses = "character")
 
 ## get colorders
 node.colorder <- colnames(node.data)
@@ -68,34 +75,62 @@ if (exists("load.data")) load.colorder <- colnames(load.data)
 # corrections ----
 #------------------------------------------------------------------------------|
 
-## remap regions and zones
-col.names <- colnames(regzones)
-col.names <- col.names[col.names != "Node"]
+if (exists("remap.nodes")) {
+    
+    if (file.exists(file.path(remap.node.file))) {
+        
+        # read in data
+        remap.nodes <- fread(file.path(remap.node.file), 
+                             colClasses = "character")
+        
+        col.names <- colnames(remap.nodes)
+        
+        # check to make sure right columns exist
+        if ("Node" %in% col.names & any(c("Region", "Zone") %in% col.names)) {
+            
+            message("... reassigning node regions (and/or zones) from %s",
+                remap.node.file)
+            
+            
+        # pull out which areas to remap (reg/zone/both)
+        col.names <- col.names[col.names %in% c("Region", "Zone")]
+        
+        setnames(remap.nodes, col.names, paste0(col.names, "_new"))
+        
+        # replace data and clean up
+        node.data <- merge(node.data, remap.nodes, by = "Node", all.x = TRUE)
+        
+        if ("Region" %in% col.names) {
+            node.data[!is.na(Region_new), Region := Region_new]
+            node.data[, Region_new := NULL]
+        }
+         
+        if ("Zone" %in% col.names) {
+            node.data[!is.na(Zone_new), Zone := Zone_new]
+            node.data[, Zone_new := NULL]
+        }
+        
+        # clean up
+        rm(col.names)
+            
+        } else { #  if ("Node" %in% col.names ... 
+            
+            message(paste0(">>  %s does not contain the correct column names ",
+                           "(Node and Region and/or Zone) ... skipping"),
+                    remap.node.file)
+        }
 
-setnames(regzones, col.names, paste0(col.names, "_new"))
-
-# add Zone column if needed
-if ("Zone" %in% col.names & !("Zone" %in% colnames(node.data))) {
-    node.data[, Zone := NA]
+    } else { #  if (file.exists(file.path(remap.node.file)))
+        
+        message(sprintf(">>  %s does not exist ... skipping", remap.node.file))
+    }
+    
+} else { #  if (exists("remap.nodes")) 
+    
+    message("remap.node.file does not exist. leaving nodes in original regions/zones")
 }
 
-# replace data and clean up
-node.data <- merge(node.data, regzones, by = "Node", all.x = TRUE)
 
-node.data[!is.na(Region_new), Region := Region_new]
-node.data[, Region_new := NULL]
- 
-if ("Zone" %in% col.names) {
-    node.data[!is.na(Zone_new), Zone := Zone_new]
-    node.data[, Zone_new := NULL]
-}
-
-if (node.data[,all(is.na(Zone))]) {
-    node.data[,Zone := NULL]
-}
-
-# clean up
-rm(col.names)
 
 
 ## other individual corrections
