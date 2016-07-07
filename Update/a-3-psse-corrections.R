@@ -164,11 +164,29 @@ line.data <- merge(line.data,
                    all.x = TRUE)
 
 line.data[`Max Flow` == 0 & !is.na(corrected_maxflow), 
-          `Max Flow` := corrected_maxflow]
+          `:=`(`Max Flow` = corrected_maxflow, 
+               `Min Flow` = -1 * corrected_maxflow)]
+
 
 line.data[,corrected_maxflow := NULL]
 
+# standard transformer data (names = kV.To, data = rating)
+standard.flow.tfmr.lims <- c("220" = "315", "132" = "100", "110" = "100", 
+   "66" = "100", "69" = "100", "138" = "100", "13.8" = "100")
+
+standard.flow.tfmr.lims <- data.table(kV.To = as.numeric(names(standard.flow.tfmr.lims)),
+                                      cor_Rating = as.numeric(standard.flow.tfmr.lims))
+
+transformer.data <- merge(transformer.data, 
+                          standard.flow.tfmr.lims, 
+                          by = "kV.To",
+                          all.x = TRUE)
+
+transformer.data[Rating == 0 & !is.na(cor_Rating), Rating := cor_Rating]
+transformer.data[,cor_Rating := NULL]
+
 # adjust_max_cap_cea?
+
 
 
 #------------------------------------------------------------------------------|
