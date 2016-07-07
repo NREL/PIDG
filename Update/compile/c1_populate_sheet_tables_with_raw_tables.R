@@ -86,7 +86,7 @@ rm(all.regions, regions.to.objects, regions.to.nodes.to.memberships)
 #------------------------------------------------------------------------------|
 
 # add zones to objects .sheet
-all.zones <- unique(node.data.table$ZoneName)
+all.zones <- unique(node.data.table$Zone)
 
 zones.to.objects <- initialize_table(Objects.sheet, 
                                      length(all.zones),

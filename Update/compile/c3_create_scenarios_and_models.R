@@ -173,7 +173,7 @@ Objects.sheet <- merge_sheet_w_table(Objects.sheet,
 
   # scenario to properties
   # uses line.data.table
-interstate.lines <- line.data.table[grepl("Interstate", category), name]
+interstate.lines <- line.data.table[grepl("Interstate", category), Line]
 scenario.no.inters.lines.to.propterties <- 
   initialize_table(Properties.sheet, length(interstate.lines), 
   list(parent_class = "System", child_class = "Line", 
@@ -200,7 +200,7 @@ Objects.sheet <- merge_sheet_w_table(Objects.sheet,
 
   # scenario to properties
   # uses line.data.table
-intrastate.lines <- line.data.table[!grepl("Interstate", category), name]
+intrastate.lines <- line.data.table[!grepl("Interstate", category), Line]
 scenario.no.intras.lines.to.propterties <- 
   initialize_table(Properties.sheet, length(intrastate.lines), 
   list(parent_class = "System", child_class = "Line", 
@@ -479,7 +479,7 @@ ac.lines <- line.data.table[Type == 'AC']
 scenario.dc.lines.to.properties <- initialize_table(Properties.sheet, 
   nrow(ac.lines), list(parent_class = "System", child_class = "Line", 
   parent_object = "System", band_id = 1, collection = "Lines"))
-scenario.dc.lines.to.properties[,child_object := ac.lines[,name]]
+scenario.dc.lines.to.properties[,child_object := ac.lines[,Line]]
 scenario.dc.lines.to.properties[,property := "Reactance"]
 scenario.dc.lines.to.properties[,value := "0"]
 scenario.dc.lines.to.properties[,scenario := "{Object}Make all lines DC"]
