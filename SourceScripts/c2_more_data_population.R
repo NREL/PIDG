@@ -505,7 +505,7 @@ for (elem in seq_along(generator.property.by.fuel.list)) {
     }
     
   } else {
-    message(sprintf("... %s does not exist ... skipping", 
+    message(sprintf(">>  %s does not exist ... skipping", 
                     generator.property.by.fuel.list[[elem]][1]))
   }
 }
@@ -551,7 +551,7 @@ for (elem in seq_along(object.property.list)) {
     }
     
   } else {
-    message(sprintf("... %s does not exist ... skipping", 
+    message(sprintf(">>  %s does not exist ... skipping", 
                     object.property.list[[elem]][1]))
   }
 }
