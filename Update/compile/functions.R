@@ -284,7 +284,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     
     # create vectors of breaks for each fuel type (with min == 0 and 
     # max == max capacity in generator.data.table)
-    maxes <- generator.data.table[,.(maxcap = max(MaxOutput.MW)), by = 'Fuel']
+    maxes <- generator.data.table[,.(maxcap = max(`Max Capacity`)), by = 'Fuel']
     all.fuels <- input.table[,unique(Fuel)]
     
     fuel.breaks <- list()
@@ -313,32 +313,40 @@ merge_property_by_fuel <- function(input.table, prop.cols,
       # add breaks col
       input.table[Fuel == fuel, breaks.col := cut(get(cap.band.col), 
                                 breaks = fuel.breaks[[fuel]])]
-      generator.data.table[Fuel == fuel, breaks.col := cut(MaxOutput.MW, 
+      generator.data.table[Fuel == fuel, breaks.col := cut(`Max Capacity`, 
         breaks = fuel.breaks[[fuel]])]
     }
   }
   
+  # before merging, check to see if any of the property cols are already in 
+  # generator.data.table. if they are, replace the data
+  # in this (temporary) copy of generator.data.table so doesn't cause problems
+  # in merge
+  gen.cols <- colnames(generator.data.table) 
+  overlaps <- prop.cols[prop.cols %in% gen.cols]
+  
+  if (length(overlaps) > 0) {
+      generator.data.table <- generator.data.table[,.SD,
+                                                   .SDcols = gen.cols[!(gen.cols %in% overlaps)]]
+  }
+  
    # finally, merge input.table with generator.data.table
-    # similarly, if there is a band col, include it and allow.cartesian
+   # merge by breaks.col if that exists
+   # if there is a band col, include it and allow.cartesian b/c it is likely
+   #    to increase number of rows
     generator.data.table <- merge(generator.data.table,
                                   input.table[,.SD,
                                               .SDcols = c("Fuel", 
                                                           if(!is.na(band.col)) band.col, 
-                                                          prop.cols, 
-                                                          "breaks.col")],
-                                  by = ifelse(is.na(cap.band.col), "Fuel", c("Fuel", "breaks.col")), 
+                                                          if(!is.na(cap.band.col)) "breaks.col",
+                                                          prop.cols)],
+                                  by = c("Fuel", if (!is.na(cap.band.col)) "breaks.col"), 
                                   all.x = T,
                                   allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
   
-  
-  return(generator.data.table)
   # if this property should be multiplied by max capacity, do it
   if (mult.by.max.cap) {
     for (colname in prop.cols) {
-        
-        message(colname)
-        message(generator.data.table)
-        
       generator.data.table[,c(colname) := get(colname) * `Max Capacity`]
     }
   }
@@ -350,7 +358,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     }
   }
  
-  return.cols = c('Generator.Name',prop.cols,band.col)
+  return.cols = c('Generator',prop.cols,band.col)
   # return generator + property
   return(generator.data.table[,.SD, .SDcols = return.cols[!is.na(return.cols)]])
 }
@@ -625,7 +633,7 @@ make_interleave_pointers <- function(parent.model, child.model,
                                                 prop.cols = template.fuel.cols)
     
         add_to_properties_sheet(cur.mapped.tab, object.class = "Generator",
-                                names.col = "Generator.Name", 
+                                names.col = "Generator", 
                                 collection.name = "Generators", 
                                 datafile.col = template.fuel.cols,
                                 overwrite = TRUE, 

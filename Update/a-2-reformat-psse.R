@@ -227,6 +227,9 @@ line.data[,`Max Flow` := {temp = apply(line.data[,.(ratingA,ratingC)],1,max);
                           ifelse(ratingB != "0", ratingB, temp)}]
 
 line.data[,c("ratingA", "ratingB", "ratingC") := NULL]
+
+line.data[,`Min Flow` := `Max Flow` * -1]
+
                
 # if DC lines exist, add them
 if (exists("line.dc.data")) {

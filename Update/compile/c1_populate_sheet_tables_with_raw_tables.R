@@ -120,7 +120,7 @@ rm(all.regions, regions.to.objects, regions.to.nodes.to.memberships)
 #------------------------------------------------------------------------------|
 
 # add zones to objects .sheet
-all.zones <- unique(node.data.table$ZoneName)
+all.zones <- unique(node.data.table$Zone)
 
 zones.to.objects <- initialize_table(Objects.sheet, 
                                      length(all.zones),
@@ -316,8 +316,8 @@ transformer.data.table <- merge(transformer.data.table,
                                 all.x = TRUE)
 
 # add category
-transformer.data.table[Region.From == Region.From, category := Region.From]
-transformer.data.table[Region.From != Region.From, category := "Interstate_tfmr"]
+transformer.data.table[Region.From == Region.To, category := Region.From]
+transformer.data.table[Region.From != Region.To, category := "Interstate_tfmr"]
 
 # run data check on transformers and save results in OutputFiles
 # a. Transformer properties 

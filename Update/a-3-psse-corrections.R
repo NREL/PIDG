@@ -22,7 +22,18 @@ output.dir <- file.path(root.dir, "outputs_a-3_corrected_psse")
 regions <- file.path(root.dir, "inputs/node_region_cea.csv")
 zones <- file.path(root.dir, "inputs/node_zone_cea.csv")
 
-regzones <- file.path(root.dir, "inputs/node_region_zone_cea.csv")
+remap.nodes <- file.path(root.dir, "inputs/node_region_zone_cea.csv")
+
+copy.data.loc <- file.path(root.dir, "../../InputFiles_tester/base_network")
+
+# types of corrections
+
+# node region/zone remapping
+remap.node.file <- file.path(root.dir, "correction_inputs/node_region_zone_cea.csv")
+
+# individual properties
+# brief script
+
 
 #------------------------------------------------------------------------------|
 # setup ----
@@ -36,6 +47,11 @@ if (!dir.exists(output.dir)) {
     dir.create(output.dir, recursive = TRUE)
 }
 
+# make sure copy.data.loc exists
+if (!dir.exists(copy.data.loc)) {
+    dir.create(copy.data.loc, recursive = TRUE)
+}
+
 generator.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/generator.data.csv"))
 line.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/line.data.csv"))
 load.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/load.data.csv"))
@@ -45,7 +61,6 @@ transformer.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/tran
 
 # Node, Region, Zone (Zone optional). if any data is missing, original will be 
 # used
-regzones <- fread(regzones, colClasses = "character")
 
 ## get colorders
 node.colorder <- colnames(node.data)
@@ -60,34 +75,62 @@ if (exists("load.data")) load.colorder <- colnames(load.data)
 # corrections ----
 #------------------------------------------------------------------------------|
 
-## remap regions and zones
-col.names <- colnames(regzones)
-col.names <- col.names[col.names != "Node"]
+if (exists("remap.nodes")) {
+    
+    if (file.exists(file.path(remap.node.file))) {
+        
+        # read in data
+        remap.nodes <- fread(file.path(remap.node.file), 
+                             colClasses = "character")
+        
+        col.names <- colnames(remap.nodes)
+        
+        # check to make sure right columns exist
+        if ("Node" %in% col.names & any(c("Region", "Zone") %in% col.names)) {
+            
+            message("... reassigning node regions (and/or zones) from %s",
+                remap.node.file)
+            
+            
+        # pull out which areas to remap (reg/zone/both)
+        col.names <- col.names[col.names %in% c("Region", "Zone")]
+        
+        setnames(remap.nodes, col.names, paste0(col.names, "_new"))
+        
+        # replace data and clean up
+        node.data <- merge(node.data, remap.nodes, by = "Node", all.x = TRUE)
+        
+        if ("Region" %in% col.names) {
+            node.data[!is.na(Region_new), Region := Region_new]
+            node.data[, Region_new := NULL]
+        }
+         
+        if ("Zone" %in% col.names) {
+            node.data[!is.na(Zone_new), Zone := Zone_new]
+            node.data[, Zone_new := NULL]
+        }
+        
+        # clean up
+        rm(col.names)
+            
+        } else { #  if ("Node" %in% col.names ... 
+            
+            message(paste0(">>  %s does not contain the correct column names ",
+                           "(Node and Region and/or Zone) ... skipping"),
+                    remap.node.file)
+        }
 
-setnames(regzones, col.names, paste0(col.names, "_new"))
-
-# add Zone column if needed
-if ("Zone" %in% col.names & !("Zone" %in% colnames(node.data))) {
-    node.data[, Zone := NA]
+    } else { #  if (file.exists(file.path(remap.node.file)))
+        
+        message(sprintf(">>  %s does not exist ... skipping", remap.node.file))
+    }
+    
+} else { #  if (exists("remap.nodes")) 
+    
+    message("remap.node.file does not exist. leaving nodes in original regions/zones")
 }
 
-# replace data and clean up
-node.data <- merge(node.data, regzones, by = "Node", all.x = TRUE)
 
-node.data[!is.na(Region_new), Region := Region_new]
-node.data[, Region_new := NULL]
- 
-if ("Zone" %in% col.names) {
-    node.data[!is.na(Zone_new), Zone := Zone_new]
-    node.data[, Zone_new := NULL]
-}
-
-if (node.data[,all(is.na(Zone))]) {
-    node.data[,Zone := NULL]
-}
-
-# clean up
-rm(col.names)
 
 
 ## other individual corrections
@@ -156,11 +199,29 @@ line.data <- merge(line.data,
                    all.x = TRUE)
 
 line.data[`Max Flow` == 0 & !is.na(corrected_maxflow), 
-          `Max Flow` := corrected_maxflow]
+          `:=`(`Max Flow` = corrected_maxflow, 
+               `Min Flow` = -1 * corrected_maxflow)]
+
 
 line.data[,corrected_maxflow := NULL]
 
+# standard transformer data (names = kV.To, data = rating)
+standard.flow.tfmr.lims <- c("220" = "315", "132" = "100", "110" = "100", 
+   "66" = "100", "69" = "100", "138" = "100", "13.8" = "100")
+
+standard.flow.tfmr.lims <- data.table(kV.To = as.numeric(names(standard.flow.tfmr.lims)),
+                                      cor_Rating = as.numeric(standard.flow.tfmr.lims))
+
+transformer.data <- merge(transformer.data, 
+                          standard.flow.tfmr.lims, 
+                          by = "kV.To",
+                          all.x = TRUE)
+
+transformer.data[Rating == 0 & !is.na(cor_Rating), Rating := cor_Rating]
+transformer.data[,cor_Rating := NULL]
+
 # adjust_max_cap_cea?
+
 
 
 #------------------------------------------------------------------------------|
@@ -186,6 +247,15 @@ for (tab.name in to.write) {
               file.path(output.dir, paste0(tab.name, ".csv")),
               row.names = FALSE, 
               quote = FALSE)
+}
+
+if (exists("copy.data.loc")) {
+    for (tab.name in to.write) {
+        write.csv(get(tab.name), 
+              file.path(copy.data.loc, paste0(tab.name, ".csv")),
+              row.names = FALSE, 
+              quote = FALSE)
+    }
 }
 
 rm(tab.name, to.write)
