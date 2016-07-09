@@ -48,9 +48,13 @@ Objects.sheet <-
 Objects.sheet[!is.na(Fuel),category := Fuel]
 Objects.sheet[,Fuel := NULL]
 
+# summarize generator properties by fuel and save to OutputFiles
+generator.fuels <- describeBy(generator.data.table,group = "Fuel", mat = T)
+
+write.csv(generator.summary,file = file.path(outputfiles.dir,
+                                             "DataCheck/generator.summary.csv"))
 # clean up
 rm(fuel.table, all.fuels, fuels.to.objects, fuels.to.gens.to.memberships)
-
 
 #------------------------------------------------------------------------------|
 # add load (mapped by region by external file) and lpf ----
@@ -161,6 +165,16 @@ load.part.fact.table[is.na(Load), Load := 0]
 load.part.fact.table[, LPF := prop.table(Load), by = "Region"]
 load.part.fact.table[is.nan(LPF), LPF := 0] 
 
+# check that LPFs sum to 1 for each region - throw warning if they do not
+lpf.by.region <- load.part.fact.table[, .(sum.lpf = sum(LPF)), by = Region]
+
+write.csv(lpf.by.region, file = file.path(outputfiles.dir,
+                                          "DataCheck/lpf.by.region.csv"))
+
+if(sum(lpf.by.region$sum.lpf) != nrow(lpf.by.region)){
+  warning("LPF does not sum to one (1) in all regions")
+}
+
 # add LPFs to properties .sheet
 lpf.to.node.properties <- 
   load.part.fact.table[,.(Node, `Load Participation Factor` = LPF)]
@@ -171,7 +185,7 @@ add_to_properties_sheet(lpf.to.node.properties, object.class = 'Node',
 # clean up
 rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
    load.part.fact.table, lpf.to.node.properties, load.scens, cur.tab, 
-   load.scens.to.objects)
+   load.scens.to.objects, lpf.by.region)
 
 #------------------------------------------------------------------------------|
 # add RE generators ----
@@ -193,7 +207,19 @@ if (add.RE.gens & exists("RE.gen.file.list")){
     RE.gens <- 
       fread(file.path(inputfiles.dir, fname), colClasses = 'numeric')
     
-    # create scenario if input file sceanrio is indicated in input_params*.R
+    # run a data check and save results to OutputFiles
+    RE.data.check <- RE.gens[,.(Sum.Capacity = sum(Max.Capacity),
+                                Min.Capacity = min(Max.Capacity),
+                                Max.Capacity = max(Max.Capacity),
+                                Sum.Units = sum(Num.Units),
+                                File = fname, Scenario = scenname), 
+                             by = c("Fuel","Node.Region")]
+    
+    write.csv(RE.data.check,file = file.path(outputfiles.dir,
+                                             paste("DataCheck/RE.gens",
+                                                   scenname,"csv",sep = ".")))
+    
+    # create scenario if input file scenario is indicated in input_params*.R
     if(!is.na(scenname)){
       
       RE.gens[,Num.Units.Scn := Num.Units]
