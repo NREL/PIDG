@@ -265,10 +265,31 @@ generator.data.table <- merge(generator.data.table, node.data.table,
 generator.data.table[,Generator.Name := paste0("GEN_", BusName, "_", ID)]
 generator.data.table[,Units := 1]
 
-# **needs to be cleaned up in a better way: NLDC changed max capacity of these 
-# two generators (initial capacities were 660 and 600 MW). See script d.
-generator.data.table[Generator.Name %in% c("GEN_354013_GMR_400_1",
-  "GEN_354013_GMR_400_2"), MaxOutput.MW := 685]
+# temporary!! adjust max capacity needed
+if (exists("adjust.max.cap")) {
+    if(file.exists(file.path(inputfiles.dir, adjust.max.cap))) {
+        
+        message(sprintf("... adjusting max capacity of generators in %s", 
+                        adjust.max.cap))
+        
+        new.cap <- fread(file.path(inputfiles.dir, adjust.max.cap))
+        
+        generator.data.table <- merge(generator.data.table, 
+                                      new.cap,
+                                      by = "Generator.Name", 
+                                      all.x = TRUE)
+        
+        generator.data.table[!is.na(new.capacity), MaxOutput.MW := new.capacity]
+        generator.data.table[, new.capacity := NULL]
+        
+        rm(new.cap)
+        
+    } else {
+        message(sprintf(">>  %s does not exist ... skipping", 
+                        adjust.max.cap))
+    }
+        
+}
 
 
 #------------------------------------------------------------------------------|
