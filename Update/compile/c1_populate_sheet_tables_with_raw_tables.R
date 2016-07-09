@@ -10,6 +10,7 @@
 # generator.file
 # transformer.file
 
+library(psych)
 
 #------------------------------------------------------------------------------|
 # nodes ----
@@ -22,8 +23,42 @@ node.data.table <- fread(file.path(inputfiles.dir, node.file))
 
 node.data.table[, Units := 1]
 
-# check for dupes?
+# run data checks on nodes and save in OutputFiles
 
+# a. Regions and zones
+regions.zones <- unique(node.data.table[,.(Zone, Region)])
+
+write.csv(regions.zones, file = file.path(outputfiles.dir,
+                                          "DataCheck/data.check_node.freq.csv"))
+# b. number of nodes by zone and region
+node.freq <- as.data.table(xtabs(~ Zone + Region, data = node.data.table))
+setnames(node.freq,"N","Number of Nodes")
+
+write.csv(node.freq, file = file.path(outputfiles.dir,
+                                      "DataCheck/data.check_node.freq.csv"))
+
+# c. check that no nodes have missing region
+node.missing.region <- node.data.table[Region == "" | is.na(Region),Node]
+
+if(length(node.missing.region) > 0){
+  stop("The following nodes do not have a region: ", 
+       paste(node.missing.region, collapse = ", "))
+}
+
+# d. node voltage by region
+node.kV <- ggplot(data = node.data.table, aes(x = factor(0), y = Voltage)) + 
+  geom_boxplot() +
+  facet_wrap(~ Region, scale = "free_y") +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+png(file.path(outputfiles.dir,"DataCheck/node.voltage.png"))
+plot(node.kV)
+dev.off()
+
+# clean up 
+rm(regions.zones,node.freq,node.kV)
 
 #------------------------------------------------------------------------------|
 # Add nodes to .sheet tables ----
@@ -48,7 +83,6 @@ add_to_properties_sheet(nodes.to.properties,
 
 # clean up
 rm(nodes.to.objects, nodes.to.properties)
-
 
 #------------------------------------------------------------------------------|
 # Add regions to .sheet tables ----
@@ -139,7 +173,12 @@ line.data.table <- merge(line.data.table,
 line.data.table[Region.From == Region.To, category := paste0(Type, "_", Region.From)]
 line.data.table[Region.From != Region.To, category := paste0("Interstate_", Type)]
 
+# run data check and save results in OutputFiles
+# a. summary table - voltage, reactance, resistance, max flow, min flow
+line.summary <- describe(line.data.table)
 
+write.csv(line.summary, file = file.path(outputfiles.dir,
+                                         "DataCheck/line.summary.csv"))
 #------------------------------------------------------------------------------|
 # Add lines to .sheet tables ----
 #------------------------------------------------------------------------------|
@@ -206,6 +245,12 @@ generator.data.table <- merge(generator.data.table,
                               by = "Node", 
                               all.x = TRUE)
 
+# run data checks and save results in OutputFiles
+# a. Generator properties summarized by region
+generator.summary <- describeBy(generator.data.table,group = "Region", mat = T)
+
+write.csv(generator.summary,file = file.path(outputfiles.dir,
+                                             "DataCheck/generator.summary.csv"))
 
 
 #------------------------------------------------------------------------------|
@@ -273,6 +318,13 @@ transformer.data.table <- merge(transformer.data.table,
 # add category
 transformer.data.table[Region.From == Region.From, category := Region.From]
 transformer.data.table[Region.From != Region.From, category := "Interstate_tfmr"]
+
+# run data check on transformers and save results in OutputFiles
+# a. Transformer properties 
+transformer.summary <- describe(transformer.data.table)
+
+write.csv(transformer.summary, 
+          file = file.path(outputfiles.dir,"DataCheck/transformer.summary.csv"))
 
 
 #------------------------------------------------------------------------------|
