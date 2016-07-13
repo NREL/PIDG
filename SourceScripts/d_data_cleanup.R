@@ -54,7 +54,7 @@ setorder(cat.by.class, class, category)
 cat.by.class[,rank := 1:.N, by = 'class']
 
 # add this to categories .sheet so categories will be alphabetized
-cat.to.categories <- initialize_table(Categories.prototype, nrow(cat.by.class), 
+cat.to.categories <- initialize_table(Categories.sheet, nrow(cat.by.class), 
   list(class = cat.by.class$class, category = cat.by.class$category, 
   rank = cat.by.class$rank))
   

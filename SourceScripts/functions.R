@@ -162,7 +162,7 @@ import_table_compact <- function(input.table, object.type) {
     variable.name = 'name', value.name = 'category')
     
   # create objects table and merge with Objects.sheet
-  to.object.sheet <- initialize_table(Objects.prototype, nrow(objcat), 
+  to.object.sheet <- initialize_table(Objects.sheet, nrow(objcat), 
     list(class = object.type, name = objcat$name, category = objcat$category))
   
   Objects.sheet <<- merge_sheet_w_table(Objects.sheet, to.object.sheet)
@@ -184,7 +184,7 @@ import_table_compact <- function(input.table, object.type) {
   # remove blanks
   attribs.raw <- attribs.raw[value != ""]
   
-  to.attrib.sheet <- initialize_table(Attributes.prototype, nrow(attribs.raw), 
+  to.attrib.sheet <- initialize_table(Attributes.sheet, nrow(attribs.raw), 
     list(name = attribs.raw$name, class = object.type, 
       attribute = attribs.raw$names, value = attribs.raw$value))
   
@@ -210,7 +210,7 @@ import_table_compact <- function(input.table, object.type) {
   # remove blanks
   membs.raw <- membs.raw[child != ""]
   
-  to.memb.sheet <- initialize_table(Memberships.prototype, nrow(membs.raw), 
+  to.memb.sheet <- initialize_table(Memberships.sheet, nrow(membs.raw), 
     list(parent_class = object.type, parent_object = membs.raw$name, 
       collection = membs.raw$names, child_class = membs.raw$names, 
       child_object = membs.raw$child))
@@ -236,7 +236,7 @@ import_table_compact <- function(input.table, object.type) {
   # remove blanks
   scens.raw <- scens.raw[child != ""]
   
-  to.scen.sheet <- initialize_table(Memberships.prototype, nrow(scens.raw), 
+  to.scen.sheet <- initialize_table(Memberships.sheet, nrow(scens.raw), 
     list(parent_class = object.type, parent_object = scens.raw$name, 
       collection = 'Scenarios', child_class = 'Scenario', 
       child_object = scens.raw$child))
@@ -403,7 +403,7 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
                                property == "")]
     
     # create properties table with these properties
-    props.tab <- initialize_table(Properties.prototype, nrow(input.table), 
+    props.tab <- initialize_table(Properties.sheet, nrow(input.table), 
       list(
         parent_class = ifelse(is.na(parent.col), "System", parent.col),
         parent_object = ifelse(is.na(parent.col), "System", 
@@ -578,7 +578,7 @@ make_interleave_pointers <- function(parent.model, child.model,
     # create interleaved membership between models - maybe consider 
     # restructuring so that don't have to merge each time with 
     # Memberships.sheet?
-    int.to.memberships = initialize_table(Memberships.prototype, 1, 
+    int.to.memberships = initialize_table(Memberships.sheet, 1, 
         list(parent_class = "Model", child_class = "Model", 
             collection = "Interleaved", parent_object = parent.model, 
             child_object = child.model))
@@ -704,7 +704,7 @@ make_interleave_pointers <- function(parent.model, child.model,
     # note: there is currently no way to pass in FALSE to this variable, but
     # I'm putting this is so we can add that option later if needed
     if (add.scen.to.model) {
-        RTscen.to.memberships = initialize_table(Memberships.prototype, 2, 
+        RTscen.to.memberships = initialize_table(Memberships.sheet, 2, 
             list(parent_class = "Model", child_class = "Scenario", 
                  collection = "Scenarios", parent_object = child.model, 
                  child_object = c(filepointer.scenario, datafileobj.scenario)))
