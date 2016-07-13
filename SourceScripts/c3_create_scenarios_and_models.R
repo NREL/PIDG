@@ -340,11 +340,11 @@ invisible(lapply(generic.import.files, function (x) {
   } else {
     
     # warn about file not existing
-    message(sprintf("... %s does not exist ... skipping", x))
+    message(sprintf(">>  %s does not exist ... skipping", x))
     
   }
 }))
-} else { message('... no generic import files defined ... skipping') }
+} else { message('>>  no generic import files defined ... skipping') }
 
 rm(import_and_merge, read_tab, all.sheets)
 
@@ -371,11 +371,11 @@ for (i in seq_along(compact.generic.import.files)) {
     import_table_compact(cur.tab, cur.obj.type)
     
   } else {
-    message(sprintf("... %s does not exist ... skipping", 
+    message(sprintf(">>  %s does not exist ... skipping", 
                     compact.generic.import.files[[i]][1]))
   }
 }
-} else { message('... no compact generic import files defined ... skipping')}
+} else { message('>>  no compact generic import files defined ... skipping')}
 # clean up
 rm(cur.tab, cur.obj.type)
 
@@ -527,11 +527,11 @@ if (exists('enforced.interstate.lines.file')) {
                         scenario.enf.interstate.lines.to.propterties)
     
   } else {
-    message(sprintf("... %s does not exist ... skipping", 
+    message(sprintf(">>  %s does not exist ... skipping", 
                     enforced.interstate.lines.file))
   }
 } else {
-  message("... enforced.interstate.lines.file does not exist ... skipping")
+  message(">>  enforced.interstate.lines.file does not exist ... skipping")
 }
 
 #------------------------------------------------------------------------------|
@@ -623,7 +623,7 @@ if (exists('isolated.nodes.to.remove.args.list')) {
         }
         
         } else {
-        message(sprintf("... %s does not exist ... skipping", 
+        message(sprintf(">>  %s does not exist ... skipping", 
                         isolated.nodes.to.remove.file))
                     
         # clean up
@@ -632,7 +632,7 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             scenario.remove.isolated)
         
   }}} else {
-    message("... isolated.nodes.to.remove.file does not exist ... skipping")
+    message(">>  isolated.nodes.to.remove.file does not exist ... skipping")
   }
 
 
@@ -651,11 +651,11 @@ if (exists('constraint.import.files')) {
       import_constraint(fread(file.path(inputfiles.dir, 
                                  constraint.import.files[[i]][1])))
     } else {
-      message(sprintf("... %s does not exist ... skipping", 
+      message(sprintf(">>  %s does not exist ... skipping", 
                       constraint.import.files[[i]][1]))
     }
   }
-} else { message('... no constraint import files defined ... skipping')}
+} else { message('>>  no constraint import files defined ... skipping')}
 
 
 #------------------------------------------------------------------------------|

@@ -445,12 +445,12 @@ if (add.RE.gens & exists("RE.gen.file.list")){
        new.RE.nodes.data, new.RE.lines.data,
        new.RE.gens.data, node.info, existing.fuels, missing.fuels)})
   } else {
-       message(sprintf("... %s does not exist ... skipping", fname))
+       message(sprintf(">>  %s does not exist ... skipping", fname))
     }
   }
   
 } else {
-  message('... no RE gen info to be added... skipping')
+  message('>>  no RE gen info to be added... skipping')
 }
 
 #------------------------------------------------------------------------------|
@@ -617,12 +617,12 @@ if (exists('turn.off.except.in.scen.list')) {
       rm(elem, cur.names, cur.class, cur.coll, cur.scen, cur.scen.to.obj)
       
     } else {
-      message(sprintf("... %s does not exist ... skipping", 
+      message(sprintf(">>  %s does not exist ... skipping", 
                       turn.off.except.in.scen.list[[elem]][1]))
     }
   }
 } else {
-  message('... turn.off.except.in.scen.list does not exist ... skipping')
+  message('>>  turn.off.except.in.scen.list does not exist ... skipping')
 }
 
 #------------------------------------------------------------------------------|
@@ -696,12 +696,12 @@ if(exists('interfaces.files.list')) {
                                               interface.coefficients.to.props)
       
     } else {
-      message(sprintf("... %s does not exist ... skipping", 
+      message(sprintf(">>  %s does not exist ... skipping", 
                       interfaces.files.list[[i]][1]))
     }
   }
 } else {
-  message('... no interface files defined ... skipping')
+  message('>>  no interface files defined ... skipping')
 }
 
 #------------------------------------------------------------------------------|
@@ -879,5 +879,5 @@ if(length(reserves.files.list) > 0) {
   }
   
 }else {
-  message('... no reserves files found ... skipping')
+  message('>>  no reserves files found ... skipping')
 }
