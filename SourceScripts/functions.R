@@ -425,8 +425,9 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 # 
 # overwrite.cols can be any column in Properties sheet except value. That column
 # will also be overwritten
-add_to_properties_sheet <- function(input.table, object.class, names.col, 
-                                    collection.name, parent.col = NA,
+add_to_properties_sheet <- function(input.table, 
+                                    object.class = NA, names.col = NA, 
+                                    collection.name = NA, parent.col = NA,
                                     scenario.name = NA, pattern.col = NA, 
                                     period.id = NA, datafile.col = NA, 
                                     date_from.col = NA, overwrite = FALSE, 
@@ -436,6 +437,15 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
     # get all property column names (everything but object names column and 
     # pattern column, if applicable)
     all.cols <- colnames(input.table)
+    
+    # names.col, object.class, collection.name are optional. if they don't
+    # exist, assume names.col is first column, class is names.col, and 
+    # collection is names.col with an s
+    if (is.na(names.col)) names.col <- all.cols[1]
+    
+    if (is.na(object.class)) object.class <- names.col
+    
+    if (is.na(collection.name)) collection.name <- paste0(object.class, "s")
     
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
                        date_from.col,band.col, memo.col)

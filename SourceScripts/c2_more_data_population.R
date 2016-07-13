@@ -476,10 +476,13 @@ for (elem in seq_along(generator.property.by.fuel.list)) {
     # and their properties in all other columns
     mapped.by.fuel <- do.call(merge_property_by_fuel, cur.map.fuel.args)
     
+    # temp hack for Generator.Name --> Generator
+    setnames(mapped.by.fuel, "Generator.Name", "Generator")
+    
     # set up arguments for add_to_properties_sheet, using output of merge by fuel  
     cur.prop.sheet.args <- generator.property.by.fuel.list[[elem]][[3]]
     cur.prop.sheet.args$input.table <- mapped.by.fuel
-    cur.prop.sheet.args$names.col <- 'Generator.Name'
+    cur.prop.sheet.args$names.col <- 'Generator'
     
     # add to properties sheet using input arguments and new table
     do.call(add_to_properties_sheet, cur.prop.sheet.args)
@@ -527,7 +530,14 @@ for (elem in seq_along(object.property.list)) {
                                  object.property.list[[elem]][1]))
     
     # read in args
-    cur.args <- object.property.list[[elem]][[2]]
+    if (length(object.property.list[[elem]]) > 1) {
+        
+        cur.args <- object.property.list[[elem]][[2]]  
+    } else {
+        
+        cur.args <- list()
+    }
+    
     cur.args$input.table <- cur.table
     
     # add to properties sheet using input arguments and new table
