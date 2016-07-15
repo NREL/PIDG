@@ -467,8 +467,10 @@ add_to_properties_sheet <- function(input.table, object.class, names.col,
 import_constraint = function(constraint.table,obj.col = 'generator.name',constraint.type = 'RHS Month',collection='Generators',
                              child_class='Generator',constraint.col = 'constraint',category.col = 'category',prop.col = 'property',
                              sense.col = 'sense', scenario.col='scenario') {
-  if (constraint.type !='RHS Month') error(paste0('import_constraint() not yet defined for ',constraint.type))
-  period_type_id = 3
+  if (constraint.type =='RHS Month') period_type_id = 3
+  else if (constraint.type == 'RHS') period_type_id = 0
+  else error(paste0('import_constraint() not yet defined for ',constraint.type))
+  
   new.object.table = data.table(expand.grid(name=unique(constraint.table[,get(constraint.col)]),class = c('Constraint','Data File')),description=NA,key='name')
   setkeyv(constraint.table,constraint.col)
   new.object.table[constraint.table,category:=get(category.col)]
