@@ -49,10 +49,17 @@ Objects.sheet[!is.na(Fuel),category := Fuel]
 Objects.sheet[,Fuel := NULL]
 
 # summarize generator properties by fuel and save to OutputFiles
-generator.fuels <- describeBy(generator.data.table,group = "Fuel", mat = T)
+numeric.cols <- which(sapply(generator.data.table, is.numeric))
+numeric.cols <- c(names(numeric.cols), "Fuel")
 
-write.csv(generator.summary,file = file.path(outputfiles.dir,
-                                             "DataCheck/generator.summary.csv"))
+suppressWarnings(
+generator.fuels.summary <- describeBy(generator.data.table[,numeric.cols, with=F],
+                                      group = "Fuel", mat = T)
+)
+
+write.csv(generator.summary,
+          file = file.path(outputfiles.dir,
+                           "DataCheck/generator.summary.by.fuel.csv"))
 # clean up
 rm(fuel.table, all.fuels, fuels.to.objects, fuels.to.gens.to.memberships)
 
@@ -208,16 +215,25 @@ if (add.RE.gens & exists("RE.gen.file.list")){
       fread(file.path(inputfiles.dir, fname), colClasses = 'numeric')
     
     # run a data check and save results to OutputFiles
-    RE.data.check <- RE.gens[,.(Sum.Capacity = sum(Max.Capacity),
-                                Min.Capacity = min(Max.Capacity),
-                                Max.Capacity = max(Max.Capacity),
-                                Sum.Units = sum(Num.Units),
-                                File = fname, Scenario = scenname), 
-                             by = c("Fuel","Node.Region")]
+    # check for missing Fuel, Number of Units, Max Capacity
+    check.RE.fuel <- RE.gens[is.na(Fuel) | Fuel == "",]
+    if(nrow(check.RE.fuel) > 0){ 
+       warning(sprintf("At least one generator in %s is missing 'Fuel'", fname))
+    }
     
-    write.csv(RE.data.check,file = file.path(outputfiles.dir,
-                                             paste("DataCheck/RE.gens",
-                                                   scenname,"csv",sep = ".")))
+    check.RE.units <- RE.gens[is.na(Num.Units) | Num.Units == "",]
+    if(nrow(check.RE.units) > 0){ 
+      warning(sprintf("At least one generator in %s is missing 'Units'", fname))
+    }
+    
+    check.RE.capacity <- RE.gens[is.na(Max.Capacity) | Max.Capacity == "",]
+    if(nrow(check.RE.capacity) > 0){ 
+      warning(sprintf("At least one generator in %s is missing 'Max Capacity'",
+                      fname))
+    }
+    
+    # clean up
+    rm(check.RE.fuel, check.RE.units, check.RE.capacity)
     
     # create scenario if input file scenario is indicated in input_params*.R
     if(!is.na(scenname)){

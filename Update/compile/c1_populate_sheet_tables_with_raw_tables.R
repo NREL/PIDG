@@ -11,6 +11,7 @@
 # transformer.file
 
 library(psych)
+library(ggplot2)
 
 #------------------------------------------------------------------------------|
 # nodes ----
@@ -46,15 +47,15 @@ if(length(node.missing.region) > 0){
 }
 
 # d. node voltage by region
-node.kV <- ggplot(data = node.data.table, aes(x = factor(0), y = Voltage)) + 
-  geom_boxplot() +
-  facet_wrap(~ Region, scale = "free_y") +
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
+node.kV.plot <- ggplot(data = node.data.table) + 
+  geom_bar(aes(x = factor(Voltage), fill = factor(Voltage))) +
+  facet_wrap(~ Region, scales = "free") +
+  labs(x = "Node voltage", y = "Number of nodes") + 
+  scale_fill_discrete(name="Node voltage")
 
-png(file.path(outputfiles.dir,"DataCheck/node.voltage.png"))
-plot(node.kV)
+pdf(file.path(outputfiles.dir,"DataCheck/node.voltage.by.state.pdf"),
+    width = 12, height = 8)
+plot(node.kV.plot)
 dev.off()
 
 # clean up 
@@ -175,7 +176,9 @@ line.data.table[Region.From != Region.To, category := paste0("Interstate_", Type
 
 # run data check and save results in OutputFiles
 # a. summary table - voltage, reactance, resistance, max flow, min flow
-line.summary <- describe(line.data.table)
+numeric.cols <- sapply(line.data.table,is.numeric)
+
+line.summary <- describe(line.data.table[,numeric.cols, with = F])
 
 write.csv(line.summary, file = file.path(outputfiles.dir,
                                          "DataCheck/line.summary.csv"))
@@ -247,11 +250,28 @@ generator.data.table <- merge(generator.data.table,
 
 # run data checks and save results in OutputFiles
 # a. Generator properties summarized by region
-generator.summary <- describeBy(generator.data.table,group = "Region", mat = T)
+numeric.cols <- which(sapply(generator.data.table, is.numeric))
+numeric.cols <- c(names(numeric.cols),"Region")
 
-write.csv(generator.summary,file = file.path(outputfiles.dir,
-                                             "DataCheck/generator.summary.csv"))
+suppressWarnings(
+generator.region.summary <- describeBy(generator.data.table[,numeric.cols, with = F],
+                                       group = "Region", mat = T)
+)
 
+write.csv(generator.region.summary,
+          file = file.path(outputfiles.dir,
+                           "DataCheck/generator.summary.by.region.csv"))
+
+# b. Plot summary of generator properties by region
+gen.capacity.plot <- ggplot(data = generator.data.table) +
+  geom_boxplot(aes(x = factor(0), y = `Max Capacity`)) +
+  facet_wrap(~ Region, scales = "free") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  
+pdf(file.path(outputfiles.dir,"DataCheck/gen.capacity.by.state.pdf"), 
+    width = 12, height = 8)
+plot(gen.capacity.plot)
+dev.off()
 
 #------------------------------------------------------------------------------|
 # Add generators to .sheet tables ----
@@ -321,11 +341,16 @@ transformer.data.table[Region.From != Region.To, category := "Interstate_tfmr"]
 
 # run data check on transformers and save results in OutputFiles
 # a. Transformer properties 
-transformer.summary <- describe(transformer.data.table)
+numeric.cols <- which(sapply(transformer.data.table,is.numeric))
+numeric.cols <- c(names(numeric.cols),"category")
+
+suppressWarnings(
+transformer.summary <- describeBy(transformer.data.table[,numeric.cols, with = F],
+                                  group = "category", mat = T)
+)
 
 write.csv(transformer.summary, 
           file = file.path(outputfiles.dir,"DataCheck/transformer.summary.csv"))
-
 
 #------------------------------------------------------------------------------|
 # Add transformers to .sheet tables ----
