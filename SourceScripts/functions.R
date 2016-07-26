@@ -13,19 +13,23 @@
 # numbers will be coerced into characters and that will throw a warning 
 # (but not error) later.
 initialize_table <- function (prototype.table, nrows, cols.list) {
-  # create dummy column to initialize table with proper number of rows
-  new.table <- data.table(init.col = character(nrows))
-  col.names <- colnames(prototype.table)
-  for (col.name in names(cols.list)) {
-    new.table[, eval(col.name) := cols.list[[col.name]]]
-  }
-  for (col.name in col.names[!(col.names %in% names(cols.list))]) {
-    new.table[, eval(col.name) := NA_character_]
-  }
-  new.table[, init.col := NULL]
-  return(new.table)
+    
+    # create dummy column to initialize table with proper number of rows
+    new.table <- data.table(init.col = character(nrows))
+    col.names <- colnames(prototype.table)
+    
+    for (col.name in names(cols.list)) {
+      new.table[, eval(col.name) := cols.list[[col.name]]]
+    }
+    
+    for (col.name in col.names[!(col.names %in% names(cols.list))]) {
+      new.table[, eval(col.name) := NA_character_]
+    }
+    
+    new.table[, init.col := NULL]
+    
+    return(new.table)
 }
-# colorder doesn't matter b/c will be taken care of in merging step
 
 
 ###merge_sheet_w_table
@@ -34,17 +38,21 @@ initialize_table <- function (prototype.table, nrows, cols.list) {
 # important when these tables are being read into Plexos.
 # Note: thiscon
 merge_sheet_w_table <- function(sheet.table, table.to.merge) {
-  sheet.cols <- colnames(sheet.table) 
   
-  # convert all columns to character so that they will be same data type 
-  # as .sheet table
-  table.to.merge <- table.to.merge[, lapply(.SD, as.character)] 
-  
-  sheet.table <- merge(sheet.table, table.to.merge, 
-    by = colnames(table.to.merge), all = TRUE)
-  
-  setcolorder(sheet.table, sheet.cols)
-  return(sheet.table)
+    sheet.cols <- colnames(sheet.table) 
+    
+    # convert all columns to character so that they will be same data type 
+    # as .sheet table
+    table.to.merge <- table.to.merge[, lapply(.SD, as.character)] 
+    
+    sheet.table <- merge(sheet.table, 
+                         table.to.merge,
+                         by = colnames(table.to.merge), 
+                         all = TRUE)
+    
+    setcolorder(sheet.table, sheet.cols)
+    
+    return(sheet.table)
 }
 
 
@@ -62,26 +70,38 @@ merge_sheet_w_table <- function(sheet.table, table.to.merge) {
 # Any column called "notes" will be deleted during import, so comments can be 
 # stored in the .csv there
 import_table_generic <- function(imported.csv.table, sheet.name) {
-  if (!(sheet.name %in% c("Objects", "Categories", "Memberships", "Attributes", 
-    "Properties", "Reports"))) {
-    print("Please specify one of the following tables: 
-    Objects, Categories, Memberships, Attributes, Properties, Reports")} else {
-      #set up indices
-    begin.index <- which(imported.csv.table[,toupper(V1)] == "/ BEGIN" & 
-        imported.csv.table[,toupper(V2)] == toupper(sheet.name)) + 2
-    end.index <- which(imported.csv.table[,toupper(V1)] == "/ END" & 
-        imported.csv.table[,toupper(V2)] == toupper(sheet.name)) - 1
-    colnames.index <- begin.index - 1
-    if (length(colnames.index) == 0 || colnames.index >= end.index) {
-      return(NULL)}
-      #set up table
-    requested.table <- imported.csv.table[begin.index:end.index,]
-    setnames(requested.table, as.character(imported.csv.table[colnames.index,]))
-    requested.table <- requested.table[,which(sapply(requested.table, 
-      function(x) !all(x=="") & !all(is.na(x)) )),with=F]
-    if ("notes" %in% colnames(requested.table)) {
-      requested.table[,notes := NULL]}
-    return(requested.table)
+    
+    if (!(sheet.name %in% c("Objects", "Categories", "Memberships", 
+                            "Attributes","Properties", "Reports"))) {
+        print("Please specify one of the following tables: 
+              Objects, Categories, Memberships, Attributes, 
+              Properties, Reports")} else {
+                  
+        #set up indices
+        begin.index <- which(imported.csv.table[,toupper(V1)] == "/ BEGIN" & 
+            imported.csv.table[,toupper(V2)] == toupper(sheet.name)) + 2
+        end.index <- which(imported.csv.table[,toupper(V1)] == "/ END" & 
+            imported.csv.table[,toupper(V2)] == toupper(sheet.name)) - 1
+        colnames.index <- begin.index - 1
+        
+        if (length(colnames.index) == 0 || colnames.index >= end.index) {
+            
+          return(NULL)}
+        
+        #set up table
+        requested.table <- imported.csv.table[begin.index:end.index,]
+        
+        setnames(requested.table, 
+                 as.character(imported.csv.table[colnames.index,]))
+        
+        requested.table <- requested.table[,which(sapply(requested.table,
+                                                         function(x) !all(x=="") & !all(is.na(x)) )), 
+                                           with=F]
+        
+        if ("notes" %in% colnames(requested.table)) {
+          requested.table[,notes := NULL]}
+        
+        return(requested.table)
  }
 } 
 
@@ -111,139 +131,165 @@ import_table_generic <- function(imported.csv.table, sheet.name) {
 # *will only for for non-scenario memberships where object class == collection
 import_table_compact <- function(input.table, object.type) {
   
-  # can only handle models and horizons now. yell if user selected smthing else
-  if (!(tolower(object.type) %in% c('model', 'horizon', 'production',
-    'transmission', 'performance', 'mt schedule', 'st schedule'))) {
-    warning(paste0("In compact.generic.import.files, an incorrect object type",
-      " was selected. Please choose from (not case sensitive): model, ",
-      "horizon, production, transmission, performance, mt schedule, ", 
-      "st schedule"))
-  }
+    # can only handle models and horizons now. yell if user selected smthing else
+    if (!(tolower(object.type) %in% c('model', 'horizon', 'production',
+                                      'transmission', 'performance', 'mt schedule', 
+                                      'st schedule'))) {
+        
+      warning(paste0("In compact.generic.import.files, an incorrect object type",
+                     " was selected. Please choose from (not case sensitive): ",
+                     "model, horizon, production, transmission, performance, ",
+                     "mt schedule, st schedule"))
+    }
   
   # set object.type to properly capitalized version (Model, Horizon, etc)
   # this is used to fill class cols later
-  object.type <- paste0(toupper(substr(object.type, 1, 1)), 
-    tolower(substr(object.type, 2, nchar(object.type))))
-  
-  # treat special case of MT or ST schedule
-  if (grepl('schedule', tolower(object.type))) {
-    object.type.parts <- strsplit(object.type, ' ')[[1]]
-    object.type <- paste0(toupper(object.type.parts[1]), ' ', 
-      toupper(substr(object.type.parts[2], 1, 1)), 
-      tolower(substr(object.type.parts[2], 2, nchar(object.type.parts[2]))))
-  }
-
-  # ---- SET UP DATA FOR USE LATER
-  
-  # pull all object names, which are stored as column names (except first col)
-  all.objects <- colnames(input.table)
-  all.objects <- all.objects[all.objects != 'names' & all.objects != 'notes']
-  
-  # remove notes columns
-  input.table <- input.table[,.SD, .SDcols = c('names', all.objects)]
-  
-  # grab /START of attributes, memberships, and scenarios and put them in 
-  # ordered vector for index comparison later. also grab total numrows
-  start.attrib <- input.table[names == '/START ATTRIBUTES', which = TRUE]
-  start.memb <- input.table[names == '/START MEMBERSHIPS', which = TRUE]
-  start.scen <- input.table[names == '/START SCENARIOS', which = TRUE]
-  all.start.ind <- sort(c(start.attrib, start.memb, start.scen))
-  
-  nrows <- input.table[,.N]
-  
-  
-  # ---- ADD TO OBJECTS SHEET
-  
-  # grab category information and put these all together in objects.sheet
-  objcat <- input.table[names == 'category', .SD, .SDcols = all.objects]
-  
-  # transpose to be in long form so can be put into initialize_table
-  objcat <- melt(objcat, measure.vars = all.objects, 
-    variable.name = 'name', value.name = 'category')
+    object.type <- paste0(toupper(substr(object.type, 1, 1)),
+                          tolower(substr(object.type, 2, nchar(object.type))))
     
-  # create objects table and merge with Objects.sheet
-  to.object.sheet <- initialize_table(Objects.prototype, nrow(objcat), 
-    list(class = object.type, name = objcat$name, category = objcat$category))
-  
-  Objects.sheet <<- merge_sheet_w_table(Objects.sheet, to.object.sheet)
-  
-  
-  # ---- ADD TO ATTRIBUTE SHEET (if there is a /START ATTRIBUTES tag)
+    # treat special case of MT or ST schedule
+    if (grepl('schedule', tolower(object.type))) {
+        
+        object.type.parts <- strsplit(object.type, ' ')[[1]]
+        object.type <- paste0(toupper(object.type.parts[1]), ' ', 
+                              toupper(substr(object.type.parts[2], 1, 1)),
+                              tolower(substr(object.type.parts[2], 2, nchar(object.type.parts[2]))))
+    }
 
-  if (length(start.attrib) > 0) {
-    # find where attribs section ends, either next /START index or the last row
-    last.row.ind <- if (any(all.start.ind > start.attrib)) {
-      # get first ind larger than start.attib, end of attribs is previous row
-      all.start.ind[all.start.ind > start.attrib][1] - 1 } else nrows
-  
-  attribs.raw <- input.table[(start.attrib + 1) : last.row.ind]
-  
-  # melt to be in better format
-  attribs.raw <- melt(attribs.raw, id.vars = 'names', variable.name = 'name')
-  
-  # remove blanks
-  attribs.raw <- attribs.raw[value != ""]
-  
-  to.attrib.sheet <- initialize_table(Attributes.prototype, nrow(attribs.raw), 
-    list(name = attribs.raw$name, class = object.type, 
-      attribute = attribs.raw$names, value = attribs.raw$value))
-  
-  Attributes.sheet <<- merge_sheet_w_table(Attributes.sheet, to.attrib.sheet)
-  
-  }
-  
-  
-  # ADD TO (non-scenario) MEMBERSHIPS SHEET
-  
-  if (length(start.memb) > 0) {
-    # find where membs section ends, either next /START index or the last row
-    last.row.ind <- if (any(all.start.ind > start.memb)) {
-      # get first ind larger that start.memb, end of membs is previous row
-      all.start.ind[all.start.ind > start.memb][1] - 1 } else nrows
-  
-  membs.raw <- input.table[(start.memb + 1) : last.row.ind]
-  
-  # melt to be in better format
-  membs.raw <- melt(membs.raw, id.vars = 'names', variable.name = 'name', 
-    value.name = 'child')
-  
-  # remove blanks
-  membs.raw <- membs.raw[child != ""]
-  
-  to.memb.sheet <- initialize_table(Memberships.prototype, nrow(membs.raw), 
-    list(parent_class = object.type, parent_object = membs.raw$name, 
-      collection = membs.raw$names, child_class = membs.raw$names, 
-      child_object = membs.raw$child))
-  
-  Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, to.memb.sheet)
-  
-  }
-  
-  # ----- ADD TO (scenario) MEMBERSHIPS SHEET
-  
-  if (length(start.scen) > 0) {
-    # find where membs section ends, either next /START index or the last row
-    last.row.ind <- if (any(all.start.ind > start.scen)) {
-      # get first ind larger that start.memb, end of membs is previous row
-      all.start.ind[all.start.ind > start.scen][1] - 1 } else nrows
-  
-  scens.raw <- input.table[(start.scen + 1) : last.row.ind]
-  
-  # melt to be in better format
-  scens.raw <- melt(scens.raw, id.vars = 'names', variable.name = 'name', 
-    value.name = 'child')
-  
-  # remove blanks
-  scens.raw <- scens.raw[child != ""]
-  
-  to.scen.sheet <- initialize_table(Memberships.prototype, nrow(scens.raw), 
-    list(parent_class = object.type, parent_object = scens.raw$name, 
-      collection = 'Scenarios', child_class = 'Scenario', 
-      child_object = scens.raw$child))
-  
-  Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, to.scen.sheet)
-  
-  }
+    # ---- SET UP DATA FOR USE LATER
+    
+    # pull all object names, which are stored as column names (except first col)
+    all.objects <- colnames(input.table)
+    all.objects <- all.objects[all.objects != 'names' & all.objects != 'notes']
+    
+    # remove notes columns
+    input.table <- input.table[,.SD, .SDcols = c('names', all.objects)]
+    
+    # grab /START of attributes, memberships, and scenarios and put them in 
+    # ordered vector for index comparison later. also grab total numrows
+    start.attrib <- input.table[names == '/START ATTRIBUTES', which = TRUE]
+    start.memb <- input.table[names == '/START MEMBERSHIPS', which = TRUE]
+    start.scen <- input.table[names == '/START SCENARIOS', which = TRUE]
+    all.start.ind <- sort(c(start.attrib, start.memb, start.scen))
+    
+    nrows <- input.table[,.N]
+    
+    
+    # ---- ADD TO OBJECTS SHEET
+    
+    # grab category information and put these all together in objects.sheet
+    objcat <- input.table[names == 'category', .SD, .SDcols = all.objects]
+    
+    # transpose to be in long form so can be put into initialize_table
+    objcat <- melt(objcat, 
+                   measure.vars = all.objects,
+                   variable.name = 'name', 
+                   value.name = 'category')
+      
+    # create objects table and merge with Objects.sheet
+    to.object.sheet <- initialize_table(Objects.sheet, 
+                                        nrow(objcat),
+                                        list(class = object.type, 
+                                             name = objcat$name, 
+                                             category = objcat$category))
+    
+    Objects.sheet <<- merge_sheet_w_table(Objects.sheet, to.object.sheet)
+    
+    
+    # ---- ADD TO ATTRIBUTE SHEET (if there is a /START ATTRIBUTES tag)
+
+    if (length(start.attrib) > 0) {
+        
+        # find where attribs section ends, either next /START index or the last row
+        last.row.ind <- if (any(all.start.ind > start.attrib)) {
+            # get first ind larger than start.attib, end of attribs is previous row
+            all.start.ind[all.start.ind > start.attrib][1] - 1 } else nrows
+    
+        attribs.raw <- input.table[(start.attrib + 1) : last.row.ind]
+        
+        # melt to be in better format
+        attribs.raw <- melt(attribs.raw, 
+                            id.vars = 'names', 
+                            variable.name = 'name')
+        
+        # remove blanks
+        attribs.raw <- attribs.raw[value != ""]
+        
+        to.attrib.sheet <- initialize_table(Attributes.sheet, 
+                                            nrow(attribs.raw),
+                                            list(name = attribs.raw$name, 
+                                                 class = object.type, 
+                                                 attribute = attribs.raw$names, 
+                                                 value = attribs.raw$value))
+        
+        Attributes.sheet <<- merge_sheet_w_table(Attributes.sheet, to.attrib.sheet)
+    
+    }
+    
+    
+    # ADD TO (non-scenario) MEMBERSHIPS SHEET
+    
+    if (length(start.memb) > 0) {
+        
+        # find where membs section ends, either next /START index or the last row
+        last.row.ind <- if (any(all.start.ind > start.memb)) {
+            # get first ind larger that start.memb, end of membs is previous row
+            all.start.ind[all.start.ind > start.memb][1] - 1 } else nrows
+    
+        membs.raw <- input.table[(start.memb + 1) : last.row.ind]
+    
+        # melt to be in better format
+        membs.raw <- melt(membs.raw, 
+                          id.vars = 'names', 
+                          variable.name = 'name', 
+                          value.name = 'child')
+        
+        # remove blanks
+        membs.raw <- membs.raw[child != ""]
+        
+        to.memb.sheet <- initialize_table(Memberships.sheet, 
+                                          nrow(membs.raw), 
+                                          list(parent_class = object.type, 
+                                               parent_object = membs.raw$name,
+                                               collection = membs.raw$names, 
+                                               child_class = membs.raw$names,
+                                               child_object = membs.raw$child))
+        
+        Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, to.memb.sheet)
+    
+    }
+    
+    # ----- ADD TO (scenario) MEMBERSHIPS SHEET
+    
+    if (length(start.scen) > 0) {
+            
+          # find where membs section ends, either next /START index or the last row
+          last.row.ind <- if (any(all.start.ind > start.scen)) {
+            # get first ind larger that start.memb, end of membs is previous row
+            all.start.ind[all.start.ind > start.scen][1] - 1 } else nrows
+        
+        scens.raw <- input.table[(start.scen + 1) : last.row.ind]
+        
+        # melt to be in better format
+        scens.raw <- melt(scens.raw, 
+                          id.vars = 'names', 
+                          variable.name = 'name', 
+                          value.name = 'child')
+        
+        # remove blanks
+        scens.raw <- scens.raw[child != ""]
+        
+        to.scen.sheet <- initialize_table(Memberships.sheet, 
+                                          nrow(scens.raw), 
+                                          list(parent_class = object.type, 
+                                               parent_object = scens.raw$name, 
+                                               collection = 'Scenarios', 
+                                               child_class = 'Scenario',
+                                               child_object = scens.raw$child))
+        
+        Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, to.scen.sheet)
+    
+    }
 }
 
 
@@ -260,102 +306,112 @@ import_table_compact <- function(input.table, object.type) {
 # NOTE: should clean up standard internal tables (gen.names.table, 
 # fuels.to.gens, etc). Including change MaxOutput.MW to Max Capacity
 merge_property_by_fuel <- function(input.table, prop.cols, 
-  mult.by.max.cap = FALSE, mult.by.num.units = FALSE, 
-  cap.band.col = NA, band.col = NA, memo.col = NA) {
+                                   mult.by.max.cap = FALSE, 
+                                   mult.by.num.units = FALSE, 
+                                   cap.band.col = NA, band.col = NA, 
+                                   memo.col = NA) {
   
-  all.cols <- colnames(input.table)
-  
-  non.prop.cols <- c("Fuel", cap.band.col, band.col, memo.col)
-  
-  # make sure Fuel column exists before merging
-  if ( !("Fuel" %in% colnames(input.table))) {
-    stop(paste0("There is no 'Fuel' column in the input table. ", 
-    "Cannot merge this table. Property name is: ", prop.cols, "."))
-  }
-  
-  #This caused errors... need to determine how to insert memos into PLEXOS
-  #if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
-  
-  # split property by max capacity if needed
-  if (is.na(cap.band.col)) {
+    all.cols <- colnames(input.table)
     
-    # if cap.band.col is NA, then don't need to split properties by max
-    # capacity, so can do a regular merge with generator.data.table
-    # if band.col exists, include it in the merge and allow.cartesian, b/c
-    # merged table will probably be big enough to throw an error
-    generator.data.table <- merge(generator.data.table, 
-      input.table[,.SD, 
-          .SDcols = c("Fuel", if(!is.na(band.col)) band.col, prop.cols)], 
-        by = "Fuel", 
-        allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
-
-  } else {
+    non.prop.cols <- c("Fuel", cap.band.col, band.col, memo.col)
     
-    # is a cap.band.col is give, use that to split up property distribution
-    # when merging
-    
-    # create vectors of breaks for each fuel type (with min == 0 and 
-    # max == max capacity in generator.data.table)
-    maxes <- generator.data.table[,.(maxcap = max(MaxOutput.MW)), by = 'Fuel']
-    all.fuels <- input.table[,unique(Fuel)]
-    
-    fuel.breaks <- list()
-    for (fuel in all.fuels) {
-     unique.breaks <- input.table[Fuel == fuel, unique(get(cap.band.col))]
-     
-     if (!is.na(unique.breaks[1]))
-       # remove maxcap if it's less than any of the supplied breaks
-        if (any(maxes[Fuel == fuel, maxcap <= unique.breaks]))
-          maxes[Fuel == fuel, maxcap := NA] 
-
-     unique.breaks <- c(-1, unique.breaks, maxes[Fuel == fuel, maxcap])
-     unique.breaks <- sort(na.omit(unique.breaks))
- 
-     fuel.breaks[[fuel]] <- unique.breaks
+    # make sure Fuel column exists before merging
+    if ( !("Fuel" %in% colnames(input.table))) {
+        
+        stop(paste0("There is no 'Fuel' column in the input table. ",
+                    "Cannot merge this table. Property name is: ", prop.cols, "."))
     }
     
-    # now that we have breaks for each fuel, add column to generator.data.table 
-    # and input.table that sorts gens, so can merge by that and fuel
-    suppressWarnings(generator.data.table[, breaks.col := NULL]) # reset
-    for (fuel in all.fuels) {
-      # add capacity even to NA cols in input.table, so they get sorted right
-      input.table[Fuel == fuel & is.na(get(cap.band.col)), 
-        (cap.band.col) := maxes[Fuel == fuel, as.integer(maxcap)]]
-      
-      # add breaks col
-      input.table[Fuel == fuel, breaks.col := cut(get(cap.band.col), 
-                                breaks = fuel.breaks[[fuel]])]
-      generator.data.table[Fuel == fuel, breaks.col := cut(MaxOutput.MW, 
-        breaks = fuel.breaks[[fuel]])]
+    #This caused errors... need to determine how to insert memos into PLEXOS
+    #if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
+    
+    # split property by max capacity if needed
+    if (is.na(cap.band.col)) {
+        
+        # if cap.band.col is NA, then don't need to split properties by max
+        # capacity, so can do a regular merge with generator.data.table
+        # if band.col exists, include it in the merge and allow.cartesian, b/c
+        # merged table will probably be big enough to throw an error
+        generator.data.table <- merge(generator.data.table,
+                                      input.table[,.SD,
+                                                  .SDcols = c("Fuel", if(!is.na(band.col)) band.col, prop.cols)],
+                                      by = "Fuel",
+                                      allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))  
+    } else {
+        
+        # is a cap.band.col is give, use that to split up property distribution
+        # when merging
+        
+        # create vectors of breaks for each fuel type (with min == 0 and 
+        # max == max capacity in generator.data.table)
+        maxes <- generator.data.table[,.(maxcap = max(MaxOutput.MW)), by = 'Fuel']
+        all.fuels <- input.table[,unique(Fuel)]
+        
+        fuel.breaks <- list()
+        for (fuel in all.fuels) {
+            
+         unique.breaks <- input.table[Fuel == fuel, unique(get(cap.band.col))]
+         
+         if (!is.na(unique.breaks[1])) {
+           # remove maxcap if it's less than any of the supplied breaks
+            if (any(maxes[Fuel == fuel, maxcap <= unique.breaks]))
+                maxes[Fuel == fuel, maxcap := NA] 
+         }
+         
+         unique.breaks <- c(-1, unique.breaks, maxes[Fuel == fuel, maxcap])
+         unique.breaks <- sort(na.omit(unique.breaks))
+    
+         fuel.breaks[[fuel]] <- unique.breaks
+        }
+        
+        # now that we have breaks for each fuel, add column to generator.data.table 
+        # and input.table that sorts gens, so can merge by that and fuel
+        suppressWarnings(generator.data.table[, breaks.col := NULL]) # reset
+        
+        for (fuel in all.fuels) {
+            
+          # add capacity even to NA cols in input.table, so they get sorted right
+          input.table[Fuel == fuel & is.na(get(cap.band.col)), 
+                      (cap.band.col) := maxes[Fuel == fuel, as.integer(maxcap)]]
+          
+          # add breaks col
+          input.table[Fuel == fuel, breaks.col := cut(get(cap.band.col), 
+                                                      breaks = fuel.breaks[[fuel]])]
+          
+          generator.data.table[Fuel == fuel, breaks.col := cut(MaxOutput.MW,
+                                                               breaks = fuel.breaks[[fuel]])]
+        }
+        
+        # finally, merge input.table with generator.data.table
+        # similarly, if there is a band col, include it and allow.cartesian
+        generator.data.table <- merge(generator.data.table, 
+                                      input.table[,.SD,
+                                                  .SDcols = c("Fuel", if(!is.na(band.col)) band.col, prop.cols, "breaks.col")],
+                                      by = c("Fuel", "breaks.col"), 
+                                      all.x = T,
+                                      allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
+        
     }
     
-    # finally, merge input.table with generator.data.table
-    # similarly, if there is a band col, include it and allow.cartesian
-    generator.data.table <- merge(generator.data.table, 
-      input.table[,.SD, 
-          .SDcols = c("Fuel", if(!is.na(band.col)) band.col, prop.cols, "breaks.col")], 
-      by = c("Fuel", "breaks.col"), all.x = T,
-        allow.cartesian = ifelse(!is.na(band.col), TRUE, FALSE))
-  
-  }
-  
-  # if this property should be multiplied by max capacity, do it
-  if (mult.by.max.cap) {
-    for (colname in prop.cols) {
-      generator.data.table[,c(colname) := get(colname) * MaxOutput.MW]
+    # if this property should be multiplied by max capacity, do it
+    if (mult.by.max.cap) {
+        for (colname in prop.cols) {
+            generator.data.table[,c(colname) := get(colname) * MaxOutput.MW]
+        }
     }
-  }
-  
-  # if this property should be multiplied by number of units, do it
-  if (mult.by.num.units) {
-    for (colname in prop.cols) {
-      generator.data.table[,c(colname) := get(colname) * Units]
+    
+    # if this property should be multiplied by number of units, do it
+    if (mult.by.num.units) {
+        for (colname in prop.cols) {
+            generator.data.table[,c(colname) := get(colname) * Units]
+        }
     }
-  }
- 
-  return.cols = c('Generator.Name',prop.cols,band.col)
-  # return generator + property
-  return(generator.data.table[,.SD, .SDcols = return.cols[!is.na(return.cols)]])
+    
+    return.cols = c('Generator.Name',prop.cols,band.col)
+    
+    # return generator + property
+    return(generator.data.table[,.SD, 
+                                .SDcols = return.cols[!is.na(return.cols)]])
 }
 
 
@@ -369,138 +425,160 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 # 
 # overwrite.cols can be any column in Properties sheet except value. That column
 # will also be overwritten
-add_to_properties_sheet <- function(input.table, object.class, names.col, 
-  collection.name, parent.col = NA,
-  scenario.name = NA, pattern.col = NA, period.id = NA, 
-  datafile.col = NA, date_from.col = NA, overwrite = FALSE, overwrite.cols = NA,
-  band.col = NA, 
-  memo.col = NA) {
+add_to_properties_sheet <- function(input.table, 
+                                    object.class = NA, names.col = NA, 
+                                    collection.name = NA, parent.col = NA,
+                                    scenario.name = NA, pattern.col = NA, 
+                                    period.id = NA, datafile.col = NA, 
+                                    date_from.col = NA, overwrite = FALSE, 
+                                    overwrite.cols = NA, band.col = NA, 
+                                    memo.col = NA) {
   
-  # get all property column names (everything but object names column and 
-  # pattern column, if applicable)
-  all.cols <- colnames(input.table)
-  
-  non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
-                     date_from.col,band.col, memo.col)
-  
-  # if any columns contain datafiles, mark them here to can deal with later
-  if (!is.na(datafile.col[1])) {
-    setnames(input.table, datafile.col, paste0(datafile.col, "_datafile"))}
-  
-  prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
-  
+    # get all property column names (everything but object names column and 
+    # pattern column, if applicable)
+    all.cols <- colnames(input.table)
+    
+    # names.col, object.class, collection.name are optional. if they don't
+    # exist, assume names.col is first column, class is names.col, and 
+    # collection is names.col with an s
+    if (is.na(names.col)) names.col <- all.cols[1]
+    
+    if (is.na(object.class)) object.class <- names.col
+    
+    if (is.na(collection.name)) collection.name <- paste0(object.class, "s")
+    
+    non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
+                       date_from.col,band.col, memo.col)
+    
+    # if any columns contain datafiles, mark them here to can deal with later
+    if (!is.na(datafile.col[1])) {
+        setnames(input.table, datafile.col, paste0(datafile.col, "_datafile"))}
+    
+    prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
+    
     if(length(prop.cols) > 0){
     
-    # change all variables to character
-    input.table <- input.table[,lapply(.SD,as.character)]
-    
-    # melt input table. results in table with 3 columns: (names.col), 
-    # property, value
-    input.table <- melt(input.table, measure.vars = prop.cols, 
-      variable.name = "property")
-    # remove missing values
-    input.table <- input.table[!(is.na(value) | is.na(property) | value == "" |
-                               property == "")]
-    
-    # create properties table with these properties
-    props.tab <- initialize_table(Properties.prototype, nrow(input.table), 
-      list(
-        parent_class = ifelse(is.na(parent.col), "System", parent.col),
-        parent_object = ifelse(is.na(parent.col), "System", 
-                               list(input.table[,get(parent.col)])),
-        collection = collection.name, 
-        child_class = object.class, 
-        child_object = input.table[, .SD, .SDcols = names.col], 
-        property = input.table[, property], 
-        value = input.table[, value], 
-        band_id = ifelse(is.na(band.col),1,list(input.table[,get(band.col)]))))
-    
-    # if have datafile cols, move the filepointer to the datafile column and set 
-    # property value to zero
-    
-    props.tab[grepl("_datafile",property),filename := value]
-    props.tab[grepl("_datafile",property),
-              c("value", "property") := 
-                .("0", gsub("_datafile", "", property))]
-    
-    if (!is.na(datafile.col[1])) {
-        props.tab[grepl("_datafile", property), filename := value]
-        props.tab[grepl("_datafile", property), 
-                  c("value", "property") := 
-                  .("0", gsub("_datafile", "", property))]
-    }
-    
-    # add pattern column if specified
-    if (!is.na(pattern.col)) props.tab[, pattern := input.table[, 
-        .SD, .SDcols = pattern.col] ] 
-    
-    #adding a date_from col if specified
-    if (!is.na(date_from.col)) props.tab[, date_from := input.table[, .SD, .SDcols = date_from.col] ] 
-    
-    # add period type id column if specified
-    if (!is.na(period.id)) props.tab[, period_type_id := period.id]
-    
-    # add scenario name if specified
-    if (!is.na(scenario.name)) {
-      props.tab[,scenario := paste0("{Object}", scenario.name)] }
-    
-    # add memo column if specified
-    if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
-    
-    # merge with Properties.sheet
-    if (overwrite == FALSE) {
-      # merge
-      Properties.sheet <<- merge_sheet_w_table(Properties.sheet, props.tab)
-   
-    } else {
-  
-       # if given, check to make sure all overwrite.cols are in Properties.sheet
-       if (!is.na(overwrite.cols[1])) {
-          if (!all(overwrite.cols %in% colnames(Properties.sheet))) {
-            message(sprintf(">>  Not all overwrite columns %s are in Properties.sheet; cannot merge ... skipping"), 
-                paste0(overwrite.cols, collapse = ", "))
-              
-            return()
-          }
-       }
+        # change all variables to character
+        input.table <- input.table[,lapply(.SD,as.character)]
+        
+        # melt input table. results in table with 3 columns: (names.col), 
+        # property, value
+        input.table <- melt(input.table, 
+                            measure.vars = prop.cols,
+                            variable.name = "property")
+        
+        # remove missing values
+        input.table <- input.table[!(is.na(value) | is.na(property) | 
+                                         value == "" | property == "")]
+        
+        # create properties table with these properties
+        props.tab <- initialize_table(Properties.sheet, 
+                                      nrow(input.table), 
+                                      list(
+                                          parent_class = ifelse(is.na(parent.col), "System", parent.col),
+                                          parent_object = ifelse(is.na(parent.col), "System",
+                                                                 list(input.table[,get(parent.col)])),
+                                          collection = collection.name,
+                                          child_class = object.class,
+                                          child_object = input.table[, .SD, .SDcols = names.col],
+                                          property = input.table[, property],
+                                          value = input.table[, value],
+                                          band_id = ifelse(is.na(band.col),1,list(input.table[,get(band.col)]))))
+        
+        # if have datafile cols, move the filepointer to the datafile column and set 
+        # property value to zero
+        
+        props.tab[grepl("_datafile",property),filename := value]
+        
+        props.tab[grepl("_datafile",property),
+                  c("value", "property") := .("0", gsub("_datafile", "", property))]
+        
+        if (!is.na(datafile.col[1])) {
             
-      # merge everything but the value column, allow new data to overwrite old 
-      # value col (or any specified excluded columns)
-      
-      sheet.cols <- colnames(Properties.sheet) 
-      props.tab.cols <- colnames(props.tab)
-  
-      # convert all columns to character so that they will be same data type 
-      # as .sheet table
-      props.tab <- props.tab[, lapply(.SD, as.character)] 
-      
-      Properties.sheet <- merge(Properties.sheet, props.tab, 
-        by = props.tab.cols[!(props.tab.cols %in% na.omit(c('value', overwrite.cols)))], all = TRUE)
-      
-      # this should give two value columns. where data exists in value.y, use it
-      # then delete duplicate columns
-      Properties.sheet[!is.na(value.y), value.x := value.y]
-      Properties.sheet[,value := value.x][,c('value.x', 'value.y') := NULL]
-      
-      # do the same for other excluded columns
-      if (!is.na(overwrite.cols)) {
-          for (cname in overwrite.cols) {
-              Properties.sheet[!is.na(get(paste0(cname, ".y"))), 
-                               paste0(cname, ".x") := get(paste0(cname, ".y"))]
-              Properties.sheet[,(cname) := get(paste0(cname, ".x"))]
-              Properties.sheet[,paste0(cname, c(".x", ".y")) := NULL]
-  
+            props.tab[grepl("_datafile", property), filename := value]
+            
+            props.tab[grepl("_datafile", property), 
+                      c("value", "property") := .("0", gsub("_datafile", "", property))]
+        }
+        
+        # add pattern column if specified
+        if (!is.na(pattern.col)) props.tab[, pattern := input.table[,
+                                                                    .SD, 
+                                                                    .SDcols = pattern.col] ] 
+        
+        # adding a date_from col if specified
+        if (!is.na(date_from.col)) props.tab[, date_from := input.table[, 
+                                                                        .SD, 
+                                                                        .SDcols = date_from.col] ] 
+        
+        # add period type id column if specified
+        if (!is.na(period.id)) props.tab[, period_type_id := period.id]
+        
+        # add scenario name if specified
+        if (!is.na(scenario.name)) {
+            props.tab[,scenario := paste0("{Object}", scenario.name)] }
+        
+        # add memo column if specified
+        if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
+        
+        # merge with Properties.sheet
+        if (overwrite == FALSE) {
+            Properties.sheet <<- merge_sheet_w_table(Properties.sheet, props.tab)
+        
+        } else {
+        
+           # if given, check to make sure all overwrite.cols are in Properties.sheet
+           if (!is.na(overwrite.cols[1])) {
+               if (!all(overwrite.cols %in% colnames(Properties.sheet))) {
+                   message(sprintf(">>  Not all overwrite columns %s are in Properties.sheet; cannot merge ... skipping"),
+                           paste0(overwrite.cols, collapse = ", "))
+                  
+                return()
+              }
+           }
+                
+          # merge everything but the value column, allow new data to overwrite old 
+          # value col (or any specified excluded columns)
+          
+          sheet.cols <- colnames(Properties.sheet) 
+          props.tab.cols <- colnames(props.tab)
+        
+          # convert all columns to character so that they will be same data type 
+          # as .sheet table
+          props.tab <- props.tab[, lapply(.SD, as.character)] 
+          
+          Properties.sheet <- merge(Properties.sheet, 
+                                    props.tab,
+                                    by = props.tab.cols[!(props.tab.cols %in% na.omit(c('value', overwrite.cols)))], 
+                                    all = TRUE)
+          
+          # this should give two value columns. where data exists in value.y, use it
+          # then delete duplicate columns
+          Properties.sheet[!is.na(value.y), value.x := value.y]
+          Properties.sheet[,value := value.x][,c('value.x', 'value.y') := NULL]
+          
+          # do the same for other excluded columns
+          if (!is.na(overwrite.cols)) {
+              for (cname in overwrite.cols) {
+                  
+                  Properties.sheet[!is.na(get(paste0(cname, ".y"))), 
+                                   paste0(cname, ".x") := get(paste0(cname, ".y"))]
+                  
+                  Properties.sheet[,(cname) := get(paste0(cname, ".x"))]
+                  
+                  Properties.sheet[,paste0(cname, c(".x", ".y")) := NULL]
+        
+              }
           }
-      }
-      
-      # set Properties sheet back to normal
-      setcolorder(Properties.sheet, sheet.cols)
-      
-      # reassign Properties.sheet
-      Properties.sheet <<- Properties.sheet
-  
+          
+          # set Properties sheet back to normal
+          setcolorder(Properties.sheet, sheet.cols)
+          
+          # reassign Properties.sheet
+          Properties.sheet <<- Properties.sheet
+        
+        }
     }
-  }
 }
 
 ##import_constraint
@@ -559,6 +637,7 @@ import_constraint = function(constraint.table,obj.col = 'generator.name',constra
   Properties.sheet <<- merge_sheet_w_table(Properties.sheet,new.properties.table)
 }
 
+
 # create interleave pointers
 make_interleave_pointers <- function(parent.model, child.model, 
                                      filepointer.scenario, datafileobj.scenario, 
@@ -569,6 +648,7 @@ make_interleave_pointers <- function(parent.model, child.model,
     # check to make sure both models exist (warn, skip if not)
     if (!(parent.model %in% Objects.sheet$name & 
           child.model %in% Objects.sheet$name)) {
+        
         message(sprintf(paste0(">>  attempted to add interleaved models %s and",
                         " %s, but at least one does not exist in the database"), 
                         parent.model, child.model))
@@ -578,10 +658,13 @@ make_interleave_pointers <- function(parent.model, child.model,
     # create interleaved membership between models - maybe consider 
     # restructuring so that don't have to merge each time with 
     # Memberships.sheet?
-    int.to.memberships = initialize_table(Memberships.prototype, 1, 
-        list(parent_class = "Model", child_class = "Model", 
-            collection = "Interleaved", parent_object = parent.model, 
-            child_object = child.model))
+    int.to.memberships = initialize_table(Memberships.sheet, 
+                                          1, 
+                                          list(parent_class = "Model", 
+                                               child_class = "Model", 
+                                               collection = "Interleaved", 
+                                               parent_object = parent.model, 
+                                               child_object = child.model))
     
     Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, 
                                              int.to.memberships)
@@ -589,29 +672,38 @@ make_interleave_pointers <- function(parent.model, child.model,
     # use template to create properties with pointers under scenario
 
     if (is.data.table(template.fuel)) {
+        
         template.fuel.copy <- copy(template.fuel)
         
         # first, replace the placeholder "[DA MODEL]" in placeholders filepointers
         # with name of parent model (in a copy of the template)
         template.fuel.cols = colnames(template.fuel.copy)
+        
         template.fuel.cols = template.fuel.cols[template.fuel.cols != "Fuel"]
-        template.fuel.copy[, (template.fuel.cols) := 
-                lapply(.SD, function(x) gsub("\\[DA MODEL\\]", parent.model, x)), 
-                       .SDcols = template.fuel.cols]
+        
+        template.fuel.copy[, (template.fuel.cols) :=
+                               lapply(.SD, function(x) gsub("\\[DA MODEL\\]", parent.model, x)),
+                           .SDcols = template.fuel.cols]
         
         # get the filepointer associated with each property and add it to the
         # datafile under current scenario
         pointers = template.fuel.copy[,lapply(.SD, function(x) na.omit(x)[1]), 
                                        .SDcols = -1] 
-        setnames(pointers, names(pointers), 
-                           paste("Pass", names(pointers), "property"))
-        pointers = melt(pointers, measure.vars = colnames(pointers), 
-                   variable.name = "DataFileObj", value.name = "filename")
+        setnames(pointers, 
+                 names(pointers),
+                 paste("Pass", names(pointers), "property"))
         
-        add_to_properties_sheet(pointers, object.class = "Data File", 
-            names.col = "DataFileObj", collection.name = "Data Files", 
-            datafile.col = "filename",
-            scenario.name = filepointer.scenario)
+        pointers = melt(pointers, 
+                        measure.vars = colnames(pointers),
+                        variable.name = "DataFileObj", 
+                        value.name = "filename")
+        
+        add_to_properties_sheet(pointers, 
+                                object.class = "Data File", 
+                                names.col = "DataFileObj", 
+                                collection.name = "Data Files", 
+                                datafile.col = "filename",
+                                scenario.name = filepointer.scenario)
         
         # what needs to be attached to the actual properties is the name of the
         # datafile object, not the file path. change values in the table from 
@@ -620,14 +712,16 @@ make_interleave_pointers <- function(parent.model, child.model,
 
         for (j in names(template.fuel.copy)[-1])
             set(template.fuel.copy, 
-                which(!is.na(template.fuel.copy[[j]])), j, 
+                which(!is.na(template.fuel.copy[[j]])), 
+                j, 
                 paste("{Object}Pass", j, "property"))        
                 
         # map by fuel, then add to properties sheet with given scenario
         cur.mapped.tab = merge_property_by_fuel(template.fuel.copy, 
                                                 prop.cols = template.fuel.cols)
     
-        add_to_properties_sheet(cur.mapped.tab, object.class = "Generator",
+        add_to_properties_sheet(cur.mapped.tab, 
+                                object.class = "Generator",
                                 names.col = "Generator.Name", 
                                 collection.name = "Generators", 
                                 datafile.col = template.fuel.cols,
@@ -637,10 +731,12 @@ make_interleave_pointers <- function(parent.model, child.model,
     }
     
     if (is.data.table(template.object[1])) {
+        
         # template.object is a list, so loop through
         # assume first column is objects and object class is name of column
         
         for (template.object.table in template.object) {
+            
             # check to make sure this hasn't been changed to NA
             if (!is.data.table(template.object.table)) next 
             
@@ -650,23 +746,31 @@ make_interleave_pointers <- function(parent.model, child.model,
             template.object.cols = colnames(template.object.copy)
             object.class.col = template.object.cols[1]
             template.object.cols = template.object.cols[-1]
+            
             template.object.copy[, (template.object.cols) := 
-                    lapply(.SD, function(x) gsub("\\[DA MODEL\\]", parent.model, x)), 
-                           .SDcols = template.object.cols]
+                                     lapply(.SD, function(x) gsub("\\[DA MODEL\\]", parent.model, x)), 
+                                 .SDcols = template.object.cols]
             
             # get the filepointer associated with each property and add it to the
             # datafile under current scenario
-            pointers = template.object.copy[,lapply(.SD, function(x) na.omit(x)[1]), 
-                                           .SDcols = -1] 
-            setnames(pointers, names(pointers), 
-                               paste("Pass", names(pointers), "property"))
-            pointers = melt(pointers, measure.vars = colnames(pointers), 
-                       variable.name = "DataFileObj", value.name = "filename")
+            pointers = template.object.copy[,lapply(.SD, function(x) na.omit(x)[1]),
+                                            .SDcols = -1] 
             
-            add_to_properties_sheet(pointers, object.class = "Data File", 
-                names.col = "DataFileObj", collection.name = "Data Files", 
-                datafile.col = "filename",
-                scenario.name = filepointer.scenario)
+            setnames(pointers, 
+                     names(pointers),
+                     paste("Pass", names(pointers), "property"))
+            
+            pointers = melt(pointers, 
+                            measure.vars = colnames(pointers), 
+                            variable.name = "DataFileObj", 
+                            value.name = "filename")
+            
+            add_to_properties_sheet(pointers, 
+                                    object.class = "Data File", 
+                                    names.col = "DataFileObj", 
+                                    collection.name = "Data Files", 
+                                    datafile.col = "filename",
+                                    scenario.name = filepointer.scenario)
             
             # what needs to be attached to the actual properties is the name of the
             # datafile object, not the file path. change values in the table from 
@@ -692,10 +796,14 @@ make_interleave_pointers <- function(parent.model, child.model,
     # create scenario if it doesn't exist
     scens.to.create <- c(filepointer.scenario, datafileobj.scenario)
     scens.to.create <- scens.to.create[!(scens.to.create %in% Objects.sheet$name)]
+    
     if (length(scens.to.create) > 0) {
-        cur.scen.to.objects <- initialize_table(Objects.sheet, length(scens.to.create), 
-            list(name = scens.to.create, category = 'Interleaved filepointers',
-                 class = 'Scenario'))
+        
+        cur.scen.to.objects <- initialize_table(Objects.sheet, 
+                                                length(scens.to.create),
+                                                list(name = scens.to.create, 
+                                                     category = 'Interleaved filepointers',
+                                                     class = 'Scenario'))
     
         Objects.sheet <<- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
     } 
@@ -704,10 +812,14 @@ make_interleave_pointers <- function(parent.model, child.model,
     # note: there is currently no way to pass in FALSE to this variable, but
     # I'm putting this is so we can add that option later if needed
     if (add.scen.to.model) {
-        RTscen.to.memberships = initialize_table(Memberships.prototype, 2, 
-            list(parent_class = "Model", child_class = "Scenario", 
-                 collection = "Scenarios", parent_object = child.model, 
-                 child_object = c(filepointer.scenario, datafileobj.scenario)))
+        
+        RTscen.to.memberships = initialize_table(Memberships.sheet, 
+                                                 2, 
+                                                 list(parent_class = "Model", 
+                                                      child_class = "Scenario",
+                                                      collection = "Scenarios", 
+                                                      parent_object = child.model, 
+                                                      child_object = c(filepointer.scenario, datafileobj.scenario)))
     
         Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, 
                                                   RTscen.to.memberships)

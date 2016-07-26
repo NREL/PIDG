@@ -52,7 +52,7 @@ if (rename.zones) {
 #------------------------------------------------------------------------------|
 
 # add nodes to object .sheet
-nodes.to.objects <- initialize_table(Objects.prototype, nrow(node.data.table),
+nodes.to.objects <- initialize_table(Objects.sheet, nrow(node.data.table),
   c(class = "Node"))
 nodes.to.objects[, name := node.data.table[,BusName]]
 nodes.to.objects[, category := node.data.table[,RegionName]]
@@ -79,14 +79,14 @@ rm(nodes.to.objects, nodes.to.properties)
 # add regions to object .sheet
 all.regions <- unique(node.data.table[,RegionName])
 
-regions.to.objects <- initialize_table(Objects.prototype, length(all.regions), 
+regions.to.objects <- initialize_table(Objects.sheet, length(all.regions), 
   list(class = "Region"))
 regions.to.objects[, name :=  all.regions]
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, regions.to.objects)
 
 # add node-region membership to memberships .sheet
-regions.to.nodes.to.memberships <- initialize_table(Memberships.prototype, 
+regions.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
   nrow(node.data.table), list(parent_class = "Node", child_class = "Region",
   collection = "Region"))
 regions.to.nodes.to.memberships[, parent_object := node.data.table[,BusName]]
@@ -106,14 +106,14 @@ rm(all.regions, regions.to.objects, regions.to.nodes.to.memberships)
 # add zones to objects .sheet
 all.zones <- unique(node.data.table[,ZoneName])
 
-zones.to.objects <- initialize_table(Objects.prototype, length(all.zones), 
+zones.to.objects <- initialize_table(Objects.sheet, length(all.zones), 
   c(class = "Zone"))
 zones.to.objects[, name :=  all.zones]
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, zones.to.objects)
 
 # add zone-region membership to memberships .sheet
-zones.to.nodes.to.memberships <- initialize_table(Memberships.prototype, 
+zones.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
   nrow(node.data.table), list(parent_class = "Node", child_class = "Zone", 
   collection = "Zone"))
 zones.to.nodes.to.memberships[, parent_object := node.data.table[,BusName]]
@@ -199,7 +199,7 @@ rm(dc.line.data.table)
 #------------------------------------------------------------------------------|
   
 # add lines to objects .sheet
-lines.to.objects <- initialize_table(Objects.prototype, nrow(line.data.table), 
+lines.to.objects <- initialize_table(Objects.sheet, nrow(line.data.table), 
   list(class = "Line"))
 lines.to.objects[, name := line.data.table[,name]] 
 lines.to.objects[, category := line.data.table[,category]]
@@ -207,7 +207,7 @@ lines.to.objects[, category := line.data.table[,category]]
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, lines.to.objects)
 
 # add lines to memberships .sheet
-lines.to.nodes.to.memberships <- initialize_table(Memberships.prototype, 
+lines.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
   nrow(line.data.table), list(parent_class = "Line", child_class = "Node"))
 lines.to.nodes.to.memberships[, parent_object := line.data.table[,name]]
 lines.to.nodes.to.memberships[, `Node From` := line.data.table[,FromBusName]]
@@ -265,10 +265,31 @@ generator.data.table <- merge(generator.data.table, node.data.table,
 generator.data.table[,Generator.Name := paste0("GEN_", BusName, "_", ID)]
 generator.data.table[,Units := 1]
 
-# **needs to be cleaned up in a better way: NLDC changed max capacity of these 
-# two generators (initial capacities were 660 and 600 MW). See script d.
-generator.data.table[Generator.Name %in% c("GEN_354013_GMR_400_1",
-  "GEN_354013_GMR_400_2"), MaxOutput.MW := 685]
+# temporary!! adjust max capacity needed
+if (exists("adjust.max.cap")) {
+    if(file.exists(file.path(inputfiles.dir, adjust.max.cap))) {
+        
+        message(sprintf("... adjusting max capacity of generators in %s", 
+                        adjust.max.cap))
+        
+        new.cap <- fread(file.path(inputfiles.dir, adjust.max.cap))
+        
+        generator.data.table <- merge(generator.data.table, 
+                                      new.cap,
+                                      by = "Generator.Name", 
+                                      all.x = TRUE)
+        
+        generator.data.table[!is.na(new.capacity), MaxOutput.MW := new.capacity]
+        generator.data.table[, new.capacity := NULL]
+        
+        rm(new.cap)
+        
+    } else {
+        message(sprintf(">>  %s does not exist ... skipping", 
+                        adjust.max.cap))
+    }
+        
+}
 
 
 #------------------------------------------------------------------------------|
@@ -277,7 +298,7 @@ generator.data.table[Generator.Name %in% c("GEN_354013_GMR_400_1",
 # uses units.turned.off.file
 
 # add generators to objects .sheet, categorizing by region
-gens.to.objects <- initialize_table(Objects.prototype, 
+gens.to.objects <- initialize_table(Objects.sheet, 
   nrow(generator.data.table), 
   list(class = "Generator", name = generator.data.table[,Generator.Name], 
   category = generator.data.table[,Region]))
@@ -298,7 +319,7 @@ add_to_properties_sheet(gens.to.properties, names.col = 'Generator.Name',
   object.class = 'Generator', collection.name = 'Generators')
 
 # add generator-node membership to memberships .sheet
-gens.to.memberships <- initialize_table(Memberships.prototype, 
+gens.to.memberships <- initialize_table(Memberships.sheet, 
   nrow(generator.data.table), list(parent_class = "Generator", 
     child_class = "Node", collection = "Nodes"))
 gens.to.memberships[, parent_object := generator.data.table[, Generator.Name]]
@@ -347,7 +368,7 @@ transformer.data.table[OverloadRating.MW == '0', OverloadRating.MW :=
                          transformer.data.table[OverloadRating.MW == '0', 
                                                 Rating.MW]]
 # add transformers to objects .sheet
-transf.to.objects <- initialize_table(Objects.prototype, 
+transf.to.objects <- initialize_table(Objects.sheet, 
   nrow(transformer.data.table), 
   list(class = "Transformer",
   name = transformer.data.table[,name], 
@@ -364,7 +385,7 @@ add_to_properties_sheet(transf.to.properties, names.col = 'name',
   object.class = 'Transformer', collection.name = 'Transformers')
 
 # add transformer-node membership to memberships .sheet
-transf.to.memberships <- initialize_table(Memberships.prototype, 
+transf.to.memberships <- initialize_table(Memberships.sheet, 
   nrow(transformer.data.table), list(parent_class = "Transformer", 
     child_class = "Node"))
 transf.to.memberships[,parent_object := transformer.data.table[,name]]
