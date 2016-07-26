@@ -38,13 +38,15 @@ setnames(node.freq,"N","Number of Nodes")
 write.csv(node.freq, file = file.path(outputfiles.dir,
                                       "DataCheck/data.check_node.freq.csv"))
 
-# c. check that no nodes have missing region
+# c. check that no nodes have missing region *** add zone check - contingent on zones existing in database
 node.missing.region <- node.data.table[Region == "" | is.na(Region),Node]
 
 if(length(node.missing.region) > 0){
   stop("The following nodes do not have a region: ", 
        paste(node.missing.region, collapse = ", "))
 }
+
+# add list of objects that have issues - nodes, lines, gens, etc...
 
 # d. node voltage by region
 node.kV.plot <- ggplot(data = node.data.table) + 
@@ -59,7 +61,7 @@ plot(node.kV.plot)
 dev.off()
 
 # clean up 
-rm(regions.zones,node.freq,node.kV)
+rm(regions.zones,node.freq,node.missing.region)
 
 #------------------------------------------------------------------------------|
 # Add nodes to .sheet tables ----
@@ -182,6 +184,34 @@ line.summary <- describe(line.data.table[,numeric.cols, with = F])
 
 write.csv(line.summary, file = file.path(outputfiles.dir,
                                          "DataCheck/line.summary.csv"))
+
+# b. boxplots of line reactance by region
+tfrm.reactance.plot <- ggplot(data = line.data.table[!is.na(Reactance)]) + 
+  geom_boxplot(aes(x = factor(1), y = Reactance)) + 
+  facet_wrap(~ category, scales = "free") +
+  theme(axis.text.x=element_blank(),
+        axis.title.x=element_blank(), 
+        axis.title.y = element_blank(),
+        axis.ticks.x = element_blank())
+
+pdf(file.path(outputfiles.dir,"DataCheck/line.reactance.by.state.pdf"), 
+    width = 12, height = 8)
+plot(tfrm.reactance.plot)
+dev.off()
+
+# c. boxplots of line resistance by region
+tfrm.resistance.plot <- ggplot(data = line.data.table) + 
+  geom_boxplot(aes(x = factor(1), y = Resistance)) + 
+  facet_wrap(~ category, scales = "free") +
+  theme(axis.text.x=element_blank(),
+        axis.title.x=element_blank(), 
+        axis.title.y = element_blank(),
+        axis.ticks.x = element_blank())
+
+pdf(file.path(outputfiles.dir,"DataCheck/line.resistance.by.state.pdf"), 
+    width = 12, height = 8)
+plot(tfrm.resistance.plot)
+dev.off()
 #------------------------------------------------------------------------------|
 # Add lines to .sheet tables ----
 #------------------------------------------------------------------------------|
@@ -351,6 +381,35 @@ transformer.summary <- describeBy(transformer.data.table[,numeric.cols, with = F
 
 write.csv(transformer.summary, 
           file = file.path(outputfiles.dir,"DataCheck/transformer.summary.csv"))
+
+# b. boxplots of transformer reactance by region
+tfrm.reactance.plot <- ggplot(data = transformer.data.table) + 
+  geom_boxplot(aes(x = factor(1), y = Reactance)) + 
+  facet_wrap(~ category, scales = "free") +
+  theme(axis.text.x=element_blank(),
+        axis.title.x=element_blank(), 
+        axis.title.y = element_blank(),
+        axis.ticks.x = element_blank())
+
+pdf(file.path(outputfiles.dir,"DataCheck/transformer.reactance.by.state.pdf"), 
+    width = 12, height = 8)
+plot(tfrm.reactance.plot)
+dev.off()
+
+# c. boxplots of transformer resistance by region
+tfrm.resistance.plot <- ggplot(data = transformer.data.table) + 
+  geom_boxplot(aes(x = factor(1), y = Resistance)) + 
+  facet_wrap(~ category, scales = "free") +
+  theme(axis.text.x=element_blank(),
+        axis.title.x=element_blank(), 
+        axis.title.y = element_blank(),
+        axis.ticks.x = element_blank())
+
+pdf(file.path(outputfiles.dir,"DataCheck/transformer.resistance.by.state.pdf"), 
+    width = 12, height = 8)
+plot(tfrm.resistance.plot)
+dev.off()
+
 
 #------------------------------------------------------------------------------|
 # Add transformers to .sheet tables ----

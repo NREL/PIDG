@@ -57,7 +57,7 @@ generator.fuels.summary <- describeBy(generator.data.table[,numeric.cols, with=F
                                       group = "Fuel", mat = T)
 )
 
-write.csv(generator.summary,
+write.csv(generator.fuels.summary,
           file = file.path(outputfiles.dir,
                            "DataCheck/generator.summary.by.fuel.csv"))
 # clean up
