@@ -28,11 +28,11 @@ if (exists('units.to.delete.files')) {
           Memberships.sheet[!(child_object %in% to.delete[,Object.Name]) & 
                               !(parent_object %in% to.delete[,Object.Name])]
       } else {
-        message(sprintf("... %s does not exist ... skipping", fname))
+        message(sprintf(">>  %s does not exist ... skipping", fname))
       } 
   }
 } else {
-   message("... units.to.delete.file does not exist ... skipping")
+   message(">>  units.to.delete.file does not exist ... skipping")
 }
 
 # add standard flow limits to lines with ratings of zero
@@ -54,7 +54,7 @@ setorder(cat.by.class, class, category)
 cat.by.class[,rank := 1:.N, by = 'class']
 
 # add this to categories .sheet so categories will be alphabetized
-cat.to.categories <- initialize_table(Categories.prototype, nrow(cat.by.class), 
+cat.to.categories <- initialize_table(Categories.sheet, nrow(cat.by.class), 
   list(class = cat.by.class$class, category = cat.by.class$category, 
   rank = cat.by.class$rank))
   
