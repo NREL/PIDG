@@ -31,39 +31,96 @@ source(file.path(master.script.dir, "SourceScripts/functions.R"))
 
 
 #------------------------------------------------------------------------------|
-# function definition ----
-#------------------------------------------------------------------------------|
-
-runAllFiles <- function () {
-  message("importing PSSE files...")
-  source(file.path(master.script.dir, 
-    "SourceScripts/a_import_raw.R"))
-  message("creating tables...")
-  source(file.path(master.script.dir, 
-    "SourceScripts/b_create_sheet_tables.R"))
-  message("populating tables...")
-  source(file.path(master.script.dir, 
-    "SourceScripts/c1_populate_sheet_tables_with_raw_tables.R"))
-  source(file.path(master.script.dir, 
-    "SourceScripts/c2_more_data_population.R"))
-  source(file.path(master.script.dir, 
-    "SourceScripts/c3_create_scenarios_and_models.R"))
-  message("cleaning tables...")
-  source(file.path(master.script.dir, 
-    "SourceScripts/d_data_cleanup.R"))
-  message("exporting tables...")
-  source(file.path(master.script.dir,
-    "SourceScripts/e_export_to_excel.R"))
-}
-
-
-#------------------------------------------------------------------------------|
 # input file parameters ----
 #------------------------------------------------------------------------------|
 
 # grab input parameters from parameter file passed in by user
 
 source(input.params.location)
+
+
+#------------------------------------------------------------------------------|
+# function definition ----
+#------------------------------------------------------------------------------|
+
+## TEMPTEMP for testing until better solution
+
+'raw.psse'
+choose.input <- 'pre.parsed'
+
+if (choose.input == 'raw.psse') {
+    runAllFiles <- function () {
+      message("importing PSSE files...")
+      source(file.path(master.script.dir,
+        "Update/compile/a_import_raw.R"))
+      message("creating tables...")
+      source(file.path(master.script.dir,
+        "Update/compile/b_create_sheet_tables.R"))
+      message("populating tables...")
+      source(file.path(master.script.dir,
+        "Update/compile/c1_populate_sheet_tables_with_raw_tables.R"))
+      source(file.path(master.script.dir,
+        "Update/compile/c2_more_data_population.R"))
+      source(file.path(master.script.dir,
+        "Update/compile/c3_create_scenarios_and_models.R"))
+      message("cleaning tables...")
+      source(file.path(master.script.dir,
+        "Update/compile/d_data_cleanup.R"))
+      message("exporting tables...")
+      source(file.path(master.script.dir,
+        "Update/compile/e_export_to_excel.R"))
+    }
+} else if (choose.input == 'pre.parsed') {
+    runAllFiles <- function () {
+      # message("importing PSSE files...")
+      # source(file.path(master.script.dir,
+      #   "Update/compile/a_import_raw.R"))
+      message("creating tables...")
+      source(file.path(master.script.dir,
+        "Update/compile/b_create_sheet_tables.R"))
+      message("populating tables...")
+      source(file.path(master.script.dir,
+        "Update/compile/c1_populate_sheet_tables_with_raw_tables.R"))
+      source(file.path(master.script.dir,
+        "Update/compile/c2_more_data_population.R"))
+      source(file.path(master.script.dir,
+        "Update/compile/c3_create_scenarios_and_models.R"))
+      message("cleaning tables...")
+      source(file.path(master.script.dir,
+        "Update/compile/d_data_cleanup.R"))
+      message("exporting tables...")
+      source(file.path(master.script.dir,
+        "Update/compile/e_export_to_excel.R"))
+    }
+} else {
+    
+    stop("Please set 'choose.input' in input_params to 'raw.psse' or 'pre.parsed'")
+}
+    
+    
+    
+    
+# runAllFiles <- function () {
+#   message("importing PSSE files...")
+#   source(file.path(master.script.dir, 
+#     "SourceScripts/a_import_raw.R"))
+#   message("creating tables...")
+#   source(file.path(master.script.dir, 
+#     "SourceScripts/b_create_sheet_tables.R"))
+#   message("populating tables...")
+#   source(file.path(master.script.dir, 
+#     "SourceScripts/c1_populate_sheet_tables_with_raw_tables.R"))
+#   source(file.path(master.script.dir, 
+#     "SourceScripts/c2_more_data_population.R"))
+#   source(file.path(master.script.dir, 
+#     "SourceScripts/c3_create_scenarios_and_models.R"))
+#   message("cleaning tables...")
+#   source(file.path(master.script.dir, 
+#     "SourceScripts/d_data_cleanup.R"))
+#   message("exporting tables...")
+#   source(file.path(master.script.dir,
+#     "SourceScripts/e_export_to_excel.R"))
+# }
 
 
 #------------------------------------------------------------------------------|

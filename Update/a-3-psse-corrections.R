@@ -220,9 +220,11 @@ transformer.data <- merge(transformer.data,
 transformer.data[Rating == 0 & !is.na(cor_Rating), Rating := cor_Rating]
 transformer.data[,cor_Rating := NULL]
 
+# TODO
 # adjust_max_cap_cea?
-
-
+# fix reactance of one line
+# list("corrections/line_reactance_adjustments_cea.csv",
+#   list(overwrite = TRUE)),
 
 #------------------------------------------------------------------------------|
 # set orders again. do this from the original order (w poss addition of zone in node) ----
