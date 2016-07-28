@@ -22,36 +22,39 @@
 #
 
 
-#------------------------------------------------------------------------------|
-# fake user inputs (for devel) ----
-#------------------------------------------------------------------------------|
+# #------------------------------------------------------------------------------|
+# # fake user inputs (for devel) ----
+# #------------------------------------------------------------------------------|
+# 
+# root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update"
+# 
+# raw.file <- file.path(root.dir, "inputs/Base Case_2021-22-Peak-Demand_edit.raw")
+# output.dir <- file.path(root.dir, "outputs_a-1_raw_psse")
+# 
 
-root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update"
+# #------------------------------------------------------------------------------|
+# # setup ----
+# #------------------------------------------------------------------------------|
+# 
+# # load packages
+# pacman::p_load(data.table)
+# 
+# # make sure output.dir exists
+# if (!dir.exists(output.dir)) {
+#     dir.create(output.dir, recursive = TRUE)
+# }
 
-raw.file <- file.path(root.dir, "inputs/Base Case_2021-22-Peak-Demand_edit.raw")
-output.dir <- file.path(root.dir, "outputs_a-1_raw_psse")
 
-
-#------------------------------------------------------------------------------|
-# setup ----
-#------------------------------------------------------------------------------|
-
-# load packages
-pacman::p_load(data.table)
-
-# make sure output.dir exists
-if (!dir.exists(output.dir)) {
-    dir.create(output.dir, recursive = TRUE)
-}
 
 # read in files
-num.cols <- max(count.fields(file.path(raw.file), sep = ','), na.rm = TRUE)
+num.cols <- max(count.fields(file.path(inputfiles.dir, raw.file.path), 
+                             sep = ','), na.rm = TRUE)
 
 # can't use fread b/c not a regular file (diff rows have diff num cols)
 # need to suppress warnings b/c read.csv doesn't like blanks in the file
 raw.table <- data.table(
              suppressWarnings(
-             read.csv(raw.file, 
+             read.csv(file.path(inputfiles.dir, raw.file.path), 
                       stringsAsFactors = FALSE, 
                       fill = TRUE, 
                       header=FALSE, 
@@ -169,18 +172,18 @@ if (exists('Load.table')) {
 }
 
 
-# Fixed.shunt.table
-if (exists('Fixed.shunt.table')) {
-    
-  setnames(Fixed.shunt.table, 
-           colnames(Fixed.shunt.table), 
-           c("node.number", "id", "status", 
-             "active.comp.shunt.adm.to.grnd.MW", 
-             "reactive.comp.shunt.adm.to.grnd.MVAR"))
-} else {
-    
-  message("No Fixed Shunt Table exists ... skipping")
-}
+# # Fixed.shunt.table
+# if (exists('Fixed.shunt.table')) {
+#     
+#   setnames(Fixed.shunt.table, 
+#            colnames(Fixed.shunt.table), 
+#            c("node.number", "id", "status", 
+#              "active.comp.shunt.adm.to.grnd.MW", 
+#              "reactive.comp.shunt.adm.to.grnd.MVAR"))
+# } else {
+#     
+#   message("No Fixed Shunt Table exists ... skipping")
+# }
 
 
 # Generator.table, p.5-13
@@ -408,35 +411,35 @@ for (tab.name in done.tables) {
 rm(tab.name, info)
 
 
-#------------------------------------------------------------------------------|
-# write out ----
-#------------------------------------------------------------------------------|
-
-# write out csv files
-for (tab.name in done.tables) {
-    write.csv(get(tab.name), 
-              file.path(output.dir, paste0(tab.name, ".csv")),
-              row.names = FALSE, 
-              quote = FALSE)
-}
-
-# write out report
-conn <- file(file.path(output.dir, "00-metadata.txt"))
-
-writeLines(c(as.character(Sys.time()), "\n\n",
-             paste("psse file parsed:", basename(raw.file), "\n"),
-             paste("psse version:", psse.version, "\n"),
-             paste("mva base:", mva.base, "\n\n"),
-             paste("tables processed:\n\t-", paste0(done.tables, collapse = "\n\t- "), "\n\n"),
-             paste("tables skipped:\n\t-", paste0(skip.tables, collapse = "\n\t- "), "\n\n"),
-             paste("empty tables:\n\t-", paste0(no.data.vec, collapse = "\n\t- "), "\n\n"),
-             "----------\n\n",
-             paste("other information:\n\t-", paste0(tab.info, collapse = "\n\t- "))
-             ), 
-           conn, 
-           sep = "")
-
-close(conn)
-
-# clean up
-rm(tab.name, conn)
+# #------------------------------------------------------------------------------|
+# # write out ----
+# #------------------------------------------------------------------------------|
+# 
+# # write out csv files
+# for (tab.name in done.tables) {
+#     write.csv(get(tab.name), 
+#               file.path(output.dir, paste0(tab.name, ".csv")),
+#               row.names = FALSE, 
+#               quote = FALSE)
+# }
+# 
+# # write out report
+# conn <- file(file.path(output.dir, "00-metadata.txt"))
+# 
+# writeLines(c(as.character(Sys.time()), "\n\n",
+#              paste("psse file parsed:", basename(raw.file), "\n"),
+#              paste("psse version:", psse.version, "\n"),
+#              paste("mva base:", mva.base, "\n\n"),
+#              paste("tables processed:\n\t-", paste0(done.tables, collapse = "\n\t- "), "\n\n"),
+#              paste("tables skipped:\n\t-", paste0(skip.tables, collapse = "\n\t- "), "\n\n"),
+#              paste("empty tables:\n\t-", paste0(no.data.vec, collapse = "\n\t- "), "\n\n"),
+#              "----------\n\n",
+#              paste("other information:\n\t-", paste0(tab.info, collapse = "\n\t- "))
+#              ), 
+#            conn, 
+#            sep = "")
+# 
+# close(conn)
+# 
+# # clean up
+# rm(tab.name, conn)

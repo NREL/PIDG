@@ -10,17 +10,52 @@
 # generator.file
 # transformer.file
 
-library(psych)
-library(ggplot2)
+#------------------------------------------------------------------------------|
+# import data if needed ----
+#------------------------------------------------------------------------------|
+
+# either read in network data or procede
+
+if (choose.input == "pre.parsed") {
+    
+    message("reading in pre-parsed network data")
+    
+    if (file.exists(file.path(inputfiles.dir, node.file))) {
+        node.data.table <- fread(file.path(inputfiles.dir, node.file))
+    } else {
+        stop(sprintf("!!  %s does not exist", node.file))
+    }
+    
+    if (file.exists(file.path(inputfiles.dir, line.file))) {
+        line.data.table <- fread(file.path(inputfiles.dir, line.file))
+    } else {
+        stop(sprintf(" !!  %s does not exist", line.file))
+    }
+
+    if (file.exists(file.path(inputfiles.dir, generator.file))) {
+        generator.data.table <- fread(file.path(inputfiles.dir, generator.file))
+    } else {
+        stop(sprintf("!!  %s does not exist", generator.file))
+    }
+    
+    if (exists("transformer.file")) {
+        if (file.exists(file.path(inputfiles.dir, transformer.file))) {
+            transformer.data.table <- fread(file.path(inputfiles.dir, transformer.file))
+        } else {
+            stop(sprintf("!!  %se does not exist", transformer.file))
+        }
+    } else {
+        message(sprintf(">>  %s does not exist ... skipping", transformer.file))
+    }
+    
+}
+
 
 #------------------------------------------------------------------------------|
 # nodes ----
 #------------------------------------------------------------------------------|
 
-message("importing node data")
-
-# read in 
-node.data.table <- fread(file.path(inputfiles.dir, node.file))
+message("arranging node data")
 
 node.data.table[, Units := 1]
 
@@ -62,6 +97,7 @@ dev.off()
 
 # clean up 
 rm(regions.zones,node.freq,node.missing.region)
+
 
 #------------------------------------------------------------------------------|
 # Add nodes to .sheet tables ----
@@ -153,9 +189,7 @@ rm(all.zones, zones.to.objects, zones.to.nodes.to.memberships)
 # lines ----
 #------------------------------------------------------------------------------|
 
-message("importing line data")
-
-line.data.table <- fread(file.path(inputfiles.dir, line.file))
+message("arranging line data")
 
 line.data.table[, Units := 1]
 
@@ -212,6 +246,8 @@ pdf(file.path(outputfiles.dir,"DataCheck/line.resistance.by.state.pdf"),
     width = 12, height = 8)
 plot(tfrm.resistance.plot)
 dev.off()
+
+
 #------------------------------------------------------------------------------|
 # Add lines to .sheet tables ----
 #------------------------------------------------------------------------------|
@@ -265,10 +301,7 @@ rm(lines.to.objects, lines.to.properties, lines.to.nodes.to.memberships)
 # generators ----
 #------------------------------------------------------------------------------|
 
-message("importing generator data")
-
-# get data
-generator.data.table <- fread(file.path(inputfiles.dir, generator.file))
+message("arranging generator data")
 
 generator.data.table[, Units := 1]
 
@@ -302,6 +335,37 @@ pdf(file.path(outputfiles.dir,"DataCheck/gen.capacity.by.state.pdf"),
     width = 12, height = 8)
 plot(gen.capacity.plot)
 dev.off()
+
+
+# adjust gen cap if needed
+if (choose.input == "raw.psse") {
+    # temporary!! adjust max capacity needed
+    if (exists("adjust.max.cap")) {
+        if(file.exists(file.path(inputfiles.dir, adjust.max.cap))) {
+            
+            message(sprintf("... adjusting max capacity of generators in %s", 
+                            adjust.max.cap))
+            
+            new.cap <- fread(file.path(inputfiles.dir, adjust.max.cap))
+            
+            generator.data.table <- merge(generator.data.table, 
+                                          new.cap,
+                                          by = "Generator", 
+                                          all.x = TRUE)
+            
+            generator.data.table[!is.na(new.capacity), 
+                                 `Max Capacity` := new.capacity]
+            generator.data.table[, new.capacity := NULL]
+            
+            rm(new.cap)
+            
+        } else {
+            message(sprintf(">>  %s does not exist ... skipping", 
+                            adjust.max.cap))
+        }
+            
+    }
+}
 
 #------------------------------------------------------------------------------|
 # Add generators to .sheet tables ----
@@ -346,9 +410,7 @@ rm(gens.to.objects, gens.to.properties, gens.to.memberships)
 # transformers ----
 #------------------------------------------------------------------------------|
 
-message("importing transformer data")
-
-transformer.data.table <- fread(file.path(inputfiles.dir, transformer.file))
+message("arranging transformer data")
 
 transformer.data.table[, Units := 1]
 

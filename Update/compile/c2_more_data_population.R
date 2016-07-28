@@ -141,9 +141,8 @@ message('... Adding load participation factor from current raw file')
 # correctly and for PLEXOS to read them in correctly
 # remove any negative loads and replace them with zero
 # convert NaNs to zero for PLEXOS to read them in correctly
-load.data <- fread(file.path(inputfiles.dir, load.file))
 
-load.part.fact.table <- load.data[, .(Node, Load, Status)] 
+load.part.fact.table <- load.data.table[, .(Node, Load, Status)] 
 
 # remove Status = 0 load
 load.part.fact.table[, Load := Load * Status]

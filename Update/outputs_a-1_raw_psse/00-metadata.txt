@@ -1,4 +1,4 @@
-2016-07-06 10:06:38
+2016-07-28 09:06:47
 
 psse file parsed: Base Case_2021-22-Peak-Demand_edit.raw 
 psse version: 31 
@@ -9,7 +9,6 @@ tables processed:
 	- Branch.table
 	- Bus.table
 	- DC.line.table
-	- Fixed.shunt.table
 	- Generator.table
 	- Load.table
 	- Owner.table
@@ -18,6 +17,7 @@ tables processed:
 
 tables skipped:
 	- FACTS.device.table
+	- Fixed.shunt.table
 	- Switched.shunt.table 
 
 empty tables:
@@ -34,7 +34,6 @@ other information:
 	- Number of Branches: 12290
 	- Number of Buses: 6704
 	- Number of DC lines: 28
-	- Number of Fixed shunts: 1556
 	- Number of Generators: 2694
 	- Number of Loads: 4241
 	- Number of Owners: 108

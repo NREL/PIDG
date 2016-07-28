@@ -105,6 +105,7 @@ import_table_generic <- function(imported.csv.table, sheet.name) {
  }
 } 
 
+
 ###import_table_compact
 # Takes two arguments: data.table of information that has been read in from an
 # external file and a string describing the objects contained in that file
@@ -302,9 +303,6 @@ import_table_compact <- function(input.table, object.type) {
 # 
 # If property.name is NULL, take property name to be the name of the column
 # Note: Name of fuel column must be "Fuel"
-# 
-# NOTE: should clean up standard internal tables (gen.names.table, 
-# fuels.to.gens, etc). Including change MaxOutput.MW to Max Capacity
 merge_property_by_fuel <- function(input.table, prop.cols, 
                                    mult.by.max.cap = FALSE, 
                                    mult.by.num.units = FALSE, 

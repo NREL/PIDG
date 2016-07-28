@@ -18,7 +18,7 @@ india.repo = any(strsplit(getwd(),split="/")[[1]]=='India_GtG')
 
 #install.packages("pacman")
 pacman::p_load(cowplot, plyr, dplyr, ggplot2, grid, gridExtra, gtools, 
-  knitr, lubridate, reshape2, data.table, RSQLite, stringr) 
+  knitr, lubridate, reshape2, data.table, RSQLite, stringr, psych) 
 pacman::p_load(openxlsx)  
   # had to follow instructions here: https://github.com/awalker89/openxlsx, 
   # including installing Rtools from here: 
@@ -43,16 +43,13 @@ source(input.params.location)
 # function definition ----
 #------------------------------------------------------------------------------|
 
-## TEMPTEMP for testing until better solution
-
-'raw.psse'
-choose.input <- 'pre.parsed'
-
 if (choose.input == 'raw.psse') {
     runAllFiles <- function () {
       message("importing PSSE files...")
       source(file.path(master.script.dir,
-        "Update/compile/a_import_raw.R"))
+        "Update/compile/a-1-parse-psse.R"))
+      source(file.path(master.script.dir,
+        "Update/compile/a-2-reformat-psse.R"))
       message("creating tables...")
       source(file.path(master.script.dir,
         "Update/compile/b_create_sheet_tables.R"))
