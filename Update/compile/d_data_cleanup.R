@@ -28,11 +28,11 @@ if (exists('units.to.delete.files')) {
           Memberships.sheet[!(child_object %in% to.delete[,Object.Name]) & 
                               !(parent_object %in% to.delete[,Object.Name])]
       } else {
-        message(sprintf("... %s does not exist ... skipping", fname))
+        message(sprintf(">>  %s does not exist ... skipping", fname))
       } 
   }
 } else {
-   message("... units.to.delete.file does not exist ... skipping")
+   message(">>  units.to.delete.file does not exist ... skipping")
 }
 
 # add standard flow limits to lines with ratings of zero

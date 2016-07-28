@@ -27,7 +27,7 @@ pacman::p_load(openxlsx)
   # (check the "edit path" box during installation)
 
 
-source(file.path(master.script.dir, "SourceScripts/functions.R"))
+source(file.path(master.script.dir, "Update/compile/functions.R"))
 
 
 #------------------------------------------------------------------------------|

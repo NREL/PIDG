@@ -48,6 +48,16 @@ if (choose.input == "pre.parsed") {
         message(sprintf(">>  %s does not exist ... skipping", transformer.file))
     }
     
+    if (exists("load.file")) {
+        if (file.exists(file.path(inputfiles.dir, load.file))) {
+            load.data.table <- fread(file.path(inputfiles.dir, load.file))
+        } else {
+            stop(sprintf("!!  %se does not exist", load.file))
+        }
+    } else {
+        message(sprintf(">>  %s does not exist ... skipping", load.file))
+    }
+    
 }
 
 
@@ -56,6 +66,30 @@ if (choose.input == "pre.parsed") {
 #------------------------------------------------------------------------------|
 
 message("arranging node data")
+
+if (choose.input == "raw.psse") {
+    # if there are input files to remap the nodes' regions and zones, remap them
+    if (rename.regions) { 
+      
+      map.newregions <- fread(file.path(inputfiles.dir, map.newregion.file))
+      
+      node.data.table <- merge(node.data.table[,Region := NULL], 
+                               map.newregions[,.(Node, Region)], 
+                               by = "Node", 
+                               all.x = TRUE)
+    }
+    
+    if (rename.zones) {
+    
+      map.newzones <- fread(file.path(inputfiles.dir, map.newzone.file))
+      
+      node.data.table <- merge(node.data.table[,Zone := NULL], 
+                               map.newzones[,.(Node, Zone)], 
+                               by = "Node", 
+                               all.x = TRUE)
+    }
+}
+
 
 node.data.table[, Units := 1]
 

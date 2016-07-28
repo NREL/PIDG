@@ -138,7 +138,7 @@ import_table_compact <- function(input.table, object.type) {
                                       'transmission', 'performance', 'mt schedule', 
                                       'st schedule'))) {
         warning(paste0("In compact.generic.import.files, an incorrect object type",
-                       " was selected. Please choose from (not case sensitive): ".
+                       " was selected. Please choose from (not case sensitive): ",
                        "model, horizon, production, transmission, performance, ",
                        "mt schedule, st schedule"))
     }
@@ -327,7 +327,10 @@ merge_property_by_fuel <- function(input.table, prop.cols,
         # capacity, so can do a regular merge with generator.data.table
         # if band.col exists, include it in the merge and allow.cartesian, b/c
         # merged table will probably be big enough to throw an error
-        generator.data.table <- merge(generator.data.table,
+        generator.data.table <- merge(generator.data.table[,.(Generator, 
+                                                              Fuel, 
+                                                              `Max Capacity`, 
+                                                              Units)],
                                       input.table[,.SD,
                                                   .SDcols = c("Fuel", 
                                                               if(!is.na(band.col)) band.col, 
@@ -336,6 +339,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
                                       allow.cartesian = ifelse(!is.na(band.col), 
                                                                TRUE, 
                                                                FALSE))  
+
     } else {
         
         # is a cap.band.col is give, use that to split up property distribution
@@ -384,7 +388,11 @@ merge_property_by_fuel <- function(input.table, prop.cols,
         
         # finally, merge input.table with generator.data.table
         # similarly, if there is a band col, include it and allow.cartesian
-        generator.data.table <- merge(generator.data.table, 
+        generator.data.table <- merge(generator.data.table[,.(Generator, 
+                                                              Fuel, 
+                                                              `Max Capacity`, 
+                                                              Units,
+                                                              breaks.col)], 
                                       input.table[,.SD,
                                                   .SDcols = c("Fuel", 
                                                               if(!is.na(band.col)) band.col, 
@@ -411,7 +419,8 @@ merge_property_by_fuel <- function(input.table, prop.cols,
         }
     }
     
-    return.cols = c('Generator',prop.cols,band.col)
+    return.cols = c('Generator', prop.cols, band.col)
+    
     # return generator + property
     return(generator.data.table[,.SD, 
                                 .SDcols = return.cols[!is.na(return.cols)]])
@@ -428,8 +437,11 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 # 
 # overwrite.cols can be any column in Properties sheet except value. That column
 # will also be overwritten
-add_to_properties_sheet <- function(input.table, object.class, names.col, 
-                                    collection.name, parent.col = NA,
+add_to_properties_sheet <- function(input.table, 
+                                    object.class = NA, 
+                                    names.col = NA, 
+                                    collection.name = NA, 
+                                    parent.col = NA,
                                     scenario.name = NA, pattern.col = NA, 
                                     period.id = NA, datafile.col = NA, 
                                     date_from.col = NA, overwrite = FALSE, 

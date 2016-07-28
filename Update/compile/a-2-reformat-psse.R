@@ -349,14 +349,14 @@ if (exists("transformer.data.table")) {
     transformer.data.table <- merge(transformer.data.table, 
                                     node.data.table[,.(node.from.number = node.number,
                                                        `Node From` = Node,
-                                                       kV.From = Voltage)],
+                                                       Voltage.From = Voltage)],
                                     by = "node.from.number",
                                     all.x = TRUE)    
     
     transformer.data.table <- merge(transformer.data.table, 
                                     node.data.table[,.(node.to.number = node.number,
                                                        `Node To` = Node,
-                                                       kV.To = Voltage)],
+                                                       Voltage.To = Voltage)],
                                     by = "node.to.number",
                                     all.x = TRUE)
     
@@ -364,7 +364,7 @@ if (exists("transformer.data.table")) {
     transformer.data.table[,c("node.to.number", "node.from.number") := NULL]
     
     setcolorder(transformer.data.table, c("Transformer", "Node From", "Node To",
-                                          "kV.From", "kV.To", "Rating", 
+                                          "Voltage.From", "Voltage.To", "Rating", 
                                           "Resistance", "Reactance", "Status"))
     
     # add to list to write out
