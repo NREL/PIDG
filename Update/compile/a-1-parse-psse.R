@@ -344,6 +344,9 @@ Transformer.table.v2$overload.rating.MW <- Transformer.table[i %% 4 == 3, .(V6)]
 
 Transformer.table <- Transformer.table.v2
 
+# is character because of table structure
+Transformer.table[,rating.MW := as.numeric(rating.MW)]
+
 # clean up
 rm(Transformer.table.v2)
 

@@ -177,7 +177,7 @@ line.data[Line %in% c("184432_364008_1_CKT",
 
 line.data[Line %in% c("374019_374021_1_CKT", 
                       "374020_374021_1_CKT"), 
-          `:=`(`Max Flow` = 28, `Min Flow` = -28)] # these are in Ella's
+          `:=`(`Max Flow` = 28, `Min Flow` = -2186)] # these are in Ella's
 
 ## standard data
 # defines stadards with [name = kV level] = [element = MW flow limit]
