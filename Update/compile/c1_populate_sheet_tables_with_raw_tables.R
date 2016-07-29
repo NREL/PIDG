@@ -90,48 +90,7 @@ if (choose.input == "raw.psse") {
     }
 }
 
-
 node.data.table[, Units := 1]
-
-# run data checks on nodes and save in OutputFiles
-
-# a. Regions and zones
-regions.zones <- unique(node.data.table[,.(Zone, Region)])
-
-write.csv(regions.zones, file = file.path(outputfiles.dir,
-                                          "DataCheck/data.check_node.freq.csv"))
-# b. number of nodes by zone and region
-node.freq <- as.data.table(xtabs(~ Zone + Region, data = node.data.table))
-setnames(node.freq,"N","Number of Nodes")
-
-write.csv(node.freq, file = file.path(outputfiles.dir,
-                                      "DataCheck/data.check_node.freq.csv"))
-
-# c. check that no nodes have missing region *** add zone check - contingent on zones existing in database
-node.missing.region <- node.data.table[Region == "" | is.na(Region),Node]
-
-if(length(node.missing.region) > 0){
-  stop("The following nodes do not have a region: ", 
-       paste(node.missing.region, collapse = ", "))
-}
-
-# add list of objects that have issues - nodes, lines, gens, etc...
-
-# d. node voltage by region
-node.kV.plot <- ggplot(data = node.data.table) + 
-  geom_bar(aes(x = factor(Voltage), fill = factor(Voltage))) +
-  facet_wrap(~ Region, scales = "free") +
-  labs(x = "Node voltage", y = "Number of nodes") + 
-  scale_fill_discrete(name="Node voltage")
-
-pdf(file.path(outputfiles.dir,"DataCheck/node.voltage.by.state.pdf"),
-    width = 12, height = 8)
-plot(node.kV.plot)
-dev.off()
-
-# clean up 
-rm(regions.zones,node.freq,node.missing.region)
-
 
 #------------------------------------------------------------------------------|
 # Add nodes to .sheet tables ----
@@ -244,44 +203,6 @@ line.data.table <- merge(line.data.table,
 line.data.table[Region.From == Region.To, category := paste0(Type, "_", Region.From)]
 line.data.table[Region.From != Region.To, category := paste0("Interstate_", Type)]
 
-# run data check and save results in OutputFiles
-# a. summary table - voltage, reactance, resistance, max flow, min flow
-numeric.cols <- sapply(line.data.table,is.numeric)
-
-line.summary <- describe(line.data.table[,numeric.cols, with = F])
-
-write.csv(line.summary, file = file.path(outputfiles.dir,
-                                         "DataCheck/line.summary.csv"))
-
-# b. boxplots of line reactance by region
-tfrm.reactance.plot <- ggplot(data = line.data.table[!is.na(Reactance)]) + 
-  geom_boxplot(aes(x = factor(1), y = Reactance)) + 
-  facet_wrap(~ category, scales = "free") +
-  theme(axis.text.x=element_blank(),
-        axis.title.x=element_blank(), 
-        axis.title.y = element_blank(),
-        axis.ticks.x = element_blank())
-
-pdf(file.path(outputfiles.dir,"DataCheck/line.reactance.by.state.pdf"), 
-    width = 12, height = 8)
-plot(tfrm.reactance.plot)
-dev.off()
-
-# c. boxplots of line resistance by region
-tfrm.resistance.plot <- ggplot(data = line.data.table) + 
-  geom_boxplot(aes(x = factor(1), y = Resistance)) + 
-  facet_wrap(~ category, scales = "free") +
-  theme(axis.text.x=element_blank(),
-        axis.title.x=element_blank(), 
-        axis.title.y = element_blank(),
-        axis.ticks.x = element_blank())
-
-pdf(file.path(outputfiles.dir,"DataCheck/line.resistance.by.state.pdf"), 
-    width = 12, height = 8)
-plot(tfrm.resistance.plot)
-dev.off()
-
-
 #------------------------------------------------------------------------------|
 # Add lines to .sheet tables ----
 #------------------------------------------------------------------------------|
@@ -344,32 +265,6 @@ generator.data.table <- merge(generator.data.table,
                               node.data.table[,.(Node, Region)],
                               by = "Node", 
                               all.x = TRUE)
-
-# run data checks and save results in OutputFiles
-# a. Generator properties summarized by region
-numeric.cols <- which(sapply(generator.data.table, is.numeric))
-numeric.cols <- c(names(numeric.cols),"Region")
-
-suppressWarnings(
-generator.region.summary <- describeBy(generator.data.table[,numeric.cols, with = F],
-                                       group = "Region", mat = T)
-)
-
-write.csv(generator.region.summary,
-          file = file.path(outputfiles.dir,
-                           "DataCheck/generator.summary.by.region.csv"))
-
-# b. Plot summary of generator properties by region
-gen.capacity.plot <- ggplot(data = generator.data.table) +
-  geom_boxplot(aes(x = factor(0), y = `Max Capacity`)) +
-  facet_wrap(~ Region, scales = "free") +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
-  
-pdf(file.path(outputfiles.dir,"DataCheck/gen.capacity.by.state.pdf"), 
-    width = 12, height = 8)
-plot(gen.capacity.plot)
-dev.off()
-
 
 # adjust gen cap if needed
 # if (choose.input == "raw.psse") {
@@ -464,48 +359,6 @@ transformer.data.table <- merge(transformer.data.table,
 # add category
 transformer.data.table[Region.From == Region.To, category := Region.From]
 transformer.data.table[Region.From != Region.To, category := "Interstate_tfmr"]
-
-# run data check on transformers and save results in OutputFiles
-# a. Transformer properties 
-numeric.cols <- which(sapply(transformer.data.table,is.numeric))
-numeric.cols <- c(names(numeric.cols),"category")
-
-suppressWarnings(
-transformer.summary <- describeBy(transformer.data.table[,numeric.cols, with = F],
-                                  group = "category", mat = T)
-)
-
-write.csv(transformer.summary, 
-          file = file.path(outputfiles.dir,"DataCheck/transformer.summary.csv"))
-
-# b. boxplots of transformer reactance by region
-tfrm.reactance.plot <- ggplot(data = transformer.data.table) + 
-  geom_boxplot(aes(x = factor(1), y = Reactance)) + 
-  facet_wrap(~ category, scales = "free") +
-  theme(axis.text.x=element_blank(),
-        axis.title.x=element_blank(), 
-        axis.title.y = element_blank(),
-        axis.ticks.x = element_blank())
-
-pdf(file.path(outputfiles.dir,"DataCheck/transformer.reactance.by.state.pdf"), 
-    width = 12, height = 8)
-plot(tfrm.reactance.plot)
-dev.off()
-
-# c. boxplots of transformer resistance by region
-tfrm.resistance.plot <- ggplot(data = transformer.data.table) + 
-  geom_boxplot(aes(x = factor(1), y = Resistance)) + 
-  facet_wrap(~ category, scales = "free") +
-  theme(axis.text.x=element_blank(),
-        axis.title.x=element_blank(), 
-        axis.title.y = element_blank(),
-        axis.ticks.x = element_blank())
-
-pdf(file.path(outputfiles.dir,"DataCheck/transformer.resistance.by.state.pdf"), 
-    width = 12, height = 8)
-plot(tfrm.resistance.plot)
-dev.off()
-
 
 #------------------------------------------------------------------------------|
 # Add transformers to .sheet tables ----
