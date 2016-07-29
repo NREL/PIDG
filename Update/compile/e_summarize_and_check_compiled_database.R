@@ -1,6 +1,4 @@
 # Run to check data and summarize the compiled database 
-library(igraph)
-
 # list of missing items
 missing.items.list <- c()
 
@@ -48,18 +46,6 @@ missing.items.list <- c(missing.items.list,"node.missing.region",
                         "node.missing.zone")
 
 # check for nodes with multiple region/zone memberships
-
-# plot node voltage by state
-node.kV.plot <- ggplot(data = node.data.table) + 
-  geom_bar(aes(x = factor(Voltage), fill = factor(Voltage))) +
-  facet_wrap(~ Region, scales = "free") +
-  labs(x = "Node voltage (kV)", y = "Number of nodes") + 
-  scale_fill_discrete(name="Node voltage")
-
-pdf(file.path(outputfiles.dir,"DataCheck/node.voltage.by.state.pdf"),
-    width = 12, height = 8)
-plot(node.kV.plot)
-dev.off()
 
 # extract all edges (lines and transformers)
 lines.from <- Memberships.sheet[parent_class == "Line" & 
@@ -119,7 +105,7 @@ cat(sprintf("3. Number of nodes that belong to islands: %d*", nrow(island.nodes)
 cat("\n\n")
 cat("*Islands are any groups of nodes not connected to the largest connected component.")
 cat("\n")
-cat("*List of nodes that belog to islands saved in DataCheck/isolated.nodes.txt")
+cat("*List of nodes that belong to islands saved in DataCheck/isolated.nodes.txt")
 sink()
 
 # clean up to free up memory
@@ -220,7 +206,7 @@ for(i in unique(generator.map$Region)){
 }
 dev.off()
 
-message("...exporting regional new RE build plots")
+message("...exporting regional RE scenarios plots")
 # plot state new RE build by scenario
 pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
 pdf(file.path(outputfiles.dir,"DataCheck","region.newRE.plots.pdf"),
@@ -229,7 +215,7 @@ stepi = 0
 for(i in unique(generator.map$Region)){
   plot <- ggplot(data = generator.map[conventional == 0 & Region == i,]) +
     geom_bar(aes(x = Fuel, y = Units*Capacity), stat = "identity") +
-    ggtitle(paste0(i,"plotRE Capacity by Fuel")) +
+    ggtitle(paste0(i," RE Capacity by Fuel")) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
     xlab("Capacity (MW)") +
     if(nrow(generator.map[conventional == 0 & Region == i & scenario != "Scenario: NA",]) != 0){

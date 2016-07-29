@@ -18,7 +18,7 @@ india.repo = any(strsplit(getwd(),split="/")[[1]]=='India_GtG')
 
 #install.packages("pacman")
 pacman::p_load(cowplot, plyr, dplyr, ggplot2, grid, gridExtra, gtools, 
-  knitr, lubridate, reshape2, data.table, RSQLite, stringr, psych) 
+  knitr, lubridate, reshape2, data.table, RSQLite, stringr, psych, igraph) 
 pacman::p_load(openxlsx)  
   # had to follow instructions here: https://github.com/awalker89/openxlsx, 
   # including installing Rtools from here: 
@@ -64,7 +64,7 @@ if (choose.input == 'raw.psse') {
       source(file.path(master.script.dir,
         "Update/compile/d_data_cleanup.R"))
       if(data.checks.and.plots == T){
-        message("checking data and creating summary plots")
+        message("checking data and creating summary plots...")
         source(file.path(master.script.dir,
           "Update/compile/e_summarize_and_check_compiled_database.R"))
       }
