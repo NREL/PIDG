@@ -63,9 +63,14 @@ if (choose.input == 'raw.psse') {
       message("cleaning tables...")
       source(file.path(master.script.dir,
         "Update/compile/d_data_cleanup.R"))
+      if(data.checks.and.plots == T){
+        message("checking data and creating summary plots")
+        source(file.path(master.script.dir,
+          "Update/compile/e_summarize_and_check_compiled_database.R"))
+      }
       message("exporting tables...")
       source(file.path(master.script.dir,
-        "Update/compile/e_export_to_excel.R"))
+        "Update/compile/f_export_to_excel.R"))
     }
 } else if (choose.input == 'pre.parsed') {
     runAllFiles <- function () {
@@ -85,9 +90,14 @@ if (choose.input == 'raw.psse') {
       message("cleaning tables...")
       source(file.path(master.script.dir,
         "Update/compile/d_data_cleanup.R"))
+      if(data.checks.and.plots == T){
+        message("checking data and creating summary plots")
+        source(file.path(master.script.dir,
+          "Update/compile/e_summarize_and_check_compiled_database.R"))
+      }
       message("exporting tables...")
       source(file.path(master.script.dir,
-        "Update/compile/e_export_to_excel.R"))
+        "Update/compile/f_export_to_excel.R"))
     }
 } else {
     
