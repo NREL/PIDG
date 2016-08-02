@@ -28,11 +28,13 @@
 
 root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update"
 
-raw.file.path <- file.path(root.dir, "inputs/Base Case_2021-22-Peak-Demand_edit.raw")
+inputfiles.dir <- "InputFiles_alt"
+
+raw.file.path <- "psse_files/Base Case_2021-22-Peak-Demand_edit.raw"
 
 output.dir1 <- file.path(root.dir, "outputs_a-1_raw_psse")
 
-output.dir2 <- file.path(root.dir, "outputs_a-2_reformatted_psse2")
+output.dir2 <- file.path(root.dir, "outputs_a-2_reformatted_psse")
 
 
 
@@ -73,7 +75,7 @@ for (tab.name in done.tables) {
 conn <- file(file.path(output.dir1, "00-metadata.txt"))
 
 writeLines(c(as.character(Sys.time()), "\n\n",
-             paste("psse file parsed:", basename(raw.file), "\n"),
+             paste("psse file parsed:", basename(raw.file.path), "\n"),
              paste("psse version:", psse.version, "\n"),
              paste("mva base:", mva.base, "\n\n"),
              paste("tables processed:\n\t-", paste0(done.tables, collapse = "\n\t- "), "\n\n"),
