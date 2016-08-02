@@ -18,7 +18,7 @@ india.repo = any(strsplit(getwd(),split="/")[[1]]=='India_GtG')
 
 #install.packages("pacman")
 pacman::p_load(cowplot, plyr, dplyr, ggplot2, grid, gridExtra, gtools, 
-  knitr, lubridate, reshape2, data.table, RSQLite, stringr, psych) 
+  knitr, lubridate, reshape2, data.table, RSQLite, stringr, psych, igraph) 
 pacman::p_load(openxlsx)  
   # had to follow instructions here: https://github.com/awalker89/openxlsx, 
   # including installing Rtools from here: 
@@ -63,9 +63,14 @@ if (choose.input == 'raw.psse') {
       message("cleaning tables...")
       source(file.path(master.script.dir,
         "Update/compile/d_data_cleanup.R"))
+      if(data.checks.and.plots == T){
+        message("checking data and creating summary plots...")
+        source(file.path(master.script.dir,
+          "Update/compile/e_summarize_and_check_compiled_database.R"))
+      }
       message("exporting tables...")
       source(file.path(master.script.dir,
-        "Update/compile/e_export_to_excel.R"))
+        "Update/compile/f_export_to_excel.R"))
     }
 } else if (choose.input == 'pre.parsed') {
     runAllFiles <- function () {
@@ -85,9 +90,14 @@ if (choose.input == 'raw.psse') {
       message("cleaning tables...")
       source(file.path(master.script.dir,
         "Update/compile/d_data_cleanup.R"))
+      if(data.checks.and.plots == T){
+        message("checking data and creating summary plots")
+        source(file.path(master.script.dir,
+          "Update/compile/e_summarize_and_check_compiled_database.R"))
+      }
       message("exporting tables...")
       source(file.path(master.script.dir,
-        "Update/compile/e_export_to_excel.R"))
+        "Update/compile/f_export_to_excel.R"))
     }
 } else {
     
