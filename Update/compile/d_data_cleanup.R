@@ -4,20 +4,6 @@
 #   units.to.delete.file
 
 #------------------------------------------------------------------------------|
-# Data cleaning ----
-#------------------------------------------------------------------------------|
-
-
-# Plexoscan't handle min stable levels that are less than zero. Change these
-# to zero and notify user.
-if (any(Properties.sheet[property=="Min Stable Level",
-                         as.numeric(value) < 0])) {
-  message('Changing negative min stable levels to 0 MW... hope that is OK')
-  Properties.sheet[property=="Min Stable Level" & as.numeric(value) < 0,
-                   value := "0"]
-}
-
-#------------------------------------------------------------------------------|
 # Optional inputs ----
 #------------------------------------------------------------------------------|
 
@@ -50,6 +36,22 @@ if (exists('units.to.delete.files')) {
 
 # add standard flow limits to transformers with ratings of zero
 # do this in a scenario (in script d)
+
+
+#------------------------------------------------------------------------------|
+# Data cleaning ----
+#------------------------------------------------------------------------------|
+
+
+# Plexoscan't handle min stable levels that are less than zero. Change these
+# to zero and notify user.
+if (any(Properties.sheet[property=="Min Stable Level",
+                         as.numeric(value) < 0])) {
+  message('Changing negative min stable levels to 0 MW... hope that is OK')
+  Properties.sheet[property=="Min Stable Level" & as.numeric(value) < 0,
+                   value := "0"]
+}
+
 
 #------------------------------------------------------------------------------|
 # Alphabetize all categories ----
