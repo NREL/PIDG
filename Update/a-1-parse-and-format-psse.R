@@ -28,7 +28,7 @@
 
 root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update"
 
-inputfiles.dir <- "InputFiles_alt"
+inputfiles.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/InputFiles_alt" # needs to be not relative since aren't setting wd at the moment
 
 raw.file.path <- "psse_files/Base Case_2021-22-Peak-Demand_edit.raw"
 
