@@ -31,6 +31,8 @@ copy.data.loc <- file.path(root.dir, "../../InputFiles_tester/base_network")
 # node region/zone remapping
 remap.node.file <- file.path(root.dir, "correction_inputs/node_region_zone_cea.csv")
 
+adjust.max.cap.file <- file.path(root.dir, "correction_inputs/adjust_max_cap_cea.csv")
+
 # individual properties
 # brief script
 
@@ -69,6 +71,51 @@ line.colorder <- colnames(line.data)
 
 if (exists("transformer.data")) transformer.colorder <- colnames(transformer.data)
 if (exists("load.data")) load.colorder <- colnames(load.data)
+
+
+#------------------------------------------------------------------------------|
+# helper functions ----
+#------------------------------------------------------------------------------|
+replace_data <- function(orig.table, type, new.data) {
+    # assumes that first col is type
+    # assumes other columns are named identical to property name 
+    # for now, requires that the new property is already define in PSSE file
+    new.cols <- colnames(new.data)
+    prop.cols <- new.cols[-1]
+    
+    # check
+    if (!all(prop.cols %in% colnames(orig.table))) {
+        
+        problem.cols <- prop.cols[!(prop.cols %in% colnames(orig.table))]
+        verb <- ifelse(length(problem.cols) > 1, 
+                       " aren't columns in ", 
+                       " isn't a column in ")
+        
+        stop(paste0(paste(problem.cols, collapse = ", "),
+                    verb,
+                    deparse(substitute(orig.table)), 
+                    " table. Please adjust data in ",
+                    deparse(substitute(new.data))))
+        
+    }
+    
+    orig.table <- merge(orig.table, new.data, 
+                        by.x = type, by.y = new.cols[1], 
+                        all.x = TRUE)
+    
+    # merge and replace data in original column with new data
+    for (col in prop.cols) {
+        
+        orig.table[!is.na(get(paste0(col, ".y"))), 
+                   (paste0(col, ".x")) := get(paste0(col, ".y"))]
+        
+        setnames(orig.table, paste0(col, ".x"), col)
+        orig.table[,(paste0(col, ".y")) := NULL]
+    }
+
+    return(orig.table)    
+}
+
 
 
 #------------------------------------------------------------------------------|
@@ -129,7 +176,7 @@ if (exists("remap.nodes")) {
     
     message("remap.node.file does not exist. leaving nodes in original regions/zones")
 }
-
+ # report - unique(old regions and zones) unique(new regions and zones), point to source file
 
 
 
@@ -220,11 +267,20 @@ transformer.data <- merge(transformer.data,
 transformer.data[Rating == 0 & !is.na(cor_Rating), Rating := cor_Rating]
 transformer.data[,cor_Rating := NULL]
 
+
+# adjust max capacity
+adjust.max.cap <- fread(adjust.max.cap.file)
+
+generator.data <- replace_data(generator.data, "Generator", adjust.max.cap)
+
+
+
 # TODO
 # adjust_max_cap_cea?
 # fix reactance of one line
 # list("corrections/line_reactance_adjustments_cea.csv",
 #   list(overwrite = TRUE)),
+# fix ella's
 
 #------------------------------------------------------------------------------|
 # set orders again. do this from the original order (w poss addition of zone in node) ----
