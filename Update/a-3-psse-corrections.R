@@ -17,6 +17,7 @@
 
 root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update"
 
+input.dir <- file.path(root.dir, "outputs_a-2_reformatted_psse")
 output.dir <- file.path(root.dir, "outputs_a-3_corrected_psse")
 
 regions <- file.path(root.dir, "inputs/node_region_cea.csv")
@@ -31,7 +32,11 @@ copy.data.loc <- file.path(root.dir, "../../InputFiles_tester/base_network")
 # node region/zone remapping
 remap.node.file <- file.path(root.dir, "correction_inputs/node_region_zone_cea.csv")
 
+# corrections
 adjust.max.cap.file <- file.path(root.dir, "correction_inputs/adjust_max_cap_cea.csv")
+adjust.line.reactance.file <- file.path(root.dir, "correction_inputs/adjust_line_reactance_cea.csv")
+standard.lines.file <- file.path(root.dir, "correction_inputs/standard_flow_lines.csv")
+standard.tfmrs.file <- file.path(root.dir, "correction_inputs/standard_flow_tfmrs.csv")
 
 # individual properties
 # brief script
@@ -54,11 +59,11 @@ if (!dir.exists(copy.data.loc)) {
     dir.create(copy.data.loc, recursive = TRUE)
 }
 
-generator.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/generator.data.csv"))
-line.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/line.data.csv"))
-load.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/load.data.csv"))
-node.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/node.data.csv"))
-transformer.data <- fread(file.path(root.dir, "outputs_a-2_reformatted_psse/transformer.data.csv"))
+generator.data <- fread(file.path(input.dir, "generator.data.table.csv"))
+line.data <- fread(file.path(input.dir, "line.data.table.csv"))
+load.data <- fread(file.path(input.dir, "load.data.table.csv"))
+node.data <- fread(file.path(input.dir, "node.data.table.csv"))
+transformer.data <- fread(file.path(input.dir, "transformer.data.table.csv"))
 
 
 # Node, Region, Zone (Zone optional). if any data is missing, original will be 
@@ -76,8 +81,8 @@ if (exists("load.data")) load.colorder <- colnames(load.data)
 #------------------------------------------------------------------------------|
 # helper functions ----
 #------------------------------------------------------------------------------|
-replace_data <- function(orig.table, type, new.data) {
-    # assumes that first col is type
+replace_data <- function(orig.table, merge.on, new.data) {
+    # assumes that first col is merge.on
     # assumes other columns are named identical to property name 
     # for now, requires that the new property is already define in PSSE file
     new.cols <- colnames(new.data)
@@ -100,7 +105,7 @@ replace_data <- function(orig.table, type, new.data) {
     }
     
     orig.table <- merge(orig.table, new.data, 
-                        by.x = type, by.y = new.cols[1], 
+                        by.x = merge.on, by.y = new.cols[1], 
                         all.x = TRUE)
     
     # merge and replace data in original column with new data
@@ -182,13 +187,7 @@ if (exists("remap.nodes")) {
 
 ## other individual corrections
 
-generator.data[Generator == "GEN_354013_GMR_400_1", `Max Capacity` := 685]
-generator.data[Generator == "GEN_354013_GMR_400_2", `Max Capacity` := 685]
-
-line.data[Line == "211570_261131_2_CKT", Reactance := 0.35456]
-
-line.data[`Max Flow` > 4000, `Max Flow` := 4000]
-line.data[`Min Flow` < -4000, `Min Flow` := -4000]
+# ---- from file ----
 
 line.data[Line %in% c("326004_326007_1_CKT", 
                       "326005_326006_1_CKT"), 
@@ -222,9 +221,28 @@ line.data[Line %in% c("184432_364008_1_CKT",
                       "434027_434427_1_CKT"), 
           `:=`(`Max Flow` = 870, `Min Flow` = -870)]
 
-line.data[Line %in% c("374019_374021_1_CKT", 
-                      "374020_374021_1_CKT"), 
+line.data[Line %in% c("374019_374021_1_CKT",
+                      "374020_374021_1_CKT"),
           `:=`(`Max Flow` = 28, `Min Flow` = -2186)] # these are in Ella's
+
+
+# using replace_data
+
+adjust.max.cap <- fread(adjust.max.cap.file)
+generator.data <- replace_data(generator.data, "Generator", adjust.max.cap)
+
+adjust.line.reactance <- fread(adjust.line.reactance.file)
+line.data <- replace_data(line.data, "Line", adjust.line.reactance)
+
+
+# standard.lines <- fread(standard.lines.file)
+# line.data <- replace_data(line.data, "")
+# 
+# standard.tfmrs <- fread(standard.tfmrs.file)
+
+# ---- needs script ----
+line.data[`Max Flow` > 4000, `Max Flow` := 4000]
+line.data[`Min Flow` < -4000, `Min Flow` := -4000]
 
 ## standard data
 # defines stadards with [name = kV level] = [element = MW flow limit]
@@ -237,12 +255,12 @@ standard.flow.lims <- c("132" = "80", "220" = "200", "400" = "870",
   "0.6" = "10", "69" = "30", "115" = "80", "22.9" = "20", "34.5" = "34.5",
   "13.8" = "30", "138" = "150")
 
-standard.flow.lims <- data.table(Voltage = as.numeric(names(standard.flow.lims)), 
+standard.flow.lims <- data.table(Voltage.From = as.numeric(names(standard.flow.lims)), 
                                  corrected_maxflow = as.numeric(standard.flow.lims))
 
 line.data <- merge(line.data,
                    standard.flow.lims, 
-                   by = "Voltage",
+                   by = "Voltage.From",
                    all.x = TRUE)
 
 line.data[`Max Flow` == 0 & !is.na(corrected_maxflow), 
@@ -256,22 +274,18 @@ line.data[,corrected_maxflow := NULL]
 standard.flow.tfmr.lims <- c("220" = "315", "132" = "100", "110" = "100", 
    "66" = "100", "69" = "100", "138" = "100", "13.8" = "100")
 
-standard.flow.tfmr.lims <- data.table(kV.To = as.numeric(names(standard.flow.tfmr.lims)),
+standard.flow.tfmr.lims <- data.table(Voltage.To = as.numeric(names(standard.flow.tfmr.lims)),
                                       cor_Rating = as.numeric(standard.flow.tfmr.lims))
 
 transformer.data <- merge(transformer.data, 
                           standard.flow.tfmr.lims, 
-                          by = "kV.To",
+                          by = "Voltage.To",
                           all.x = TRUE)
 
 transformer.data[Rating == 0 & !is.na(cor_Rating), Rating := cor_Rating]
 transformer.data[,cor_Rating := NULL]
 
 
-# adjust max capacity
-adjust.max.cap <- fread(adjust.max.cap.file)
-
-generator.data <- replace_data(generator.data, "Generator", adjust.max.cap)
 
 
 
