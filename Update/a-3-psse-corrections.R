@@ -187,44 +187,6 @@ if (exists("remap.nodes")) {
 
 ## other individual corrections
 
-# ---- from file ----
-
-line.data[Line %in% c("326004_326007_1_CKT", 
-                      "326005_326006_1_CKT"), 
-          `:=`(`Max Flow` = 28, `Min Flow` = -28)]
-
-line.data[Line %in% c("361062_361235_1_CKT"), 
-          `:=`(`Max Flow` = 80, `Min Flow` = -80)]
-
-line.data[Line %in% c("352043_352097_1_CKT",
-                      "372060_372193_1_CKT",
-                      "372098_372211_1_CKT",
-                      "312035_312036_1_CKT",
-                      "372052_372087_1_CKT"), 
-          `:=`(`Max Flow` = 200, `Min Flow` = -200)]
-
-line.data[Line %in% c("184432_364008_1_CKT",
-                      "314002_314024_2_CKT",
-                      "314002_314025_3_CKT",
-                      "314013_314014_1_CKT",
-                      "314015_314049_4_CKT",
-                      "314016_314049_1_CKT",
-                      "354016_354027_1_CKT",
-                      "354016_354028_2_CKT",
-                      "354030_364015_1_CKT",
-                      "354031_364015_2_CKT",
-                      "364011_364019_1_CKT",
-                      "364011_364020_2_CKT",
-                      "414005_414405_1_CKT",
-                      "414010_414410_1_CKT",
-                      "434011_434411_1_CKT",
-                      "434027_434427_1_CKT"), 
-          `:=`(`Max Flow` = 870, `Min Flow` = -870)]
-
-line.data[Line %in% c("374019_374021_1_CKT",
-                      "374020_374021_1_CKT"),
-          `:=`(`Max Flow` = 28, `Min Flow` = -2186)] # these are in Ella's
-
 
 # using replace_data
 
@@ -239,7 +201,7 @@ line.data <- replace_data(line.data, "Line", adjust.line.reactance)
 # lines
 standard.lines <- fread(standard.lines.file)
 
-line.data.zeros <- line.data[`Max Flow` == 0]
+line.data.zeros <- line.data[`Max Flow` == 0 | `Max Flow` == 9999]
 line.data.zeros <- replace_data(line.data.zeros, "Voltage.From", standard.lines)
 line.data.zeros <- line.data.zeros[,.(Line, `Max Flow`)]
 
@@ -258,14 +220,16 @@ transformer.data <- replace_data(transformer.data, "Transformer", tfmr.data.zero
 rm(adjust.max.cap, adjust.line.reactance, standard.lines, standard.tfmrs, 
    line.data.zeros, tfmr.data.zeros)
 
-# adjust line Min Flow in case Max Flow changed
-line.data[,]
+
 
 # ---- needs script ----
 line.data[`Max Flow` > 4000, `Max Flow` := 4000]
 line.data[`Min Flow` < -4000, `Min Flow` := -4000]
 
 
+
+# adjust line Min Flow in case Max Flow changed
+line.data[,`Min Flow` := -1 * `Max Flow`]
 
 # TODO
 # fix reactance of one line
