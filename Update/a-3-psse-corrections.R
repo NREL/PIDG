@@ -235,62 +235,39 @@ adjust.line.reactance <- fread(adjust.line.reactance.file)
 line.data <- replace_data(line.data, "Line", adjust.line.reactance)
 
 
-# standard.lines <- fread(standard.lines.file)
-# line.data <- replace_data(line.data, "")
-# 
-# standard.tfmrs <- fread(standard.tfmrs.file)
+# replace only ratings on lines and transformers where rating is zero
+# lines
+standard.lines <- fread(standard.lines.file)
+
+line.data.zeros <- line.data[`Max Flow` == 0]
+line.data.zeros <- replace_data(line.data.zeros, "Voltage.From", standard.lines)
+line.data.zeros <- line.data.zeros[,.(Line, `Max Flow`)]
+
+line.data <- replace_data(line.data, "Line", line.data.zeros)
+
+# tfmrs
+standard.tfmrs <- fread(standard.tfmrs.file, colClasses = "numeric")
+
+tfmr.data.zeros <- transformer.data[Rating == 0]
+tfmr.data.zeros <- replace_data(tfmr.data.zeros, "Voltage.To", standard.tfmrs)
+tfmr.data.zeros <- tfmr.data.zeros[,.(Transformer, Rating)]
+
+transformer.data <- replace_data(transformer.data, "Transformer", tfmr.data.zeros)
+
+# clean up
+rm(adjust.max.cap, adjust.line.reactance, standard.lines, standard.tfmrs, 
+   line.data.zeros, tfmr.data.zeros)
+
+# adjust line Min Flow in case Max Flow changed
+line.data[,]
 
 # ---- needs script ----
 line.data[`Max Flow` > 4000, `Max Flow` := 4000]
 line.data[`Min Flow` < -4000, `Min Flow` := -4000]
 
-## standard data
-# defines stadards with [name = kV level] = [element = MW flow limit]
-standard.flow.lims <- c("132" = "80", "220" = "200", "400" = "870", 
-  "765" = "2200", 
-  # these next ones are from looking at most commnon flow limits on these lines
-  "11" = "30", "33" = "33", "66" = "28", "100" = "80", "110" = "80", 
-  "230" = "200",
-  #and these ones are rough guesses
-  "0.6" = "10", "69" = "30", "115" = "80", "22.9" = "20", "34.5" = "34.5",
-  "13.8" = "30", "138" = "150")
-
-standard.flow.lims <- data.table(Voltage.From = as.numeric(names(standard.flow.lims)), 
-                                 corrected_maxflow = as.numeric(standard.flow.lims))
-
-line.data <- merge(line.data,
-                   standard.flow.lims, 
-                   by = "Voltage.From",
-                   all.x = TRUE)
-
-line.data[`Max Flow` == 0 & !is.na(corrected_maxflow), 
-          `:=`(`Max Flow` = corrected_maxflow, 
-               `Min Flow` = -1 * corrected_maxflow)]
-
-
-line.data[,corrected_maxflow := NULL]
-
-# standard transformer data (names = kV.To, data = rating)
-standard.flow.tfmr.lims <- c("220" = "315", "132" = "100", "110" = "100", 
-   "66" = "100", "69" = "100", "138" = "100", "13.8" = "100")
-
-standard.flow.tfmr.lims <- data.table(Voltage.To = as.numeric(names(standard.flow.tfmr.lims)),
-                                      cor_Rating = as.numeric(standard.flow.tfmr.lims))
-
-transformer.data <- merge(transformer.data, 
-                          standard.flow.tfmr.lims, 
-                          by = "Voltage.To",
-                          all.x = TRUE)
-
-transformer.data[Rating == 0 & !is.na(cor_Rating), Rating := cor_Rating]
-transformer.data[,cor_Rating := NULL]
-
-
-
 
 
 # TODO
-# adjust_max_cap_cea?
 # fix reactance of one line
 # list("corrections/line_reactance_adjustments_cea.csv",
 #   list(overwrite = TRUE)),
