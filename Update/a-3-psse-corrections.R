@@ -126,6 +126,17 @@ replace_data <- function(orig.table, merge.on, new.data) {
 #------------------------------------------------------------------------------|
 # corrections ----
 #------------------------------------------------------------------------------|
+# TODO: in the future, can automate this a bit more. 
+#   1 nodes to regions/zones done
+#   2 automate corrections - maybe look for line or node or gen or transformer
+#       in name? and not an exemption string? pull col to merge from first col?
+#   3 standardize adding standard data 
+#   4 automate bits of script (i.e. > 4000 MW, etc)
+
+# start list of text that will go in report. build this as make changes
+report <- list()
+
+# ---- type 1 (nodes, regions, zones)
 
 if (exists("remap.nodes")) {
     
@@ -181,14 +192,9 @@ if (exists("remap.nodes")) {
     
     message("remap.node.file does not exist. leaving nodes in original regions/zones")
 }
- # report - unique(old regions and zones) unique(new regions and zones), point to source file
 
 
-
-## other individual corrections
-
-
-# using replace_data
+# ---- type 2 (replace data from files) 
 
 adjust.max.cap <- fread(adjust.max.cap.file)
 generator.data <- replace_data(generator.data, "Generator", adjust.max.cap)
@@ -196,6 +202,8 @@ generator.data <- replace_data(generator.data, "Generator", adjust.max.cap)
 adjust.line.reactance <- fread(adjust.line.reactance.file)
 line.data <- replace_data(line.data, "Line", adjust.line.reactance)
 
+
+# ---- type 3 (standard data) 
 
 # replace only ratings on lines and transformers where rating is zero
 # lines
@@ -221,26 +229,19 @@ rm(adjust.max.cap, adjust.line.reactance, standard.lines, standard.tfmrs,
    line.data.zeros, tfmr.data.zeros)
 
 
+# ---- type 3 (mini script) 
 
-# ---- needs script ----
 line.data[`Max Flow` > 4000, `Max Flow` := 4000]
-line.data[`Min Flow` < -4000, `Min Flow` := -4000]
 
 
+#------------------------------------------------------------------------------|
+# final cleaning ----
+#------------------------------------------------------------------------------|
 
 # adjust line Min Flow in case Max Flow changed
 line.data[,`Min Flow` := -1 * `Max Flow`]
 
-# TODO
-# fix reactance of one line
-# list("corrections/line_reactance_adjustments_cea.csv",
-#   list(overwrite = TRUE)),
-# fix ella's
-
-#------------------------------------------------------------------------------|
-# set orders again. do this from the original order (w poss addition of zone in node) ----
-#------------------------------------------------------------------------------|
-
+# column set orders again. do this from the original order 
 setcolorder(node.data, node.colorder)
 setcolorder(line.data, line.colorder)
 setcolorder(generator.data, generator.colorder)
@@ -250,9 +251,10 @@ if (exists("load.data")) setcolorder(load.data, load.colorder)
 
 
 #------------------------------------------------------------------------------|
-# write out for now ----
+# write out ----
 #------------------------------------------------------------------------------|
 
+# data
 to.write <- ls(pattern = "\\.data$")
 
 for (tab.name in to.write) {
