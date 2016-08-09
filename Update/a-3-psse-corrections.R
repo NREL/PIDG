@@ -164,13 +164,31 @@ if (exists("remap.nodes")) {
         node.data <- merge(node.data, remap.nodes, by = "Node", all.x = TRUE)
         
         if ("Region" %in% col.names) {
+            
+            report$node.reg1 <- paste0("--------------------\n",
+                                       "node regions reassigned. \n\n",
+                                       "old regions: \n\n")
+            report$node.reg2 <- node.data[,.(nodes = .N), by = Region]
+            
             node.data[!is.na(Region_new), Region := Region_new]
             node.data[, Region_new := NULL]
+            
+            report$node.reg3 <- "\nnew regions: \n\n"
+            report$node.reg4 <- node.data[,.(nodes = .N), by = Region]
         }
          
         if ("Zone" %in% col.names) {
+            
+            report$node.zon1 <- paste0("\n--------------------\n",
+                                       "node zones reassigned. \n\n",
+                                       "old zones: \n\n")
+            report$node.zon2 <- node.data[,.(nodes = .N), by = Zone]            
+            
             node.data[!is.na(Zone_new), Zone := Zone_new]
             node.data[, Zone_new := NULL]
+            
+            report$node.zon3 <- "\nnew zones: \n\n"
+            report$node.zon4 <- node.data[,.(nodes = .N), by = Zone]
         }
         
         # clean up
@@ -273,4 +291,27 @@ if (exists("copy.data.loc")) {
     }
 }
 
-rm(tab.name, to.write)
+# report
+report.f <- file.path(output.dir, "00-changereport.txt")
+
+cat(c("Change report -", as.character(Sys.time()), "\n\n"), file = report.f)
+
+
+for (elem in report) {
+    
+    if (is.character(elem)) {
+        
+        cat(elem, file = report.f, append = TRUE)
+    } else {
+        
+        # write.table warns about desired behavior of including col names
+        suppressWarnings(
+            write.table(elem, file = report.f, append = TRUE, quote = FALSE, 
+                    sep = "\t", row.names = FALSE, col.names = TRUE)
+        )
+    }
+}
+
+
+# clean up
+rm(tab.name, to.write, elem)
