@@ -25,7 +25,7 @@ zones <- file.path(root.dir, "inputs/node_zone_cea.csv")
 
 remap.nodes <- file.path(root.dir, "inputs/node_region_zone_cea.csv")
 
-copy.data.loc <- file.path(root.dir, "../../InputFiles_tester/base_network")
+# copy.data.loc <- file.path(root.dir, "../../InputFiles_tester/base_network")
 
 # types of corrections
 
@@ -81,7 +81,7 @@ if (exists("load.data")) load.colorder <- colnames(load.data)
 #------------------------------------------------------------------------------|
 # helper functions ----
 #------------------------------------------------------------------------------|
-replace_data <- function(orig.table, merge.on, new.data) {
+replace_data <- function(orig.table, merge.on, new.data, report.on = FALSE) {
     # assumes that first col is merge.on
     # assumes other columns are named identical to property name 
     # for now, requires that the new property is already define in PSSE file
@@ -111,11 +111,34 @@ replace_data <- function(orig.table, merge.on, new.data) {
     # merge and replace data in original column with new data
     for (col in prop.cols) {
         
+        # pop out report
+        if (report.on == TRUE) {
+            
+            # label
+            report[[paste0(length(report), "-", "desc")]] <<- 
+                paste0("\nadjusted ", col, " property. adjustments: \n\n")
+
+            # data
+            temp.tab <- orig.table[!is.na(get(paste0(col, ".y"))),
+                                   .(get(merge.on),
+                                     get(paste0(col, ".x")),
+                                     get(paste0(col, ".y")))]
+            
+            setnames(temp.tab, c("V1", "V2", "V3"),
+                     c(merge.on, paste0(col, ".old"), paste0(col, ".new")))
+            
+            report[[paste0(length(report), "-", "desc")]] <<- temp.tab
+            
+        }
+                
+        # replace columns
         orig.table[!is.na(get(paste0(col, ".y"))), 
                    (paste0(col, ".x")) := get(paste0(col, ".y"))]
         
+        # clean up
         setnames(orig.table, paste0(col, ".x"), col)
         orig.table[,(paste0(col, ".y")) := NULL]
+        
     }
 
     return(orig.table)    
@@ -134,9 +157,11 @@ replace_data <- function(orig.table, merge.on, new.data) {
 #   4 automate bits of script (i.e. > 4000 MW, etc)
 
 # start list of text that will go in report. build this as make changes
+# note: element names do not matter and are only used for ease of appending 
 report <- list()
 
-# ---- type 1 (nodes, regions, zones)
+
+# ---- type 1 (nodes, regions, zones) ----
 
 if (exists("remap.nodes")) {
     
@@ -165,8 +190,9 @@ if (exists("remap.nodes")) {
         
         if ("Region" %in% col.names) {
             
-            report$node.reg1 <- paste0("--------------------\n",
-                                       "node regions reassigned. \n\n",
+            report$node.reg1 <- paste0("\n--------------------\n",
+                                       "--------------------\n",
+                                       "NODE REGIONS REASSIGNED. \n\n",
                                        "old regions: \n\n")
             report$node.reg2 <- node.data[,.(nodes = .N), by = Region]
             
@@ -179,8 +205,9 @@ if (exists("remap.nodes")) {
          
         if ("Zone" %in% col.names) {
             
-            report$node.zon1 <- paste0("\n--------------------\n",
-                                       "node zones reassigned. \n\n",
+            report$node.zon1 <- paste0("\n\n--------------------\n",
+                                       "--------------------\n",
+                                       "NODE ZONES REASSIGNED. \n\n",
                                        "old zones: \n\n")
             report$node.zon2 <- node.data[,.(nodes = .N), by = Zone]            
             
@@ -208,48 +235,70 @@ if (exists("remap.nodes")) {
     
 } else { #  if (exists("remap.nodes")) 
     
-    message("remap.node.file does not exist. leaving nodes in original regions/zones")
+    message(paste("remap.node.file does not exist.",
+                  "leaving nodes in original regions/zones"))
 }
 
 
-# ---- type 2 (replace data from files) 
+# ---- type 2 (replace data from files) ----
+
+report$type2 <- paste0("\n\n--------------------\n--------------------\n",
+                       "PROPERTY ADJUSTMENTS\n")
 
 adjust.max.cap <- fread(adjust.max.cap.file)
-generator.data <- replace_data(generator.data, "Generator", adjust.max.cap)
+generator.data <- replace_data(generator.data, "Generator", adjust.max.cap, 
+                               report = TRUE)
+
 
 adjust.line.reactance <- fread(adjust.line.reactance.file)
-line.data <- replace_data(line.data, "Line", adjust.line.reactance)
+line.data <- replace_data(line.data, "Line", adjust.line.reactance, 
+                          report = TRUE)
 
 
-# ---- type 3 (standard data) 
+
+# ---- type 4 (standard data) ----
 
 # replace only ratings on lines and transformers where rating is zero
 # lines
+
+report$type4 <- paste0("\n\n--------------------\n--------------------\n",
+                       "ADDED STANDARD DATA TO",
+                       " 0 MW OR 9999 MW LINES AND TRANSFORMERS\n")
+
 standard.lines <- fread(standard.lines.file)
 
 line.data.zeros <- line.data[`Max Flow` == 0 | `Max Flow` == 9999]
 line.data.zeros <- replace_data(line.data.zeros, "Voltage.From", standard.lines)
 line.data.zeros <- line.data.zeros[,.(Line, `Max Flow`)]
 
-line.data <- replace_data(line.data, "Line", line.data.zeros)
+line.data <- replace_data(line.data, "Line", line.data.zeros, report.on = TRUE)
 
 # tfmrs
 standard.tfmrs <- fread(standard.tfmrs.file, colClasses = "numeric")
 
-tfmr.data.zeros <- transformer.data[Rating == 0]
+tfmr.data.zeros <- transformer.data[Rating == 0 | Rating == 9999]
 tfmr.data.zeros <- replace_data(tfmr.data.zeros, "Voltage.To", standard.tfmrs)
 tfmr.data.zeros <- tfmr.data.zeros[,.(Transformer, Rating)]
 
-transformer.data <- replace_data(transformer.data, "Transformer", tfmr.data.zeros)
+transformer.data <- replace_data(transformer.data, "Transformer", 
+                                 tfmr.data.zeros, report.on = TRUE)
 
 # clean up
 rm(adjust.max.cap, adjust.line.reactance, standard.lines, standard.tfmrs, 
    line.data.zeros, tfmr.data.zeros)
 
 
-# ---- type 3 (mini script) 
+# ---- type 3 (mini script) ----
 
-line.data[`Max Flow` > 4000, `Max Flow` := 4000]
+report$type3 <- paste0("\n\n--------------------\n--------------------\n",
+                       "OTHER CUSTOM ADJUSTMENTS\n")
+
+line.data.big <- line.data[`Max Flow` > 4000, .(Line)]
+line.data.big[,`Max Flow` := 4000]
+
+line.data <- replace_data(line.data, "Line", line.data.big, report = TRUE)
+
+rm(line.data.big)
 
 
 #------------------------------------------------------------------------------|
@@ -294,7 +343,7 @@ if (exists("copy.data.loc")) {
 # report
 report.f <- file.path(output.dir, "00-changereport.txt")
 
-cat(c("Change report -", as.character(Sys.time()), "\n\n"), file = report.f)
+cat(c("Change report -", as.character(Sys.time()), "\n"), file = report.f)
 
 
 for (elem in report) {
@@ -304,11 +353,13 @@ for (elem in report) {
         cat(elem, file = report.f, append = TRUE)
     } else {
         
-        # write.table warns about desired behavior of including col names
-        suppressWarnings(
-            write.table(elem, file = report.f, append = TRUE, quote = FALSE, 
-                    sep = "\t", row.names = FALSE, col.names = TRUE)
-        )
+        capture.output(print(elem, 
+                             print.gap = 3, 
+                             row.names = FALSE,
+                             n = nrow(elem)), 
+                       file = report.f, 
+                       append = TRUE)
+        
     }
 }
 
