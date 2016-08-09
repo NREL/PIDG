@@ -55,9 +55,12 @@ if (!dir.exists(output.dir)) {
 }
 
 # make sure copy.data.loc exists
-if (!dir.exists(copy.data.loc)) {
-    dir.create(copy.data.loc, recursive = TRUE)
+if (exists("copy.data.loc")) {
+    if (!dir.exists(copy.data.loc)) {
+        dir.create(copy.data.loc, recursive = TRUE)
+    }
 }
+
 
 generator.data <- fread(file.path(input.dir, "generator.data.table.csv"))
 line.data <- fread(file.path(input.dir, "line.data.table.csv"))
