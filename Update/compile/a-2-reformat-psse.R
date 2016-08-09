@@ -242,7 +242,7 @@ line.data.table[,`Max Flow` := {temp = apply(line.data.table[,.(ratingA,ratingC)
                                              1, max);
 ifelse(ratingB != "0", ratingB, temp)}]
 
-line.data.table[,c("ratingA", "ratingB", "ratingC") := NULL]
+# line.data.table[,c("ratingA", "ratingB", "ratingC") := NULL]
 
 line.data.table[,`Min Flow` := `Max Flow` * -1]
 
@@ -292,9 +292,11 @@ line.data.table[Type == "DC", Line := paste0(Line, "_DC")]
 # clean up
 line.data.table[,c("node.from.number", "node.to.number") := NULL]
 
-setcolorder(line.data.table, c("Line", "Node From", "Node To", "Type", "Voltage.From",
-                               "Voltage.To", "Max Flow", "Min Flow", "Resistance", 
-                               "Reactance", "Status", "Length"))
+setcolorder(line.data.table, c("Line", "Node From", "Node To", "Type", 
+                               "Voltage.From", "Voltage.To", 
+                               "Max Flow", "Min Flow", 
+                               "ratingA", "ratingB", "ratingC",
+                               "Resistance", "Reactance", "Status", "Length"))
 
 # add to list to write out
 reformatted.tables <- c(reformatted.tables, "line.data.table")
