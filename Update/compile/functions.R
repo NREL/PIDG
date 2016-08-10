@@ -308,13 +308,23 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     
     all.cols <- colnames(input.table)
     
-    non.prop.cols <- c("Fuel", cap.band.col, band.col, memo.col)
+    non.prop.cols <- na.omit(c("Fuel", cap.band.col, band.col, memo.col))
     
     # make sure Fuel column exists before merging
-    if ( !("Fuel" %in% colnames(input.table))) {
+    if (!("Fuel" %in% colnames(input.table))) {
+
         stop(paste0("There is no 'Fuel' column in the input table. ", 
                     "Cannot merge this table. Property name is: ", prop.cols, "."))
     }
+    
+    if (!all(prop.cols %in% all.cols)) {
+    
+        stop(paste0("At lesat one listed prop.col is not in associated inputfile ", 
+                    "Cannot merge this table.\n\tListed prop.cols: ", 
+                    paste(prop.cols, collapse = ", "), "\n\tColumns in table: ",
+                    paste(colnames(all.cols), collapse = ", ")))
+    }
+
     
     #This caused errors... need to determine how to insert memos into PLEXOS
     #if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
@@ -463,6 +473,28 @@ add_to_properties_sheet <- function(input.table,
      
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
                        date_from.col,band.col, memo.col)
+    
+    # check to make sure all given columns exist
+    given.cols <- na.omit(c(names.col, parent.col, pattern.col,
+                            date_from.col, band.col, memo.col, 
+                            datafile.col))
+    
+    if (!all(given.cols %in% all.cols)) {
+        stop(paste0("At lesat one given column name is not in input table. ",
+                    "Cannot merge this table.\n\tGiven columns: ",
+                    paste(given.cols, collapse = ", "),
+                    "\n\tColumns in table: ",
+                    paste(all.cols, collapse = ", ")))
+    }
+    
+    if (!is.na(overwrite.cols) & 
+        !all(overwrite.cols %in% colnames(Properties.sheet))) {
+            stop(paste0("Overwrite.cols given but at least one is not a column ",
+                        "in Properties.sheet.\n\tgiven overwrite.cols: ",
+                        paste(overwrite.cols, collapse = ", "),
+                        "\n\tProperties.sheet columns: ",
+                        paste(colnames(Properties.sheet), collapse = ", ")))
+        }
     
     # if any columns contain datafiles, mark them here to can deal with later
     if (!is.na(datafile.col[1])) {
@@ -713,15 +745,12 @@ make_interleave_pointers <- function(parent.model, child.model,
                  paste("Pass", names(pointers), "property"))
         
         pointers = melt(pointers, measure.vars = colnames(pointers), 
-                        variable.name = "DataFileObj", value.name = "filename")
-        
+                        variable.name = "Data File", value.name = "filename")
+     
         add_to_properties_sheet(pointers, 
-                                object.class = "Data File", 
-                                names.col = "DataFileObj", 
-                                collection.name = "Data Files", 
                                 datafile.col = "filename",
                                 scenario.name = filepointer.scenario)
-        
+         
         # what needs to be attached to the actual properties is the name of the
         # datafile object, not the file path. change values in the table from 
         # file paths to name of datafile objects, then add these to properties 
