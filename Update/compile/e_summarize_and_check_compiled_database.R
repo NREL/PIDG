@@ -45,9 +45,9 @@ node.missing.zone <- nodes[is.na(Zone), .(Node, Zone, Fatal = T)]
 missing.items.list <- c(missing.items.list,"node.missing.region", 
                         "node.missing.zone")
 
-# check for nodes with multiple region/zone memberships
+# TO DO: check for nodes with multiple region/zone memberships
 
-# extract all edges (lines and transformers)
+# Identify islands - extract all edges (lines and transformers)
 lines.from <- Memberships.sheet[parent_class == "Line" & 
                                   collection == "Node From",
                                 .(line = parent_object, from = child_object)]
@@ -105,11 +105,11 @@ cat(sprintf("3. Number of nodes that belong to islands: %d*", nrow(island.nodes)
 cat("\n\n")
 cat("*Islands are any groups of nodes not connected to the largest connected component.")
 cat("\n")
-cat("*List of nodes that belong to islands saved in DataCheck/isolated.nodes.txt")
+cat("*List of nodes that belong to islands saved in DataCheck/isolated.nodes.csv")
 sink()
 
 # clean up to free up memory
-rm(network)
+rm(network, edges, lines, lines.from, lines.to, tfmrs, tfmrs.from, tfmrs.to)
 
 #------------------------------------------------------------------------------#
 # Check generator properties ----
@@ -168,13 +168,24 @@ missing.items.list <- c(missing.items.list, "gens.missing.units",
                         "gens.missing.capacity", "gens.missing.fuel",
                         "gens.missing.node")
 
-
-
 # change colums that can be numeric to numeric
 generator.map <- generator.map[, lapply(.SD, function(x) {
   if (!is.na(suppressWarnings(as.numeric(x[1])))) {
     suppressWarnings(as.numeric(x))} else x
 })]
+
+# summarize generator properties by fuel and save to OutputFiles
+numeric.cols <- which(sapply(generator.map, is.numeric))
+numeric.cols <- c(names(numeric.cols), "Fuel")
+
+suppressWarnings(
+  generator.fuels.summary <- describeBy(generator.map[,numeric.cols, with=F],
+                                        group = "Fuel", mat = T)
+)
+
+write.csv(generator.fuels.summary,
+          file = file.path(outputfiles.dir,
+                           "DataCheck/generator.summary.by.fuel.csv"))
 
 # plot generator capacity plus existing RE by state
 conventional.fuels <- paste(c("HYDRO","NUCLEAR","OIL","COAL","LNG","GAS",
@@ -364,7 +375,7 @@ for(i in 1:length(line.plots)){
 dev.off()
 
 #------------------------------------------------------------------------------#
-# check for fatal errors import/run errors ----
+# check for fatal import/run errors ----
 #------------------------------------------------------------------------------#
 
 # make sure there are no required values missing in properties.sheet
@@ -376,7 +387,7 @@ if (any(problem.row.mask)) {
   sink(fatal.warnings, append = T)
   cat("\n\n")
   cat("WARNING: the following property sheet value(s) are missing. This will not import.","\n")
-  cat("\n",Properties.sheet[problem.row.mask,
+  capture.output(Properties.sheet[problem.row.mask,
                          .(parent_object, child_object, property, value, scenario)])
   sink()
 }
@@ -391,7 +402,7 @@ if (any(problem.row.mask)) {
         "This will not import.", 
         "This may be caused by models being multiply defined in generic import ",
         "sheets, among other things.","\n")
-  cat("\n",Memberships.sheet[problem.row.mask])
+  capture.output(Memberships.sheet[problem.row.mask])
   sink()
 }
 
@@ -402,8 +413,8 @@ regions.w.nodes <- Memberships.sheet[parent_class == "Node" & collection ==
 if (!all(all.regions %in% regions.w.nodes)) {
   sink(fatal.warnings, append = T)
   cat("\n\n")
-  cat("WARNING: the following region(s) have no nodes. This will not import.")
-  cat("\n",all.regions[!(all.regions %in% regions.w.nodes)])
+  cat("WARNING: the following region(s) have no nodes. This will not import.", "\n")
+  capture.output(all.regions[!(all.regions %in% regions.w.nodes)])
   sink()
 }
 
@@ -411,8 +422,8 @@ if (!all(all.regions %in% regions.w.nodes)) {
 if (any(Objects.sheet[,nchar(name) > 50])) {
   sink(fatal.warnings, append = T)
   cat("\n\n")
-  cat("WARNING: the following object(s) have names with > 50 characters. This will not import.")
-  cat("\n",Objects.sheet[nchar(name) > 50])
+  cat("WARNING: the following object(s) have names with > 50 characters. This will not import.", "\n")
+  capture.output(Objects.sheet[nchar(name) > 50])
   sink()
 }
 
@@ -439,8 +450,8 @@ if (nrow(known.issues) > 0) {
   cat("\n\n")
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
-               "This will not run properly."))
-  cat("\n", known.issues)
+               "This will not run properly.", "\n"))
+  capture.output(known.issues)
   sink()
 }
 
@@ -452,8 +463,8 @@ if (nrow(unknown.issues) > 0) {
   cat("\n\n")
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
-               "This is untested but may not run properly."))
-  cat("\n", unknown.issues)
+               "This is untested but may not run properly.", "\n"))
+  capture.output(unknown.issues)
   sink()
 }
 
@@ -469,8 +480,8 @@ if (any(dupes)) {
   cat("\n\n")
   cat(paste0("WARNING: the following properties are defined twice for ", 
                "the same object in the same scenario. This may import but ",
-               "will not run."))
-  cat("\n", Properties.sheet[dupes])
+               "will not run.", "\n"))
+  capture.output(Properties.sheet[dupes])
   sink()
 }
 
@@ -487,8 +498,8 @@ if (length(object.list) > 0) {
   cat("\n\n")
   cat(paste0("WARNING: the following object(s) have defined properties but ",
                "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
-               "these properties to other object. This may not run."))
-  cat("\n", object.list)
+               "these properties to other object. This may not run.", "\n"))
+  capture.output(Objects.sheet[name %in% object.list,])
   sink()
 }
 
@@ -503,8 +514,8 @@ if (any(non.object.scens)) {
   cat("\n\n")
   cat(paste0("WARNING: the following scenario entries need an object tag ",
                "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
-               " not be read correctly by PLEXOS."))
-  cat("\n", Properties.sheet[non.object.scens])
+               " not be read correctly by PLEXOS.", "\n"))
+  capture.output(Properties.sheet[non.object.scens])
   sink()
 }
 
@@ -519,8 +530,8 @@ if (any(non.object.dfs)) {
   cat("\n\n")
   cat(paste0("WARNING: the following datafile entries need an object tag ",
                "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
-               " not be read correctly by PLEXOS."))
-  cat("\n", Properties.sheet[non.object.dfs])
+               " not be read correctly by PLEXOS.", "\n"))
+  capture.output(Properties.sheet[non.object.dfs])
   sink()
 }
 

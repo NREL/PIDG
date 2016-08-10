@@ -49,19 +49,6 @@ Objects.sheet <-
 Objects.sheet[!is.na(Fuel),category := Fuel]
 Objects.sheet[,Fuel := NULL]
 
-# summarize generator properties by fuel and save to OutputFiles
-numeric.cols <- which(sapply(generator.data.table, is.numeric))
-numeric.cols <- c(names(numeric.cols), "Fuel")
-
-suppressWarnings(
-    generator.fuels.summary <- describeBy(generator.data.table[,numeric.cols,
-                                                               with=F],
-                                          group = "Fuel", mat = T)
-)
-
-write.csv(generator.fuels.summary,
-          file = file.path(outputfiles.dir,
-                           "DataCheck/generator.summary.by.fuel.csv"))
 # clean up
 rm(fuel.table, all.fuels, fuels.to.objects, fuels.to.gens.to.memberships)
 
@@ -177,11 +164,11 @@ load.part.fact.table[is.nan(LPF), LPF := 0]
 # check that LPFs sum to 1 for each region - throw warning if they do not
 lpf.by.region <- load.part.fact.table[, .(sum.lpf = sum(LPF)), by = Region]
 
-write.csv(lpf.by.region, file = file.path(outputfiles.dir,
-                                          "DataCheck/lpf.by.region.csv"))
-
 if(sum(lpf.by.region$sum.lpf) != nrow(lpf.by.region)){
-    warning("LPF does not sum to one (1) in all regions")
+  write.csv(lpf.by.region, file = file.path(outputfiles.dir,
+                                            "DataCheck/lpf.by.region.csv"))
+  warning(paste0("LPF does not sum to one (1) in all regions.",
+                 " See DataCheck/lpf.by.region.csv"))
 }
 
 # add LPFs to properties .sheet
