@@ -161,16 +161,6 @@ load.part.fact.table[is.na(Load), Load := 0]
 load.part.fact.table[, LPF := prop.table(Load), by = "Region"]
 load.part.fact.table[is.nan(LPF), LPF := 0] 
 
-# check that LPFs sum to 1 for each region - throw warning if they do not
-lpf.by.region <- load.part.fact.table[, .(sum.lpf = sum(LPF)), by = Region]
-
-if(sum(lpf.by.region$sum.lpf) != nrow(lpf.by.region)){
-  write.csv(lpf.by.region, file = file.path(outputfiles.dir,
-                                            "DataCheck/lpf.by.region.csv"))
-  warning(paste0("LPF does not sum to one (1) in all regions.",
-                 " See DataCheck/lpf.by.region.csv"))
-}
-
 # add LPFs to properties .sheet
 lpf.to.node.properties <- 
     load.part.fact.table[,.(Node, `Load Participation Factor` = LPF)]
@@ -181,7 +171,7 @@ add_to_properties_sheet(lpf.to.node.properties, object.class = 'Node',
 # clean up
 rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
    load.part.fact.table, lpf.to.node.properties, load.scens, cur.tab, 
-   load.scens.to.objects, lpf.by.region)
+   load.scens.to.objects)
 
 #------------------------------------------------------------------------------|
 # add RE generators ----
