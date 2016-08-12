@@ -141,7 +141,7 @@ cat(sprintf("List of nodes that belong to islands saved in %s/isolated.nodes.csv
 cat("\n")
 cat("Islands are any groups of nodes not connected to the largest connected component.")
 cat("\n\n")
-print(setorder(components.table, -`Component size`), 
+print(setorder(components.table, -`Component size`, `Nodes with scenario`),
       row.names = F, 
       n = nrow(components.table))
 sink()
