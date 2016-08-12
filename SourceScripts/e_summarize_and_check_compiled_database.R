@@ -129,7 +129,9 @@ cat(sprintf("List of nodes that belong to islands saved in %s/isolated.nodes.csv
 cat("\n")
 cat("Islands are any groups of nodes not connected to the largest connected component.")
 cat("\n\n")
-print(arrange(components.table, desc(`Component size`)), row.names = F)
+print(setorder(components.table, -`Component size`), 
+      row.names = F, 
+      n = nrow(components.table))
 sink()
 
 # check that LPFs sum to 1 for each region 
@@ -450,7 +452,8 @@ if (any(problem.row.mask)) {
   cat("WARNING: the following property sheet value(s) are missing. This will not import.","\n")
   print(Properties.sheet[problem.row.mask,
                          .(parent_object, child_object, property, value, scenario)],
-        row.names = F)
+        row.names = F,
+        n = nrow(Properties.sheet[problem.row.mask,]))
   sink()
 }
 
@@ -464,7 +467,9 @@ if (any(problem.row.mask)) {
         "This will not import.", 
         "This may be caused by models being multiply defined in generic import ",
         "sheets, among other things.","\n")
-  print(Memberships.sheet[problem.row.mask], row.names = F)
+  print(Memberships.sheet[problem.row.mask], 
+        row.names = F, 
+        n = nrow(Memberships.sheet[problem.row.mask]))
   sink()
 }
 
@@ -476,7 +481,9 @@ if (!all(all.regions %in% regions.w.nodes)) {
   sink(fatal.warnings, append = T)
   cat("\n\n")
   cat("WARNING: the following region(s) have no nodes. This will not import.", "\n")
-  print(all.regions[!(all.regions %in% regions.w.nodes)], row.names = F)
+  print(all.regions[!(all.regions %in% regions.w.nodes)], 
+        row.names = F, 
+        n = nrow(all.regions[!(all.regions %in% regions.w.nodes)]))
   sink()
 }
 
@@ -485,7 +492,9 @@ if (any(Objects.sheet[,nchar(name) > 50])) {
   sink(fatal.warnings, append = T)
   cat("\n\n")
   cat("WARNING: the following object(s) have names with > 50 characters. This will not import.", "\n")
-  print(Objects.sheet[nchar(name) > 50], row.names = F)
+  print(Objects.sheet[nchar(name) > 50], 
+        row.names = F, 
+        n = nrow(Objects.sheet[nchar(name) > 50]))
   sink()
 }
 
@@ -513,7 +522,7 @@ if (nrow(known.issues) > 0) {
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
                "This will not run properly.", "\n"))
-  print(known.issues, row.names = F)
+  print(known.issues, row.names = F, n = nrow(known.issues))
   sink()
 }
 
@@ -526,7 +535,7 @@ if (nrow(unknown.issues) > 0) {
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
                "This is untested but may not run properly.", "\n"))
-  print(unknown.issues, row.names = F)
+  print(unknown.issues, row.names = F, n = nrow(unknown.issues))
   sink()
 }
 
@@ -543,7 +552,9 @@ if (any(dupes)) {
   cat(paste0("WARNING: the following properties are defined twice for ", 
                "the same object in the same scenario. This may import but ",
                "will not run.", "\n"))
-  print(Properties.sheet[dupes], row.names = F)
+  print(Properties.sheet[dupes], 
+        row.names = F, 
+        n = nrow(Properties.sheet[dupes]))
   sink()
 }
 
@@ -561,7 +572,9 @@ if (length(object.list) > 0) {
   cat(paste0("WARNING: the following object(s) have defined properties but ",
                "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
                "these properties to other object. This may not run.", "\n"))
-  print(Objects.sheet[name %in% object.list,], row.names = F)
+  print(Objects.sheet[name %in% object.list,], 
+        row.names = F, 
+        Objects.sheet[name %in% object.list,])
   sink()
 }
 
@@ -577,7 +590,9 @@ if (any(non.object.scens)) {
   cat(paste0("WARNING: the following scenario entries need an object tag ",
                "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
                " not be read correctly by PLEXOS.", "\n"))
-  print(Properties.sheet[non.object.scens], row.names = F)
+  print(Properties.sheet[non.object.scens], 
+        row.names = F, 
+        n = nrow(Properties.sheet[non.object.scens]))
   sink()
 }
 
@@ -593,7 +608,9 @@ if (any(non.object.dfs)) {
   cat(paste0("WARNING: the following datafile entries need an object tag ",
                "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
                " not be read correctly by PLEXOS.", "\n"))
-  print(Properties.sheet[non.object.dfs], row.names = F)
+  print(Properties.sheet[non.object.dfs], 
+        row.names = F,
+        n = nrow(Properties.sheet[non.object.dfs]))
   sink()
 }
 
