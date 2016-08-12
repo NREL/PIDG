@@ -3,9 +3,8 @@
 missing.items.list <- c()
 
 # create unique directory to save warnings and summary output
-data.check.dir <- file.path(outputfiles.dir,"DataCheck",
-                            format(Sys.time(), "%d-%m-%Y %H%M"))
-dir.create(data.check.dir)
+data.check.dir <- file.path(outputfiles.dir,output.wb.name)
+dir.create(data.check.dir, showWarnings = F)
 
 # create a warning file 
 warnings <- file.path(data.check.dir,"warnings.txt")
@@ -36,13 +35,13 @@ nodes = merge(nodes,
               Memberships.sheet[parent_class == "Node" & 
                                   child_class == "Region",
                                 .(Node = parent_object, Region = child_object)],
-              by = "Node", all.x = T)
+              by = "Node", all = T)
 
 nodes = merge(nodes, 
               Memberships.sheet[parent_class == "Node" & 
                                   child_class == "Zone",
                                 .(Node = parent_object, Zone = child_object)],
-              by = "Node", all.x = T)
+              by = "Node", all = T)
 
 node.missing.region <- nodes[is.na(Region), .(Node, Region, Fatal = T)]
 node.missing.zone <- nodes[is.na(Zone), .(Node, Zone, Fatal = T)]
@@ -50,7 +49,24 @@ node.missing.zone <- nodes[is.na(Zone), .(Node, Zone, Fatal = T)]
 missing.items.list <- c(missing.items.list,"node.missing.region", 
                         "node.missing.zone")
 
-# TO DO: check for nodes with multiple region/zone memberships
+# check for nodes with more than one region or zone memberships
+duplicated.nodes <- nodes[duplicated(Node),]
+
+if(nrow(duplicated.nodes) > 0){
+  sink(fatal.warnings, append = T)
+  cat("WARNING: at least one node is assigned to more than one region and/or zone.")
+  cat("\n Check these nodes: \n")
+  print(duplicated.nodes, quote = F, row.names = F)
+  sing()
+}
+
+# nodes -> regions: PLEXOS allows only one node per region
+if (rename.regions) {
+  nodes.regions <- fread(file.path(inputfiles.dir, map.newregion.file))
+  if (any(nodes.regions[,length(RegionName) > 1, by = "node.number"][[2]])) {
+    print("WARNING: at least one node is assigned to more than one region.")
+  }
+}
 
 # Identify islands - extract all edges (lines and transformers)
 lines.from <- Memberships.sheet[parent_class == "Line" & 
@@ -122,7 +138,7 @@ components.report.dir <- file.path(data.check.dir,"isolated.nodes.report.txt")
 
 sink(components.report.dir)
 cat(sprintf("REPORT: connected components in %s database.", choose.db))
-cat("\n")
+cat(paste0("\n","------------","\n"))
 cat("This analysis is done on the base network - scenarios on Lines/Transformers are ignored.")
 cat("\n")
 cat(sprintf("List of nodes that belong to islands saved in %s/isolated.nodes.csv", data.check.dir))
