@@ -3,7 +3,9 @@
 missing.items.list <- c()
 
 # create unique directory to save warnings and summary output
-data.check.dir <- file.path(outputfiles.dir,output.wb.name)
+data.check.dir <- file.path(outputfiles.dir,
+                            paste0(gsub("\\.xls|\\.xlsx", "", output.wb.name), 
+                                   "_data_check"))
 dir.create(data.check.dir, showWarnings = F)
 
 # create a warning file 
