@@ -50,23 +50,17 @@ missing.items.list <- c(missing.items.list,"node.missing.region",
                         "node.missing.zone")
 
 # check for nodes with more than one region or zone memberships
-duplicated.nodes <- nodes[duplicated(Node),]
+duplicated.node.names <- nodes[duplicated(Node),Node]
+duplicated.nodes <- nodes[Node %in% duplicated.node.names]
 
 if(nrow(duplicated.nodes) > 0){
   sink(fatal.warnings, append = T)
   cat("WARNING: at least one node is assigned to more than one region and/or zone.")
   cat("\n Check these nodes: \n")
   print(duplicated.nodes, quote = F, row.names = F)
-  sing()
+  sink()
 }
 
-# nodes -> regions: PLEXOS allows only one node per region
-if (rename.regions) {
-  nodes.regions <- fread(file.path(inputfiles.dir, map.newregion.file))
-  if (any(nodes.regions[,length(RegionName) > 1, by = "node.number"][[2]])) {
-    print("WARNING: at least one node is assigned to more than one region.")
-  }
-}
 
 # Identify islands - extract all edges (lines and transformers)
 lines.from <- Memberships.sheet[parent_class == "Line" & 
