@@ -278,7 +278,7 @@ Objects.sheet <- merge_sheet_w_table(Objects.sheet,
 # uses transformer.data.table
 zero.flow.tfmrs <- transformer.data.table[Rating.MW == 0]
 # defines stadards with [name = low kV (kV.To)] = [element = standard rating]
-standard.flow.tfmr.lims <- c("220" = "315", "132" = "100", "110" = "100", 
+standard.flow.tfmr.lims <- c("230"="500", "220" = "315", "132" = "100", "110" = "100", 
   "66" = "100", "69" = "100", "138" = "100", "13.8" = "100")
 
 tfmr.rating.correction <- initialize_table(Properties.sheet, 
