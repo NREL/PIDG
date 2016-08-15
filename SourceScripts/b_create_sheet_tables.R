@@ -34,13 +34,3 @@ Reports.sheet <- data.table(object = character(), parent_class = character(),
   phase_id = character(), report_period = character(), 
   report_summary = character(), report_statistics = character(), 
   report_samples = character() )
-
-
-# create protoype tables (blank versions of .sheet tables) for use later----
-
-Objects.prototype <- copy(Objects.sheet)
-Categories.prototype <- copy(Categories.sheet)
-Memberships.prototype <- copy(Memberships.sheet)
-Attributes.prototype <- copy(Attributes.sheet)
-Properties.prototype <- copy(Properties.sheet)
-Reports.prototype <- copy(Reports.sheet)

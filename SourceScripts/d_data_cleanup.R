@@ -28,11 +28,11 @@ if (exists('units.to.delete.files')) {
           Memberships.sheet[!(child_object %in% to.delete[,Object.Name]) & 
                               !(parent_object %in% to.delete[,Object.Name])]
       } else {
-        message(sprintf("... %s does not exist ... skipping", fname))
+        message(sprintf(">>  %s does not exist ... skipping", fname))
       } 
   }
 } else {
-   message("... units.to.delete.file does not exist ... skipping")
+   message(">>  units.to.delete.file does not exist ... skipping")
 }
 
 # add standard flow limits to lines with ratings of zero
@@ -54,7 +54,7 @@ setorder(cat.by.class, class, category)
 cat.by.class[,rank := 1:.N, by = 'class']
 
 # add this to categories .sheet so categories will be alphabetized
-cat.to.categories <- initialize_table(Categories.prototype, nrow(cat.by.class), 
+cat.to.categories <- initialize_table(Categories.sheet, nrow(cat.by.class), 
   list(class = cat.by.class$class, category = cat.by.class$category, 
   rank = cat.by.class$rank))
   
@@ -180,3 +180,31 @@ if (length(object.list) > 0) {
           "these properties to other object. This may not run."))
     print(object.list)
 }
+
+rm(object.list)
+
+# check to make sure all scenarios have {Object} in front of them
+non.object.scens = Properties.sheet[,
+    !(grepl("^\\{Object\\}", scenario) | is.na(scenario) | scenario == "")]
+
+if (any(non.object.scens)) {
+    print(paste0("WARNING: the following scenario entries need an object tag ",
+                 "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
+                 " not be read correctly by PLEXOS."))
+    print(Properties.sheet[non.object.scens])
+}
+
+rm(non.object.scens)
+
+# check to make sure all data files have either slashes or {Object}
+non.object.dfs = Properties.sheet[,
+    !(grepl("^\\{Object\\}", filename) | is.na(filename) | grepl("[/\\\\]", filename))]
+
+if (any(non.object.dfs)) {
+    print(paste0("WARNING: the following datafile entries need an object tag ",
+                 "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
+                 " not be read correctly by PLEXOS."))
+    print(Properties.sheet[non.object.dfs])
+}
+
+rm(non.object.dfs)
