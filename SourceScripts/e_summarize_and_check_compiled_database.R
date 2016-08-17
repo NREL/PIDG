@@ -258,64 +258,68 @@ write.csv(generator.fuels.summary,
           quote = F, row.names = F)
 
 # plot generator capacity plus existing RE by state
-conventional.fuels <- paste(c("HYDRO","NUCLEAR","OIL","COAL","LNG","GAS",
-                              "LIGNITE","DIESEL","CCGT", "WHR","Existing RE"),
-                            collapse = "|")
+if(data.check.plots){
+  conventional.fuels <- paste(c("HYDRO","NUCLEAR","OIL","COAL","LNG","GAS",
+                                "LIGNITE","DIESEL","CCGT", "WHR","Existing RE"),
+                              collapse = "|")
+  
+  generator.map[,conventional := ifelse(grepl(conventional.fuels,Fuel) == TRUE,
+                                        1,0)]
 
-generator.map[,conventional := ifelse(grepl(conventional.fuels,Fuel) == TRUE,
-                                      1,0)]
+  # alpabetize regions
+  region.names <- unique(generator.map$Region)[order(unique(generator.map$Region))]
+  
+  message("...exporting regional capacity plots")
+  
+  pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
+  pdf(file.path(data.check.dir,"region.capcaity.plots.pdf"),
+      width = 12, height = 8)
+  stepi = 0
 
-# alpabetize regions
-region.names <- unique(generator.map$Region)[order(unique(generator.map$Region))]
+  for(i in region.names){
+    plot <- ggplot(data = arrange(generator.map[conventional == 1 & Region == i,], 
+                                  scenario)) +
+      geom_bar(aes(x = Fuel, y = Capacity*Units, fill = scenario), stat = "identity") +
+      ggtitle(paste0(i," Generation Capacity by Fuel")) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+      ylab("Capacity (MW)")
+      
+      suppressWarnings(
+        plot(plot)
+      )
+      stepi = stepi + 1
+      setTxtProgressBar(pb, stepi)
+  }
+  dev.off()
 
-message("...exporting regional capacity plots")
 
-pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
-pdf(file.path(data.check.dir,"region.capcaity.plots.pdf"),
-    width = 12, height = 8)
-stepi = 0
+  message("...exporting regional RE scenarios plots")
+  # plot state new RE build by scenario
+  pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
+  pdf(file.path(data.check.dir,"region.newRE.plots.pdf"),
+      width = 12, height = 8)
+  stepi = 0
 
-for(i in region.names){
-  plot <- ggplot(data = arrange(generator.map[conventional == 1 & Region == i,], 
-                                scenario)) +
-    geom_bar(aes(x = Fuel, y = Capacity*Units, fill = scenario), stat = "identity") +
-    ggtitle(paste0(i," Generation Capacity by Fuel")) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-    ylab("Capacity (MW)")
+
+  for(i in region.names){
+    plot <- ggplot(data = generator.map[conventional == 0 & Region == i,]) +
+      geom_bar(aes(x = Fuel, y = Units*Capacity), stat = "identity") +
+      ggtitle(paste0(i," RE Capacity by Fuel")) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+      xlab("Capacity (MW)") +
+      if(nrow(generator.map[conventional == 0 & Region == i & scenario != "No Scenario",]) != 0){
+        facet_wrap(~ scenario, scales = "free_x")
+      }
     
     suppressWarnings(
       plot(plot)
     )
     stepi = stepi + 1
     setTxtProgressBar(pb, stepi)
+  }
+  dev.off()
+  rm(stepi)
 }
-dev.off()
-
-message("...exporting regional RE scenarios plots")
-# plot state new RE build by scenario
-pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
-pdf(file.path(data.check.dir,"region.newRE.plots.pdf"),
-    width = 12, height = 8)
-stepi = 0
-
-for(i in region.names){
-  plot <- ggplot(data = generator.map[conventional == 0 & Region == i,]) +
-    geom_bar(aes(x = Fuel, y = Units*Capacity), stat = "identity") +
-    ggtitle(paste0(i," RE Capacity by Fuel")) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-    xlab("Capacity (MW)") +
-    if(nrow(generator.map[conventional == 0 & Region == i & scenario != "No Scenario",]) != 0){
-      facet_wrap(~ scenario, scales = "free_x")
-    }
-  
-  suppressWarnings(
-    plot(plot)
-  )
-  stepi = stepi + 1
-  setTxtProgressBar(pb, stepi)
-}
-dev.off()
-rm(stepi)
 
 # plot new RE units by state and scenario
 
@@ -410,44 +414,54 @@ lines.missing.nodes <- line.map[is.na(Node.From) | is.na(Node.To),
 
 missing.items.list <- c(missing.items.list,"lines.missing.nodes")
 
-# plots of min and max flow by voltage (using Node.From.kV)
-line.maxflow.plot <- ggplot(data = line.map) +
-  geom_boxplot(aes(x = factor(Node.From.kV), y = `Max Flow`)) +
-  xlab("Node From Voltage (kV)") +
-  ylab("Max Flow (MW)")
-
-line.minflow.plot <- ggplot(data = line.map) +
-  geom_boxplot(aes(x = factor(Node.From.kV), y = `Min Flow`)) +
-  xlab("Node From Voltage (kV)") +
-  ylab("Min Flow (MW)")
-
-# plots of reactance and resistance by voltage and scenario
-line.reactance.plot <- ggplot(data = line.map) +
-  geom_boxplot(aes(x = factor(Node.From.kV), y = Reactance)) +
-  facet_wrap(tfmr ~ reac.scenario, scales = "free") +
-  xlab("Node From Voltage (kV)")
-
-line.resistance.plot <- ggplot(data = line.map) +
-  geom_boxplot(aes(x = factor(Node.From.kV), y = Resistance)) +
-  facet_wrap(tfmr ~ resis.scenario, scales = "free") +
-  xlab("Node From Voltage (kV)")
-
-# add to list of plots
-line.plots <- c("line.maxflow.plot", "line.minflow.plot",
-                      "line.reactance.plot","line.resistance.plot")
-
-### export line plots to DataCheck folder
-message("...exporting line property plots")
-pb <- txtProgressBar(min = 0, max = length(line.plots), style = 3)
-pdf(file.path(data.check.dir,"line.plots.pdf"),
-    width = 12, height = 8)
-for(i in 1:length(line.plots)){
-  suppressWarnings(
-    plot(get(line.plots[i]))
-  )
-  setTxtProgressBar(pb, i)
+if(data.check.plots){
+  # plots of min and max flow by voltage (using Node.From.kV)
+  line.maxflow.plot <- ggplot(data = line.map,
+                              aes(x = factor(Node.From.kV), y = `Max Flow`)) +
+    geom_point(alpha=0.3, color="tomato", position = "jitter") +
+    geom_boxplot(alpha = 0) +
+    xlab("Node From Voltage (kV)") +
+    ylab("Max Flow (MW)")
+  
+  line.minflow.plot <- ggplot(data = line.map,
+                              aes(x = factor(Node.From.kV), y = `Min Flow`)) +
+    geom_point(alpha=0.3, color="tomato", position = "jitter") +
+    geom_boxplot(alpha = 0) +
+    xlab("Node From Voltage (kV)") +
+    ylab("Min Flow (MW)")
+  
+  # plots of reactance and resistance by voltage and scenario
+  line.reactance.plot <- ggplot(data = line.map,
+                                aes(x = factor(Node.From.kV), y = Reactance)) +
+    geom_point(alpha=0.3, color="tomato", position = "jitter") +
+    geom_boxplot(alpha = 0) +
+    facet_wrap(tfmr ~ reac.scenario, scales = "free") +
+    xlab("Node From Voltage (kV)")
+  
+  line.resistance.plot <- ggplot(data = line.map, 
+                                 aes(x = factor(Node.From.kV), y = Resistance)) +
+    geom_point(alpha=0.3, color="tomato", position = "jitter") +
+    geom_boxplot(alpha = 0) +
+    facet_wrap(tfmr ~ resis.scenario, scales = "free") +
+    xlab("Node From Voltage (kV)")
+  
+  # add to list of plots
+  line.plots <- c("line.maxflow.plot", "line.minflow.plot",
+                        "line.reactance.plot","line.resistance.plot")
+  
+  ### export line plots to DataCheck folder
+  message("...exporting line property plots")
+  pb <- txtProgressBar(min = 0, max = length(line.plots), style = 3)
+  pdf(file.path(data.check.dir,"line.plots.pdf"),
+      width = 12, height = 8)
+  for(i in 1:length(line.plots)){
+    suppressWarnings(
+      plot(get(line.plots[i]))
+    )
+    setTxtProgressBar(pb, i)
+  }
+  dev.off()
 }
-dev.off()
 
 #------------------------------------------------------------------------------#
 # check for fatal import/run errors ----

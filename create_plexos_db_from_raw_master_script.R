@@ -78,12 +78,14 @@ runAllFiles <- function () {
     source(file.path(master.script.dir, "SourceScripts",
                      "d_data_cleanup.R"))
     
-    # check data if need to 
-    if(data.checks.and.plots == TRUE){
-        message("checking data and creating summary plots")
-        source(file.path(master.script.dir, "SourceScripts",
-                         "e_summarize_and_check_compiled_database.R"))
+    # check data, create plots if need to 
+    if(data.check.plots == TRUE){
+        message("checking data and creating summary plots...")
+    }else{
+      message("checking data...")
     }
+    source(file.path(master.script.dir, "SourceScripts",
+                     "e_summarize_and_check_compiled_database.R"))
     
     # export tables
     message("exporting tables...")
