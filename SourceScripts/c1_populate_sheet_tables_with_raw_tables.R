@@ -203,7 +203,7 @@ line.data.table <- merge(line.data.table,
 if (!("Type" %in% colnames(line.data.table))) {
     
     line.data.table[is.na(Reactance) | Reactance == 0, Type := "DC"]
-    line.data.table[!(is.na(Reactance) | Reactance == 0), Type := "DC"]
+    line.data.table[!(is.na(Reactance) | Reactance == 0), Type := "AC"]
 }
 
 line.data.table[Region.From == Region.To, category := paste0(Type, "_", Region.From)]
