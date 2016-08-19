@@ -171,10 +171,12 @@ components.table <- components.table[,.(`Component size` = max(csize),
                                     `Nodes with scenario` = sum(node.in.scenario)),
                                      by = "component.id"]
 
-components.report.dir <- file.path(data.check.dir,"isolated.nodes.report.txt")
+setnames(components.table, "Nodes with scenario", "Nodes in 'Remove Isolated Nodes' scenario")
 
-sink(components.report.dir)
-cat(sprintf("REPORT: connected components in %s database.", choose.db))
+# components.report.dir <- file.path(data.check.dir,"isolated.nodes.report.txt")
+
+sink(db.summary, append = TRUE)
+cat(sprintf("Summary of connected components in %s database.", ifelse(exists("choose.db"), choose.db, "the")))
 cat(paste0("\n","------------","\n"))
 cat("This analysis is done on the base network - scenarios on Lines/Transformers are ignored.")
 cat("\n")
@@ -182,9 +184,10 @@ cat(sprintf("List of nodes that belong to islands saved in %s/isolated.nodes.csv
 cat("\n")
 cat("Islands are any groups of nodes not connected to the largest connected component.")
 cat("\n\n")
-print(setorder(components.table, -`Component size`, `Nodes with scenario`),
+print(setorder(components.table, -`Component size`, `Nodes in 'Remove Isolated Nodes' scenario`),
       row.names = F, 
       n = nrow(components.table))
+cat("\n\n")
 sink()
 
 # check that LPFs sum to 1 for each region 
