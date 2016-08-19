@@ -109,14 +109,27 @@
 # clean environment of skipped and empty tables, rename tables to use
 
 node.data.table <- Bus.table
-line.data.table <- Branch.table
-generator.data.table <- Generator.table
 line.dc.data.table <- DC.line.table
 transformer.data.table <- Transformer.table
-zone.data.table <- Zone.table
-region.data.table <- Area.interchange.table
-owner.data.table <- Owner.table
-load.data.table <- Load.table
+
+if (exists('Load.table')) {
+ load.data.table <- Load.table
+}
+if (exists('Branch.table')) {
+  line.data.table <- Branch.table
+}
+if (exists('Generator.table')) {
+  generator.data.table <- Generator.table
+}
+if (exists('Zone.table')) {
+  zone.data.table <- Zone.table
+}
+if (exists('Area.interchange.table')){
+  region.data.table <- Area.interchange.table
+}
+if (exists('Owner.table')) {
+  owner.data.table <- Owner.table
+}
 
 # clean up from initial parsing script
 rm(list=c(skip.tables, done.tables))

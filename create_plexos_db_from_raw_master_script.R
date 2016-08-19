@@ -43,12 +43,16 @@ source(input.params.location)
 # function definition ----
 #------------------------------------------------------------------------------|
 
-if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
+# set default choose.input to 'raw.psse' if not set
+if(!exists("choose.input")){
+  choose.input <- "raw.psse"
+}else{
+  if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
     
     stop(paste("Please set 'choose.input' in input_params",
                "to 'raw.psse' or 'pre.parsed'"))
+  }
 }
-
 
 runAllFiles <- function () {
     
@@ -78,7 +82,9 @@ runAllFiles <- function () {
     source(file.path(master.script.dir, "SourceScripts",
                      "d_data_cleanup.R"))
     
-    # check data, create plots if need to 
+    # check data, create plots if need to
+    # by default, generate the plots
+    if(!exists("data.check.plots")){data.check.plots <- TRUE}
     if(data.check.plots == TRUE){
         message("checking data and creating summary plots...")
     }else{
