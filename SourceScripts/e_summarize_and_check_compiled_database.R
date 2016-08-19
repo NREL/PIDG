@@ -1,4 +1,8 @@
 # Run to check data and summarize the compiled database 
+
+# by default, generate plots
+if(!exists("data.check.plots")){data.check.plots <- TRUE}
+
 # list of missing items
 missing.items.list <- c()
 
@@ -329,27 +333,23 @@ write.csv(generator.fuels.region,
 
 # plot generator capacity plus existing RE by state
 if(data.check.plots){
-  conventional.fuels <- paste(c("HYDRO","NUCLEAR","OIL","COAL","LNG","GAS",
-                                "LIGNITE","DIESEL","CCGT", "WHR","Existing RE"),
-                              collapse = "|")
+  message("...exporting regional capacity plots")
   
-  generator.map[,conventional := ifelse(grepl(conventional.fuels,Fuel) == TRUE,
-                                        1,0)]
-
   # alpabetize regions
   region.names <- unique(generator.map$Region)[order(unique(generator.map$Region))]
   
-  message("...exporting regional capacity plots")
-  
   pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
-  pdf(file.path(data.check.dir,"region.capcaity.plots.pdf"),
+  pdf(file.path(data.check.dir,"regional.capacity.plots.pdf"),
       width = 12, height = 8)
   stepi = 0
 
   for(i in region.names){
-    plot <- ggplot(data = arrange(generator.map[conventional == 1 & Region == i,], 
-                                  scenario)) +
+    plot.data <- generator.map[Region == i, ]
+    plot.data <- plot.data[which(Capacity*Units > 0), ]
+    plot.data <- arrange(plot.data, scenario)
+    plot <- ggplot(data = plot.data) +
       geom_bar(aes(x = Fuel, y = Capacity*Units, fill = scenario), stat = "identity") +
+      #facet_wrap(~ scenario, scales = "free_x") +
       ggtitle(paste0(i," Generation Capacity by Fuel")) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
       ylab("Capacity (MW)")
@@ -361,42 +361,8 @@ if(data.check.plots){
       setTxtProgressBar(pb, stepi)
   }
   dev.off()
-
-
-  message("...exporting regional RE scenarios plots")
-  # plot state new RE build by scenario
-  pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
-  pdf(file.path(data.check.dir,"region.newRE.plots.pdf"),
-      width = 12, height = 8)
-  stepi = 0
-
-
-  for(i in region.names){
-    plot <- ggplot(data = generator.map[conventional == 0 & Region == i,]) +
-      geom_bar(aes(x = Fuel, y = Units*Capacity), stat = "identity") +
-      ggtitle(paste0(i," RE Capacity by Fuel")) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-      xlab("Capacity (MW)") +
-      if(nrow(generator.map[conventional == 0 & Region == i & scenario != "No Scenario",]) != 0){
-        facet_wrap(~ scenario, scales = "free_x")
-      }
-    
-    suppressWarnings(
-      plot(plot)
-    )
-    stepi = stepi + 1
-    setTxtProgressBar(pb, stepi)
-  }
-  dev.off()
   rm(stepi)
 }
-
-# plot new RE units by state and scenario
-
-#gen.newRE.plot <- ggplot(data = generator.map[conventional == 0,]) +
-  #geom_bar(aes(x = Fuel, y = Units, fill = Region), stat = "identity") +
-  #facet_wrap(~ scenario, scales = "free") +
-  #theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 #------------------------------------------------------------------------------#
 # Check line and tfmr properties ----
@@ -488,14 +454,14 @@ if(data.check.plots){
   # plots of min and max flow by voltage (using Node.From.kV)
   line.maxflow.plot <- ggplot(data = line.map,
                               aes(x = factor(Node.From.kV), y = `Max Flow`)) +
-    geom_point(alpha=0.3, color="tomato", position = "jitter") +
+    geom_jitter(alpha=0.3, color="tomato", height = 0) +
     geom_boxplot(alpha = 0) +
     xlab("Node From Voltage (kV)") +
     ylab("Max Flow (MW)")
   
   line.minflow.plot <- ggplot(data = line.map,
                               aes(x = factor(Node.From.kV), y = `Min Flow`)) +
-    geom_point(alpha=0.3, color="tomato", position = "jitter") +
+    geom_jitter(alpha=0.3, color="tomato", height = 0) +
     geom_boxplot(alpha = 0) +
     xlab("Node From Voltage (kV)") +
     ylab("Min Flow (MW)")
@@ -503,14 +469,14 @@ if(data.check.plots){
   # plots of reactance and resistance by voltage and scenario
   line.reactance.plot <- ggplot(data = line.map,
                                 aes(x = factor(Node.From.kV), y = Reactance)) +
-    geom_point(alpha=0.3, color="tomato", position = "jitter") +
+    geom_jitter(alpha=0.3, color="tomato", height = 0) +
     geom_boxplot(alpha = 0) +
     facet_wrap(tfmr ~ reac.scenario, scales = "free") +
     xlab("Node From Voltage (kV)")
   
   line.resistance.plot <- ggplot(data = line.map, 
                                  aes(x = factor(Node.From.kV), y = Resistance)) +
-    geom_point(alpha=0.3, color="tomato", position = "jitter") +
+    geom_jitter(alpha=0.3, color="tomato", height = 0) +
     geom_boxplot(alpha = 0) +
     facet_wrap(tfmr ~ resis.scenario, scales = "free") +
     xlab("Node From Voltage (kV)")
