@@ -287,18 +287,44 @@ generator.map <- generator.map[, lapply(.SD, function(x) {
 })]
 
 # summarize generator properties by fuel and save to OutputFiles
-generator.fuels.summary <- generator.map[,.(avg.capacity = mean(Capacity),
+generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
+                                           avg.capacity = mean(Capacity),
+                                           total.capacity = sum(Capacity),
+                                           min.capacity = min(Capacity),
+                                           max.capacity = max(Capacity),
+                                           sd.capacity = sd(Capacity),
+                                           avg.units = mean(Units),
+                                           total.units = sum(Units),
+                                           min.units = min(Units),
+                                           max.units = max(Units),
+                                           sd.units = sd(Units)),
+                                        by = .(Fuel, Region, scenario)]
+
+generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
+                                            avg.capacity = mean(Capacity),
+                                            total.capacity = sum(Capacity),
                                             min.capacity = min(Capacity),
                                             max.capacity = max(Capacity),
                                             sd.capacity = sd(Capacity),
                                             avg.units = mean(Units),
+                                            total.units = sum(Units),
                                             min.units = min(Units),
                                             max.units = max(Units),
-                                            sd.units = sd(Units)), 
-                                         by = "Fuel"]
+                                            sd.units = sd(Units)),
+                                         by = .(Fuel, scenario)]
 
-write.csv(generator.fuels.summary,
-          file = file.path(data.check.dir, "generator.summary.by.fuel.csv"),
+sink(db.summary, append = TRUE)
+cat("Summary of generators in database")
+cat("\n------------\n")
+cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n", data.check.dir))
+print(generator.fuels.summary,
+      row.names = F, 
+      n = nrow(obj.summary))
+cat("\n\n")
+sink()
+
+write.csv(generator.fuels.region,
+          file = file.path(data.check.dir, "generator.summary.by.fuel.region.csv"),
           quote = F, row.names = F)
 
 # plot generator capacity plus existing RE by state
