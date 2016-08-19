@@ -1,5 +1,14 @@
 # Run to check data and summarize the compiled database 
 
+# function to adjust width of output to txt file
+withOptions <- function(optlist, expr)
+{
+  oldopt <- options(optlist)
+  on.exit(options(oldopt))
+  expr <- substitute(expr)
+  eval.parent(expr)
+}
+
 # by default, generate plots
 if(!exists("data.check.plots")){data.check.plots <- TRUE}
 
@@ -13,27 +22,24 @@ data.check.dir <- file.path(outputfiles.dir,
 
 dir.create(data.check.dir, showWarnings = F, recursive = TRUE)
 
-# create a warning file 
+# create a warnings file 
 warnings <- file.path(data.check.dir,"warnings.txt")
 file.create(warnings)
-sink(warnings)
+sink(warnings) 
 cat("***Warnings***")
 sink()
 
-# create a fatal warning file
+# create a fatal warnings file
 fatal.warnings <- file.path(data.check.dir,"fatal.warnings.txt")
 file.create(fatal.warnings)
-sink(fatal.warnings)
+sink(fatal.warnings) 
 cat("***Fatal Warnings***")
 sink()
-# 1. node has 2 regions or zones
-# 2. node has no regions or zones
-# 3. generator has no fuel
 
 # create file to summarize database
 db.summary <- file.path(data.check.dir, "db.summary.txt")
 file.create(db.summary)
-sink(db.summary)
+sink(db.summary) 
 cat("**Database Summary Report**\n")
 cat("---------------------------","\n\n")
 sink()
@@ -54,7 +60,7 @@ setnames(nodes.summary,
          c("", "Region/Zone", "# nodes"))
 
 # write to file
-sink(db.summary, append = TRUE)
+sink(db.summary, append = TRUE) 
 cat("\nSummary of database components")
 cat("\n------------\n\n")
 cat("Number of objects of each type:\n")
@@ -69,7 +75,47 @@ print(nodes.summary,
 cat("\n\n")
 sink()
 
+#------------------------------------------------------------------------------#
+# Check for missing objects in Objects sheet ----
+#------------------------------------------------------------------------------#
+message("... checking for missing objects")
+properties.objects <- rbind(Properties.sheet[,.(object = unique(parent_object))],
+                            Properties.sheet[,.(object = unique(child_object))])
 
+properties.objects <- properties.objects[object != "System",
+                                         .(object = unique(object))]
+
+missing <- which(properties.objects[,object] %in% Objects.sheet[,name] == F)
+
+missing.properties.objects <- properties.objects[missing,]
+
+if(nrow(missing.properties.objects) > 0){
+  sink(fatal.warnings, append = TRUE)
+  cat("\n\n")
+  cat("WARNING: The following objects in Properties.sheet are not found in ",
+      "Objects.sheet\n\n")
+  print(missing.properties.objects, row.names = FALSE, quote = FALSE)
+  sink()
+}
+
+memberships.objects <- rbind(Memberships.sheet[,.(Object = unique(parent_object))],
+                             Memberships.sheet[,.(Object = unique(child_object))])
+
+memberships.objects <- memberships.objects[Object != "System",
+                                         .(Object = unique(object))]
+
+missing <- which(memberships.objects[,Object] %in% Objects.sheet[,name] == F)
+
+missing.memberships.objects <- memberships.objects[missing,]
+
+if(nrow(missing.memberships.objects) > 0){
+  sink(fatal.warnings, append = TRUE)
+  cat("\n\n")
+  cat("WARNING: The following objects in Memberships.sheet are not found in ",
+      "Objects.sheet\n\n")
+  print(missing.memberships.objects, row.names = FALSE, quote = FALSE)
+  sink()
+}
 
 #------------------------------------------------------------------------------#
 # Identify islands and isolated nodes ----
@@ -101,7 +147,7 @@ duplicated.node.names <- nodes[duplicated(Node),Node]
 duplicated.nodes <- nodes[Node %in% duplicated.node.names]
 
 if(nrow(duplicated.nodes) > 0){
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("WARNING: at least one node is assigned to more than one region and/or zone.")
   cat("\n Check these nodes: \n")
   print(duplicated.nodes, quote = F, row.names = F)
@@ -172,15 +218,15 @@ write.csv(island.nodes,
 # Export a report table
 
 components.table <- components.table[,.(`Component size` = max(csize), 
-                                    `Nodes with scenario` = sum(node.in.scenario)),
-                                     by = "component.id"]
+             `Nodes in 'Remove Isolated Nodes' scenario` = sum(node.in.scenario)),
+              by = "component.id"]
 
-setnames(components.table, "Nodes with scenario", "Nodes in 'Remove Isolated Nodes' scenario")
+components.table[,component.id := NULL]
 
 # components.report.dir <- file.path(data.check.dir,"isolated.nodes.report.txt")
 
-sink(db.summary, append = TRUE)
-cat(sprintf("Summary of connected components in %s database.", ifelse(exists("choose.db"), choose.db, "the")))
+sink(db.summary, append = TRUE) 
+cat(sprintf("Summary of connected components in network of %s database.", ifelse(exists("choose.db"), choose.db, "the")))
 cat(paste0("\n","------------","\n"))
 cat("This analysis is done on the base network - scenarios on Lines/Transformers are ignored.")
 cat("\n")
@@ -213,7 +259,7 @@ region.lpf <- node.lpf[is.na(scenario), .(region.lpf = sum(LPF)), by = "Region"]
 lpf.sum.to.one <- round(sum(region.lpf$region.lpf), 13) == nrow(region.lpf)
 
 if(lpf.sum.to.one == F){
-  sink(warnings, append = T)
+  sink(warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: LPF does not sum to one (1) in at least one region."))
   cat("\n\n")
@@ -320,10 +366,9 @@ generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(Capacity*Uni
 sink(db.summary, append = TRUE)
 cat("Summary of generators in database")
 cat("\n------------\n")
-cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n", data.check.dir))
-print(generator.fuels.summary,
-      row.names = F, 
-      n = nrow(obj.summary))
+cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n\n", data.check.dir))
+withOptions(list(width = 200), 
+            print(generator.fuels.summary, row.names = F))
 cat("\n\n")
 sink()
 
@@ -349,7 +394,6 @@ if(data.check.plots){
     plot.data <- arrange(plot.data, scenario)
     plot <- ggplot(data = plot.data) +
       geom_bar(aes(x = Fuel, y = Capacity*Units, fill = scenario), stat = "identity") +
-      #facet_wrap(~ scenario, scales = "free_x") +
       ggtitle(paste0(i," Generation Capacity by Fuel")) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
       ylab("Capacity (MW)")
@@ -509,9 +553,9 @@ problem.row.mask = Properties.sheet[,
                                                          child_class, collection, property, value, band_id))]
 
 if (any(problem.row.mask)) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
-  cat("WARNING: the following property sheet value(s) are missing. This will not import.","\n")
+  cat("WARNING: the following property sheet value(s) are missing. This will not import.\n")
   print(Properties.sheet[problem.row.mask,
                          .(parent_object, child_object, property, value, scenario)],
         row.names = F,
@@ -523,12 +567,12 @@ if (any(problem.row.mask)) {
 problem.row.mask = !complete.cases(Memberships.sheet)
 
 if (any(problem.row.mask)) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
-  cat("WARNING: the following membership sheet value(s) are missing. ",
+  cat("WARNING: the following membership sheet value(s) are missing.\n ",
         "This will not import.", 
         "This may be caused by models being multiply defined in generic import ",
-        "sheets, among other things.","\n")
+        "sheets, among other things.\n")
   print(Memberships.sheet[problem.row.mask], 
         row.names = F, 
         n = nrow(Memberships.sheet[problem.row.mask]))
@@ -540,9 +584,9 @@ all.regions <- Objects.sheet[class == "Region",name]
 regions.w.nodes <- Memberships.sheet[parent_class == "Node" & collection == 
                                        "Region",child_object]
 if (!all(all.regions %in% regions.w.nodes)) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
-  cat("WARNING: the following region(s) have no nodes. This will not import.", "\n")
+  cat("WARNING: the following region(s) have no nodes. This will not import.\n")
   print(all.regions[!(all.regions %in% regions.w.nodes)], 
         row.names = F, 
         n = nrow(all.regions[!(all.regions %in% regions.w.nodes)]))
@@ -551,9 +595,9 @@ if (!all(all.regions %in% regions.w.nodes)) {
 
 # make sure no object name has more than 50 characters 
 if (any(Objects.sheet[,nchar(name) > 50])) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
-  cat("WARNING: the following object(s) have names with > 50 characters. This will not import.", "\n")
+  cat("WARNING: the following object(s) have names with > 50 characters. This will not import.\n")
   print(Objects.sheet[nchar(name) > 50], 
         row.names = F, 
         n = nrow(Objects.sheet[nchar(name) > 50]))
@@ -579,11 +623,11 @@ period_id_props = period_id_props[problem == TRUE]
 known.issues = period_id_props[grepl("^(Max Energy|Target)", property)]
 
 if (nrow(known.issues) > 0) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
-               "This will not run properly.", "\n"))
+               "This will not run properly.\n"))
   print(known.issues, row.names = F, n = nrow(known.issues))
   sink()
 }
@@ -592,11 +636,11 @@ if (nrow(known.issues) > 0) {
 unknown.issues = period_id_props[!grepl("^(Max Energy|Target)", property)]
 
 if (nrow(unknown.issues) > 0) {
-  sink(warnings, append = T)
+  sink(warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
-               "This is untested but may not run properly.", "\n"))
+               "This is untested but may not run properly.\n"))
   print(unknown.issues, row.names = F, n = nrow(unknown.issues))
   sink()
 }
@@ -609,11 +653,11 @@ dupes = duplicated(Properties.sheet,
                           "band_id"))
 
 if (any(dupes)) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: the following properties are defined twice for ", 
                "the same object in the same scenario. This may import but ",
-               "will not run.", "\n"))
+               "will not run.\n"))
   print(Properties.sheet[dupes], 
         row.names = F, 
         n = nrow(Properties.sheet[dupes]))
@@ -629,11 +673,11 @@ object.list = Properties.sheet[,unique(child_object)]
 object.list = object.list[!(object.list %in% Objects.sheet[,name])]
 
 if (length(object.list) > 0) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: the following object(s) have defined properties but ",
                "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
-               "these properties to other object. This may not run.", "\n"))
+               "these properties to other object. This may not run.\n"))
   print(Objects.sheet[name %in% object.list,], 
         row.names = F, 
         Objects.sheet[name %in% object.list,])
@@ -647,11 +691,11 @@ non.object.scens = Properties.sheet[,
                                     !(grepl("^\\{Object\\}", scenario) | is.na(scenario) | scenario == "")]
 
 if (any(non.object.scens)) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: the following scenario entries need an object tag ",
                "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
-               " not be read correctly by PLEXOS.", "\n"))
+               " not be read correctly by PLEXOS.\n"))
   print(Properties.sheet[non.object.scens], 
         row.names = F, 
         n = nrow(Properties.sheet[non.object.scens]))
@@ -665,11 +709,11 @@ non.object.dfs = Properties.sheet[,
                                   !(grepl("^\\{Object\\}", filename) | is.na(filename) | grepl("[/\\\\]", filename))]
 
 if (any(non.object.dfs)) {
-  sink(fatal.warnings, append = T)
+  sink(fatal.warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: the following datafile entries need an object tag ",
                "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
-               " not be read correctly by PLEXOS.", "\n"))
+               " not be read correctly by PLEXOS.\n"))
   print(Properties.sheet[non.object.dfs], 
         row.names = F,
         n = nrow(Properties.sheet[non.object.dfs]))
@@ -689,13 +733,12 @@ for(item in missing.items.list){
     missing.data <- names(get(item))[2]
     
     if("Fatal" %in% names(get(item))){
-    sink(fatal.warnings, append = T)
-    } else{sink(warnings, append = T)}
+    sink(fatal.warnings, append = T) 
+    } else{sink(warnings, append = T) }
     
     cat("\n\n")
     cat(sprintf("WARNING: At least one %s ", object.name))
-    cat(sprintf("is missing %s.", missing.data))
-    cat("\n")
+    cat(sprintf("is missing %s.\n", missing.data))
     cat(sprintf("See file DataCheck/%s.csv", item))
     sink()
   }
