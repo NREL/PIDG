@@ -42,20 +42,20 @@ if (choose.input == "pre.parsed") {
         if (file.exists(file.path(inputfiles.dir, transformer.file))) {
             transformer.data.table <- fread(file.path(inputfiles.dir, transformer.file))
         } else {
-            stop(sprintf("!!  %se does not exist", transformer.file))
+            stop(sprintf("!!  %s does not exist", transformer.file))
         }
     } else {
-        message(sprintf(">>  %s does not exist ... skipping", transformer.file))
+        message(sprintf(">>  transformer.file does not exist ... skipping"))
     }
     
     if (exists("load.file")) {
         if (file.exists(file.path(inputfiles.dir, load.file))) {
             load.data.table <- fread(file.path(inputfiles.dir, load.file))
         } else {
-            stop(sprintf("!!  %se does not exist", load.file))
+            stop(sprintf("!!  %s does not exist", load.file))
         }
     } else {
-        message(sprintf(">>  %s does not exist ... skipping", load.file))
+        message(sprintf(">>  load.file does not exist ... skipping"))
     }
     
 }
@@ -200,6 +200,12 @@ line.data.table <- merge(line.data.table,
                          all.x = TRUE)
 
 # add categories
+if (!("Type" %in% colnames(line.data.table))) {
+    
+    line.data.table[is.na(Reactance) | Reactance == 0, Type := "DC"]
+    line.data.table[!(is.na(Reactance) | Reactance == 0), Type := "DC"]
+}
+
 line.data.table[Region.From == Region.To, category := paste0(Type, "_", Region.From)]
 line.data.table[Region.From != Region.To, category := paste0("Interstate_", Type)]
 
@@ -339,69 +345,75 @@ rm(gens.to.objects, gens.to.properties, gens.to.memberships)
 # transformers ----
 #------------------------------------------------------------------------------|
 
-message("arranging transformer data")
-
-transformer.data.table[, Units := 1]
-
-# find regions from and to for line categorize
-transformer.data.table <- merge(transformer.data.table,
-                                node.data.table[,.(`Node From` = Node,
-                                                   `Region.From` = Region)],
-                                by = "Node From",
-                                all.x = TRUE)
-
-transformer.data.table <- merge(transformer.data.table,
-                                node.data.table[,.(`Node To` = Node,
-                                                   `Region.To` = Region)],
-                                by = "Node To",
-                                all.x = TRUE)
-
-# add category
-transformer.data.table[Region.From == Region.To, category := Region.From]
-transformer.data.table[Region.From != Region.To, category := "Interstate_tfmr"]
+if (exists("transformer.data.table")) {
+    
+    message("arranging transformer data")
+    
+    transformer.data.table[, Units := 1]
+    
+    # find regions from and to for line categorize
+    transformer.data.table <- merge(transformer.data.table,
+                                    node.data.table[,.(`Node From` = Node,
+                                                       `Region.From` = Region)],
+                                    by = "Node From",
+                                    all.x = TRUE)
+    
+    transformer.data.table <- merge(transformer.data.table,
+                                    node.data.table[,.(`Node To` = Node,
+                                                       `Region.To` = Region)],
+                                    by = "Node To",
+                                    all.x = TRUE)
+    
+    # add category
+    transformer.data.table[Region.From == Region.To, category := Region.From]
+    transformer.data.table[Region.From != Region.To, category := "Interstate_tfmr"]
+}
 
 #------------------------------------------------------------------------------|
 # Add transformers to .sheet tables ----
 #------------------------------------------------------------------------------|
 
-# add transformers to objects .sheet
-transf.to.objects <- initialize_table(Objects.sheet, 
-                                      nrow(transformer.data.table), 
-                                      list(class = "Transformer",
-                                           name = transformer.data.table$Transformer, 
-                                           category = transformer.data.table$category))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, transf.to.objects)
-
-# add transformers to properties .sheet
-transf.to.properties <- transformer.data.table[,.(Transformer, Units, Rating, 
-                                                  Resistance, Reactance)]
-
-add_to_properties_sheet(transf.to.properties, 
-                        names.col = 'Transformer', 
-                        object.class = 'Transformer', 
-                        collection.name = 'Transformers')
-
-# add transformer-node membership to memberships .sheet
-transf.to.memberships <- initialize_table(Memberships.sheet, 
+if (exists("transformer.data.table")) {
+    
+    # add transformers to objects .sheet
+    transf.to.objects <- initialize_table(Objects.sheet, 
                                           nrow(transformer.data.table), 
-                                          list(parent_class = "Transformer",
-                                               child_class = "Node"))
-
-transf.to.memberships[, parent_object := transformer.data.table$Transformer]
-transf.to.memberships[,`Node From` := transformer.data.table$`Node From`]
-transf.to.memberships[,`Node To` := transformer.data.table$`Node To`]
-
-# get rid of automatically generated columns for melting
-transf.to.memberships[,c("collection", "child_object") := NULL]
-
-transf.to.memberships <- melt(transf.to.memberships, 
-                              measure.vars = c("Node From", "Node To"),
-                              variable.name = "collection", 
-                              value.name = "child_object")
-
-Memberships.sheet  <- merge_sheet_w_table(Memberships.sheet, 
-                                          transf.to.memberships)
-
-# clean up
-rm(transf.to.objects, transf.to.properties, transf.to.memberships)
+                                          list(class = "Transformer",
+                                               name = transformer.data.table$Transformer, 
+                                               category = transformer.data.table$category))
+    
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, transf.to.objects)
+    
+    # add transformers to properties .sheet
+    transf.to.properties <- transformer.data.table[,.(Transformer, Units, Rating, 
+                                                      Resistance, Reactance)]
+    
+    add_to_properties_sheet(transf.to.properties, 
+                            names.col = 'Transformer', 
+                            object.class = 'Transformer', 
+                            collection.name = 'Transformers')
+    
+    # add transformer-node membership to memberships .sheet
+    transf.to.memberships <- initialize_table(Memberships.sheet, 
+                                              nrow(transformer.data.table), 
+                                              list(parent_class = "Transformer",
+                                                   child_class = "Node"))
+    
+    transf.to.memberships[, parent_object := transformer.data.table$Transformer]
+    transf.to.memberships[,`Node From` := transformer.data.table$`Node From`]
+    transf.to.memberships[,`Node To` := transformer.data.table$`Node To`]
+    
+    # get rid of automatically generated columns for melting
+    transf.to.memberships[,c("collection", "child_object") := NULL]
+    
+    transf.to.memberships <- melt(transf.to.memberships, 
+                                  measure.vars = c("Node From", "Node To"),
+                                  variable.name = "collection", 
+                                  value.name = "child_object")
+    
+    Memberships.sheet  <- merge_sheet_w_table(Memberships.sheet, 
+                                              transf.to.memberships)
+    
+    # clean up
+    rm(transf.to.objects, transf.to.properties, transf.to.memberships)
+}

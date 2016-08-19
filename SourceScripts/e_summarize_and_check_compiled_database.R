@@ -10,7 +10,8 @@ missing.items.list <- c()
 data.check.dir <- file.path(outputfiles.dir,
                             paste0(gsub("\\.xls|\\.xlsx", "", output.wb.name), 
                                    "_data_check"))
-dir.create(data.check.dir, showWarnings = F)
+
+dir.create(data.check.dir, showWarnings = F, recursive = TRUE)
 
 # create a warning file 
 warnings <- file.path(data.check.dir,"warnings.txt")
@@ -28,6 +29,46 @@ sink()
 # 1. node has 2 regions or zones
 # 2. node has no regions or zones
 # 3. generator has no fuel
+
+# create file to summarize database
+db.summary <- file.path(data.check.dir, "db.summary.txt")
+file.create(db.summary)
+sink(db.summary)
+cat("**Database Summary Report**\n")
+cat("---------------------------","\n\n")
+sink()
+
+#------------------------------------------------------------------------------#
+# High-level database summary ----
+#------------------------------------------------------------------------------#
+
+obj.summary <- Objects.sheet[,.N, by = class]
+setnames(obj.summary, c("class", "N"), c("Object class", "# objects"))
+
+nodes.summary <- Memberships.sheet[parent_class == "Node" & 
+                                       child_class %in% c("Region", "Zone") ,.N, 
+                                   by = .(parent_class, child_class, child_object)]
+nodes.summary[,parent_class := NULL]
+setnames(nodes.summary,
+         c("child_class", "child_object", "N"), 
+         c("", "Region/Zone", "# nodes"))
+
+# write to file
+sink(db.summary, append = TRUE)
+cat("\nSummary of database components")
+cat("\n------------\n\n")
+cat("Number of objects of each type:\n")
+print(obj.summary,
+      row.names = F, 
+      n = nrow(obj.summary))
+cat("\n")
+cat("Number of nodes in each region and/or zone:\n")
+print(nodes.summary,
+      row.names = F, 
+      n = nrow(nodes.summary))
+cat("\n\n")
+sink()
+
 
 
 #------------------------------------------------------------------------------#
@@ -134,10 +175,12 @@ components.table <- components.table[,.(`Component size` = max(csize),
                                     `Nodes with scenario` = sum(node.in.scenario)),
                                      by = "component.id"]
 
-components.report.dir <- file.path(data.check.dir,"isolated.nodes.report.txt")
+setnames(components.table, "Nodes with scenario", "Nodes in 'Remove Isolated Nodes' scenario")
 
-sink(components.report.dir)
-cat(sprintf("REPORT: connected components in %s database.", choose.db))
+# components.report.dir <- file.path(data.check.dir,"isolated.nodes.report.txt")
+
+sink(db.summary, append = TRUE)
+cat(sprintf("Summary of connected components in %s database.", ifelse(exists("choose.db"), choose.db, "the")))
 cat(paste0("\n","------------","\n"))
 cat("This analysis is done on the base network - scenarios on Lines/Transformers are ignored.")
 cat("\n")
@@ -145,9 +188,10 @@ cat(sprintf("List of nodes that belong to islands saved in %s/isolated.nodes.csv
 cat("\n")
 cat("Islands are any groups of nodes not connected to the largest connected component.")
 cat("\n\n")
-print(setorder(components.table, -`Component size`, `Nodes with scenario`),
+print(setorder(components.table, -`Component size`, `Nodes in 'Remove Isolated Nodes' scenario`),
       row.names = F, 
       n = nrow(components.table))
+cat("\n\n")
 sink()
 
 # check that LPFs sum to 1 for each region 
@@ -247,18 +291,44 @@ generator.map <- generator.map[, lapply(.SD, function(x) {
 })]
 
 # summarize generator properties by fuel and save to OutputFiles
-generator.fuels.summary <- generator.map[,.(avg.capacity = mean(Capacity),
+generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
+                                           avg.capacity = mean(Capacity),
+                                           total.capacity = sum(Capacity),
+                                           min.capacity = min(Capacity),
+                                           max.capacity = max(Capacity),
+                                           sd.capacity = sd(Capacity),
+                                           avg.units = mean(Units),
+                                           total.units = sum(Units),
+                                           min.units = min(Units),
+                                           max.units = max(Units),
+                                           sd.units = sd(Units)),
+                                        by = .(Fuel, Region, scenario)]
+
+generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
+                                            avg.capacity = mean(Capacity),
+                                            total.capacity = sum(Capacity),
                                             min.capacity = min(Capacity),
                                             max.capacity = max(Capacity),
                                             sd.capacity = sd(Capacity),
                                             avg.units = mean(Units),
+                                            total.units = sum(Units),
                                             min.units = min(Units),
                                             max.units = max(Units),
-                                            sd.units = sd(Units)), 
-                                         by = "Fuel"]
+                                            sd.units = sd(Units)),
+                                         by = .(Fuel, scenario)]
 
-write.csv(generator.fuels.summary,
-          file = file.path(data.check.dir, "generator.summary.by.fuel.csv"),
+sink(db.summary, append = TRUE)
+cat("Summary of generators in database")
+cat("\n------------\n")
+cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n", data.check.dir))
+print(generator.fuels.summary,
+      row.names = F, 
+      n = nrow(obj.summary))
+cat("\n\n")
+sink()
+
+write.csv(generator.fuels.region,
+          file = file.path(data.check.dir, "generator.summary.by.fuel.region.csv"),
           quote = F, row.names = F)
 
 # plot generator capacity plus existing RE by state
@@ -632,14 +702,16 @@ for(item in missing.items.list){
 }
 
 # show data check reports
-file.show(components.report.dir)
-
+if(data.check.plots == TRUE){
+    file.show(db.summary)
+}
+    
 if(length(readLines(warnings, warn = F)) > 1){
-file.show(warnings)
+    file.show(warnings)
 }
 
 if(length(readLines(fatal.warnings, warn = F)) > 1){
-file.show(fatal.warnings)
+    file.show(fatal.warnings)
 }
 
 
