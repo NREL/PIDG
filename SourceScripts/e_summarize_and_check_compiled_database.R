@@ -70,6 +70,143 @@ cat("\n\n")
 sink()
 
 
+#------------------------------------------------------------------------------#
+# Check generator properties ----
+#------------------------------------------------------------------------------#
+
+### pull generator capacity by fuel and state
+generator.map <- Objects.sheet[class == "Generator", 
+                               .(Generator = name, Fuel = category)]
+
+
+generator.map <- merge(generator.map,
+                       Properties.sheet[child_class == "Generator" &
+                                          property == "Max Capacity",
+                                        .(Generator = child_object,
+                                          Capacity = value)], 
+                       by = "Generator", all.x = T)
+
+# pull generator nodes
+generator.map <- merge(generator.map,
+                       Memberships.sheet[parent_class == "Generator" &
+                                           child_class == "Node",
+                                         .(Generator = parent_object,
+                                           Node = child_object)],
+                       by = "Generator", all.x = T)
+
+# pull regions
+generator.map <- merge(generator.map,
+                       Memberships.sheet[parent_class == "Node" &
+                                           child_class == "Region",
+                                         .(Node = parent_object,
+                                           Region = child_object)],
+                       by = "Node", all.x = T)
+
+# pull RE units and scenarios
+generator.map <- merge(generator.map,
+                       Properties.sheet[child_class == "Generator" &
+                                          property == "Units",
+                                        .(Generator = child_object,
+                                          Units = value, 
+                                          scenario = scenario)], 
+                       by = "Generator", all.x = T)
+
+# clean up scenario name
+generator.map[,scenario := gsub("{Object}","Scenario: ",scenario, fixed = T)]
+generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
+
+# flag generators with missing missing nodes, regions, fuels, capacity, units
+
+gens.missing.units <- generator.map[is.na(Units), .(Generator, Units)]
+gens.missing.capacity <- generator.map[is.na(Capacity), .(Generator, Capacity)]
+gens.missing.fuel <- generator.map[is.na(Fuel), .(Generator, Fuel, Fatal = T)]
+gens.missing.node <- generator.map[is.na(Node), .(Generator, Node)]
+
+# add to missing items list
+missing.items.list <- c(missing.items.list, "gens.missing.units", 
+                        "gens.missing.capacity", "gens.missing.fuel",
+                        "gens.missing.node")
+
+# change colums that can be numeric to numeric
+generator.map <- generator.map[, lapply(.SD, function(x) {
+  if (!is.na(suppressWarnings(as.numeric(x[1])))) {
+    suppressWarnings(as.numeric(x))} else x
+})]
+
+# summarize generator properties by fuel and save to OutputFiles
+generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
+                                           avg.capacity = mean(Capacity),
+                                           total.capacity = sum(Capacity),
+                                           min.capacity = min(Capacity),
+                                           max.capacity = max(Capacity),
+                                           sd.capacity = sd(Capacity),
+                                           avg.units = mean(Units),
+                                           total.units = sum(Units),
+                                           min.units = min(Units),
+                                           max.units = max(Units),
+                                           sd.units = sd(Units)),
+                                        by = .(Fuel, Region, scenario)]
+
+generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
+                                            avg.capacity = mean(Capacity),
+                                            total.capacity = sum(Capacity),
+                                            min.capacity = min(Capacity),
+                                            max.capacity = max(Capacity),
+                                            sd.capacity = sd(Capacity),
+                                            avg.units = mean(Units),
+                                            total.units = sum(Units),
+                                            min.units = min(Units),
+                                            max.units = max(Units),
+                                            sd.units = sd(Units)),
+                                         by = .(Fuel, scenario)]
+
+sink(db.summary, append = TRUE)
+cat("Summary of generators in database")
+cat("\n------------\n")
+cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n", data.check.dir))
+print(generator.fuels.summary,
+      row.names = F, 
+      n = nrow(obj.summary))
+cat("\n\n")
+sink()
+
+write.csv(generator.fuels.region,
+          file = file.path(data.check.dir, "generator.summary.by.fuel.region.csv"),
+          quote = F, row.names = F)
+
+# plot generator capacity plus existing RE by state
+if(data.check.plots){
+  message("...exporting regional capacity plots")
+  
+  # alpabetize regions
+  region.names <- unique(generator.map$Region)[order(unique(generator.map$Region))]
+  
+  pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
+  pdf(file.path(data.check.dir,"regional.capacity.plots.pdf"),
+      width = 12, height = 8)
+  stepi = 0
+
+  for(i in region.names){
+    plot.data <- generator.map[Region == i, ]
+    plot.data <- plot.data[which(Capacity*Units > 0), ]
+    plot.data <- arrange(plot.data, scenario)
+    plot <- ggplot(data = plot.data) +
+      geom_bar(aes(x = Fuel, y = Capacity*Units, fill = scenario), stat = "identity") +
+      #facet_wrap(~ scenario, scales = "free_x") +
+      ggtitle(paste0(i," Generation Capacity by Fuel")) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+      ylab("Capacity (MW)")
+      
+      suppressWarnings(
+        plot(plot)
+      )
+      stepi = stepi + 1
+      setTxtProgressBar(pb, stepi)
+  }
+  dev.off()
+  rm(stepi)
+}
+
 
 #------------------------------------------------------------------------------#
 # Identify islands and isolated nodes ----
@@ -227,142 +364,6 @@ if(lpf.sum.to.one == F){
 # clean up working evnironment
 rm(network, edges, lines, lines.from, lines.to, tfmrs, tfmr.to, tfmr.from)
 
-#------------------------------------------------------------------------------#
-# Check generator properties ----
-#------------------------------------------------------------------------------#
-
-### pull generator capacity by fuel and state
-generator.map <- Objects.sheet[class == "Generator", 
-                               .(Generator = name, Fuel = category)]
-
-
-generator.map <- merge(generator.map,
-                       Properties.sheet[child_class == "Generator" &
-                                          property == "Max Capacity",
-                                        .(Generator = child_object,
-                                          Capacity = value)], 
-                       by = "Generator", all.x = T)
-
-# pull generator nodes
-generator.map <- merge(generator.map,
-                       Memberships.sheet[parent_class == "Generator" &
-                                           child_class == "Node",
-                                         .(Generator = parent_object,
-                                           Node = child_object)],
-                       by = "Generator", all.x = T)
-
-# pull regions
-generator.map <- merge(generator.map,
-                       Memberships.sheet[parent_class == "Node" &
-                                           child_class == "Region",
-                                         .(Node = parent_object,
-                                           Region = child_object)],
-                       by = "Node", all.x = T)
-
-# pull RE units and scenarios
-generator.map <- merge(generator.map,
-                       Properties.sheet[child_class == "Generator" &
-                                          property == "Units",
-                                        .(Generator = child_object,
-                                          Units = value, 
-                                          scenario = scenario)], 
-                       by = "Generator", all.x = T)
-
-# clean up scenario name
-generator.map[,scenario := gsub("{Object}","Scenario: ",scenario, fixed = T)]
-generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
-
-# flag generators with missing missing nodes, regions, fuels, capacity, units
-
-gens.missing.units <- generator.map[is.na(Units), .(Generator, Units)]
-gens.missing.capacity <- generator.map[is.na(Capacity), .(Generator, Capacity)]
-gens.missing.fuel <- generator.map[is.na(Fuel), .(Generator, Fuel, Fatal = T)]
-gens.missing.node <- generator.map[is.na(Node), .(Generator, Node)]
-
-# add to missing items list
-missing.items.list <- c(missing.items.list, "gens.missing.units", 
-                        "gens.missing.capacity", "gens.missing.fuel",
-                        "gens.missing.node")
-
-# change colums that can be numeric to numeric
-generator.map <- generator.map[, lapply(.SD, function(x) {
-  if (!is.na(suppressWarnings(as.numeric(x[1])))) {
-    suppressWarnings(as.numeric(x))} else x
-})]
-
-# summarize generator properties by fuel and save to OutputFiles
-generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
-                                           avg.capacity = mean(Capacity),
-                                           total.capacity = sum(Capacity),
-                                           min.capacity = min(Capacity),
-                                           max.capacity = max(Capacity),
-                                           sd.capacity = sd(Capacity),
-                                           avg.units = mean(Units),
-                                           total.units = sum(Units),
-                                           min.units = min(Units),
-                                           max.units = max(Units),
-                                           sd.units = sd(Units)),
-                                        by = .(Fuel, Region, scenario)]
-
-generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
-                                            avg.capacity = mean(Capacity),
-                                            total.capacity = sum(Capacity),
-                                            min.capacity = min(Capacity),
-                                            max.capacity = max(Capacity),
-                                            sd.capacity = sd(Capacity),
-                                            avg.units = mean(Units),
-                                            total.units = sum(Units),
-                                            min.units = min(Units),
-                                            max.units = max(Units),
-                                            sd.units = sd(Units)),
-                                         by = .(Fuel, scenario)]
-
-sink(db.summary, append = TRUE)
-cat("Summary of generators in database")
-cat("\n------------\n")
-cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n", data.check.dir))
-print(generator.fuels.summary,
-      row.names = F, 
-      n = nrow(obj.summary))
-cat("\n\n")
-sink()
-
-write.csv(generator.fuels.region,
-          file = file.path(data.check.dir, "generator.summary.by.fuel.region.csv"),
-          quote = F, row.names = F)
-
-# plot generator capacity plus existing RE by state
-if(data.check.plots){
-  message("...exporting regional capacity plots")
-  
-  # alpabetize regions
-  region.names <- unique(generator.map$Region)[order(unique(generator.map$Region))]
-  
-  pb <- txtProgressBar(min = 0, max = length(unique(generator.map$Region)), style = 3)
-  pdf(file.path(data.check.dir,"regional.capacity.plots.pdf"),
-      width = 12, height = 8)
-  stepi = 0
-
-  for(i in region.names){
-    plot.data <- generator.map[Region == i, ]
-    plot.data <- plot.data[which(Capacity*Units > 0), ]
-    plot.data <- arrange(plot.data, scenario)
-    plot <- ggplot(data = plot.data) +
-      geom_bar(aes(x = Fuel, y = Capacity*Units, fill = scenario), stat = "identity") +
-      #facet_wrap(~ scenario, scales = "free_x") +
-      ggtitle(paste0(i," Generation Capacity by Fuel")) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-      ylab("Capacity (MW)")
-      
-      suppressWarnings(
-        plot(plot)
-      )
-      stepi = stepi + 1
-      setTxtProgressBar(pb, stepi)
-  }
-  dev.off()
-  rm(stepi)
-}
 
 #------------------------------------------------------------------------------#
 # Check line and tfmr properties ----
