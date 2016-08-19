@@ -26,6 +26,46 @@ sink()
 # 2. node has no regions or zones
 # 3. generator has no fuel
 
+# create file to summarize database
+db.summary <- file.path(data.check.dir, "db.summary.txt")
+file.create(db.summary)
+sink(db.summary)
+cat("**Database Summary Report**\n")
+cat("---------------------------","\n\n")
+sink()
+
+#------------------------------------------------------------------------------#
+# High-level database summary ----
+#------------------------------------------------------------------------------#
+
+obj.summary <- Objects.sheet[,.N, by = class]
+setnames(obj.summary, c("class", "N"), c("Object class", "# objects"))
+
+nodes.summary <- Memberships.sheet[parent_class == "Node" & 
+                                       child_class %in% c("Region", "Zone") ,.N, 
+                                   by = .(parent_class, child_class, child_object)]
+nodes.summary[,parent_class := NULL]
+setnames(nodes.summary,
+         c("child_class", "child_object", "N"), 
+         c("", "Region/Zone", "# nodes"))
+
+# write to file
+sink(db.summary, append = TRUE)
+cat("\nSummary of database components")
+cat("\n------------\n\n")
+cat("Number of objects of each type:\n")
+print(obj.summary,
+      row.names = F, 
+      n = nrow(obj.summary))
+cat("\n")
+cat("Number of nodes in each region and/or zone:\n")
+print(nodes.summary,
+      row.names = F, 
+      n = nrow(nodes.summary))
+cat("\n\n")
+sink()
+
+
 
 #------------------------------------------------------------------------------#
 # Identify islands and isolated nodes ----
@@ -667,14 +707,16 @@ for(item in missing.items.list){
 }
 
 # show data check reports
-file.show(components.report.dir)
-
+if(data.check.plots == TRUE){
+    file.show(db.summary)
+}
+    
 if(length(readLines(warnings, warn = F)) > 1){
-file.show(warnings)
+    file.show(warnings)
 }
 
 if(length(readLines(fatal.warnings, warn = F)) > 1){
-file.show(fatal.warnings)
+    file.show(fatal.warnings)
 }
 
 
