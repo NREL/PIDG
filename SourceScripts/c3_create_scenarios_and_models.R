@@ -72,6 +72,10 @@ if (exists('remap.reference.nodes')) {
     other.regions <- node.data.table[,unique(Region)]
 }
 
+if (!exists("other.regions")) {
+    other.regions <- character()
+}
+
 # for any missing regions, grab a reference node and output full table, 
 # then combine all refnode tables so that all info is contained in 
 # ref.node.region.table
@@ -79,9 +83,11 @@ if (length(other.regions) > 0) {
     
     message(sprintf('... Assigning reference node as first node in %s', 
                     paste0(other.regions, collapse = ', ')))
+    
     ref.node.region.table <- node.data.table[Region %in% other.regions, 
                                              .(Region = Region, 
                                                `Region.Reference Node` = Node)]
+    
     ref.node.region.table <- ref.node.region.table[!duplicated(Region),]
     
     if (exists('external.refnode')) {
@@ -451,9 +457,12 @@ if (exists('compact.generic.import.files')) {
                             compact.generic.import.files[[i]][1]))
         }
     }
+    
+    # clean up
+    rm(cur.tab, cur.obj.type)
+    
 } else { message('>>  no compact generic import files defined ... skipping')}
-# clean up
-rm(cur.tab, cur.obj.type)
+
 
 if (india.repo){
     #--------------------------------------------------------------------------|
