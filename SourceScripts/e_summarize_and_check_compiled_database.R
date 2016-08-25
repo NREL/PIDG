@@ -98,13 +98,13 @@ if(nrow(missing.properties.objects) > 0){
   sink()
 }
 
-memberships.objects <- rbind(Memberships.sheet[,.(Object = unique(parent_object))],
-                             Memberships.sheet[,.(Object = unique(child_object))])
+memberships.objects <- rbind(Memberships.sheet[,.(object = unique(parent_object))],
+                             Memberships.sheet[,.(object = unique(child_object))])
 
-memberships.objects <- memberships.objects[Object != "System",
-                                         .(Object = unique(object))]
+memberships.objects <- memberships.objects[object != "System",
+                                         .(object = unique(object))]
 
-missing <- which(memberships.objects[,Object] %in% Objects.sheet[,name] == F)
+missing <- which(memberships.objects[,object] %in% Objects.sheet[,name] == F)
 
 missing.memberships.objects <- memberships.objects[missing,]
 
