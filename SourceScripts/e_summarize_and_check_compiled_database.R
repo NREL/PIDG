@@ -214,7 +214,7 @@ cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel
 withOptions(list(width = 200), 
 			print(generator.fuels.summary,
 				  row.names = F, 
-				  n = nrow(obj.summary))
+				  n = nrow(generator.fuels.summary))
 				  )
 cat("\n\n")
 sink()
