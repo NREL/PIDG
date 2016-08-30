@@ -123,8 +123,7 @@ if(nrow(missing.memberships.objects) > 0){
 
 ### pull generator capacity by fuel and state
 generator.map <- Objects.sheet[class == "Generator", 
-                               .(Generator = name, Fuel = category)]
-
+                               .(Generator = name, `Generator category` = category)]
 
 generator.map <- merge(generator.map,
                        Properties.sheet[child_class == "Generator" &
@@ -132,6 +131,22 @@ generator.map <- merge(generator.map,
                                         .(Generator = child_object,
                                           Capacity = value)], 
                        by = "Generator", all.x = T)
+
+# pull generator fuels
+generator.map <- merge(generator.map,
+                       Memberships.sheet[parent_class == "Generator" &
+                                           child_class == "Fuel",
+                                         .(Generator = parent_object,
+                                           Fuel = child_object)],
+                       by = "Generator", all = T)
+
+# pull generator start fuels
+generator.map <- merge(generator.map,
+                       Memberships.sheet[parent_class == "Generator" &
+                                           child_class == "Start Fuel",
+                                         .(Generator = parent_object,
+                                           `Start Fuel` = child_object)],
+                       by = "Generator", all = T)
 
 # pull generator nodes
 generator.map <- merge(generator.map,
@@ -159,14 +174,14 @@ generator.map <- merge(generator.map,
                        by = "Generator", all.x = T)
 
 # clean up scenario name
-generator.map[,scenario := gsub("{Object}","Scenario: ",scenario, fixed = T)]
+generator.map[,scenario := gsub("{Object}", "",scenario, fixed = T)]
 generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
 
 # flag generators with missing missing nodes, regions, fuels, capacity, units
 
 gens.missing.units <- generator.map[is.na(Units), .(Generator, Units)]
 gens.missing.capacity <- generator.map[is.na(Capacity), .(Generator, Capacity)]
-gens.missing.fuel <- generator.map[is.na(Fuel), .(Generator, Fuel, Fatal = T)]
+gens.missing.fuel <- generator.map[is.na(Fuel), .(Generator, Fuel, Fatal = F)]
 gens.missing.node <- generator.map[is.na(Node), .(Generator, Node)]
 
 # add to missing items list
@@ -192,7 +207,7 @@ generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(Capacity*Unit
                                            min.units = min(Units),
                                            max.units = max(Units),
                                            sd.units = sd(Units)),
-                                        by = .(Fuel, Region, scenario)]
+                                        by = .(`Generator category`, Fuel, `Start Fuel`,  Region, scenario)]
 
 generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
                                             avg.capacity = mean(Capacity),
@@ -205,11 +220,15 @@ generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(Capacity*Uni
                                             min.units = min(Units),
                                             max.units = max(Units),
                                             sd.units = sd(Units)),
-                                         by = .(Fuel, scenario)]
+                                         by = .(`Generator category`, Fuel, `Start Fuel`, scenario)]
+
+# tidy up
+setorder(generator.fuels.region, Region, `Generator category`, Fuel, `Start Fuel`, scenario)
+setorder(generator.fuels.summary, `Generator category`, Fuel, `Start Fuel`, scenario)
 
 sink(db.summary, append = TRUE)
 cat("Summary of generators in database")
-cat("\n------------\n")
+cat("\n------------\n\n")
 cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n\n", data.check.dir))
 withOptions(list(width = 200), 
 			print(generator.fuels.summary,
@@ -365,7 +384,7 @@ components.table[,component.id := NULL]
 
 sink(db.summary, append = TRUE) 
 cat(sprintf("Summary of connected components in network of %s database.", ifelse(exists("choose.db"), choose.db, "the")))
-cat(paste0("\n","------------","\n"))
+cat(paste0("\n","------------","\n\n"))
 cat("This analysis is done on the base network - scenarios on Lines/Transformers are ignored.")
 cat("\n")
 cat(sprintf("List of nodes that belong to islands saved in %s/isolated.nodes.csv", data.check.dir))
