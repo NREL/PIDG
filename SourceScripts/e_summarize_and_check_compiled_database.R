@@ -10,7 +10,14 @@ withOptions <- function(optlist, expr)
 }
 
 # by default, generate plots
-if(!exists("data.check.plots")){data.check.plots <- TRUE}
+if(!exists("data.check.plots")){
+    
+    message(paste(">>  data.check.plots does not exist; exporting data check", 
+                  "plots by default. To suppress this and decrease runtime, set", 
+                  "data.check.plots to TRUE.")) 
+
+    data.check.plots <- TRUE
+}
 
 # list of missing items
 missing.items.list <- c()
