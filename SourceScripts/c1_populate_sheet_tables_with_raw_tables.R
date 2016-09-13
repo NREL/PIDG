@@ -184,7 +184,11 @@ rm(all.zones, zones.to.objects, zones.to.nodes.to.memberships)
 
 message("arranging line data")
 
-line.data.table[, Units := 1]
+# add line units. currently only avaiable for pre.parsed. maybe in the future
+# can change automatically assign status to units 
+if (1("Units" %in% colnames(line.data.table))) {
+    line.data.table[, Units := 1]
+}
 
 # find regions from and to for line categorize
 line.data.table <- merge(line.data.table,
