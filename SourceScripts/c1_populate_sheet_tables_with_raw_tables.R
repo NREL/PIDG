@@ -186,7 +186,7 @@ message("arranging line data")
 
 # add line units. currently only avaiable for pre.parsed. maybe in the future
 # can change automatically assign status to units 
-if (1("Units" %in% colnames(line.data.table))) {
+if (!("Units" %in% colnames(line.data.table))) {
     line.data.table[, Units := 1]
 }
 
