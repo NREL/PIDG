@@ -188,7 +188,7 @@ generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
 
 gens.missing.units <- generator.map[is.na(Units), .(Generator, Units)]
 gens.missing.capacity <- generator.map[is.na(Capacity), .(Generator, Capacity)]
-gens.missing.fuel <- generator.map[is.na(Fuel), .(Generator, Fuel, Fatal = F)]
+gens.missing.fuel <- generator.map[is.na(Fuel), .(Generator, Fuel)]
 gens.missing.node <- generator.map[is.na(Node), .(Generator, Node)]
 
 # add to missing items list
