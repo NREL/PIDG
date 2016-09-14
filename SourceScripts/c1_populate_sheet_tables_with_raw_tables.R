@@ -50,7 +50,8 @@ if (choose.input == "pre.parsed") {
     
     if (exists("load.file")) {
         if (file.exists(file.path(inputfiles.dir, load.file))) {
-            load.data.table <- fread(file.path(inputfiles.dir, load.file))
+            load.data.table <- suppressWarnings(fread(file.path(inputfiles.dir, load.file))) 
+            # for bumping load type col to character type in posoco
         } else {
             stop(sprintf("!!  %s does not exist", load.file))
         }
