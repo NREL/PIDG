@@ -322,13 +322,18 @@ Objects.sheet <- merge_sheet_w_table(Objects.sheet, gens.to.objects)
 
 # add generator properties to properties .sheet
 gens.to.properties <- generator.data.table[, .(Generator, Units,
-                                               `Max Capacity`, 
-                                               `Min Stable Level`)]
+                                               `Max Capacity`)]
 
 add_to_properties_sheet(gens.to.properties, 
                         names.col = 'Generator',
                         object.class = 'Generator', 
                         collection.name = 'Generators')
+
+if ("Min Stable Level" %in% generator.data.table) {
+    msl.to.props <- generator.data.table[, .(Generator, `Min Stable Level`)]
+
+    add_to_properties_sheet(msl.to.props)
+}
 
 # add generator-node membership to memberships .sheet
 gens.to.memberships <- initialize_table(Memberships.sheet,
