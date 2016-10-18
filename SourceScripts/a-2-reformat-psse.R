@@ -319,11 +319,86 @@ reformatted.tables <- c(reformatted.tables, "line.data.table")
 # generator.data.table ----
 #------------------------------------------------------------------------------|
 
+gen.cols <- colnames(generator.data.table)
+gen.owner.cols <- gen.cols[grepl("owner", gen.cols)]
+
+if (length(gen.owner.cols) > 0) {
+    
+    # grab columns with ownership data to be merged with the full generator
+    # table later
+    gen.owners <- generator.data.table[,.SD, .SDcols = c("node.number", "id", 
+                                                   gen.owner.cols)]
+    
+
+    
+}
+
 generator.data.table <- generator.data.table[,.(node.number,
                                                 id, 
                                                 `Max Capacity` = max.capacity.MW,
                                                 `Min Stable Level` = min.output.MW,
                                                 Status = status)]
+
+# add ownership back in if it exists
+if (length(gen.owner.cols) > 0) {
+    
+    generator.data.table <- merge(generator.data.table, gen.owners, 
+                                  by = c("node.number", "id"),
+                                  all.x = TRUE)
+    
+    # if owner.data.table exists, add real names for ownerships
+    if (exists("owner.data.table")) {
+        
+        # need to merge for each owner.numberX column that exists. find 
+        # out how many times we need to merge
+        times.to.merge <- length(gen.owner.cols)/2
+        
+        # check this
+        last.col <- gen.owner.cols[length(gen.owner.cols)]
+        if (times.to.merge != as.numeric(substr(last.col, 
+                                                nchar(last.col),
+                                                nchar(last.col)))) {
+            
+            message(paste("Number of owner columns doesn't line up with.",
+                          "owner column labels. Please check."))
+        }
+        
+        for (i in seq_len(times.to.merge)) {
+            
+            # workaround to force owner.number to be numeric
+            generator.data.table[, owner.number.temp := as.numeric(get(paste0("owner.number", i)))]
+            generator.data.table[, (paste0("owner.number", i)) := NULL]
+            generator.data.table[, (paste0("owner.number", i)) := owner.number.temp]
+            generator.data.table[, owner.number.temp := NULL]
+            
+            # merge owner table in 
+            generator.data.table <- merge(generator.data.table, 
+                                            owner.data.table,
+                                          by.x = paste0("owner.number", i),
+                                          by.y = "owner.number",
+                                          all.x = TRUE)
+            
+            # replace column names
+            setnames(generator.data.table, 
+                     "owner.name", 
+                     paste0("Owner", i))
+                        
+            setnames(generator.data.table, 
+                     paste0("owner.fraction", i), 
+                     paste0("Owner Fraction", i))
+            
+            generator.data.table[,(paste0("owner.number", i)) := NULL]
+        
+            
+        }
+        # clean up
+        rm(i)
+        
+    } # end exists("owner.data.table")
+} # end length(gen.owner.cols)
+
+# clean up
+rm(gen.cols, gen.owner.cols)
 
 # change to generator name
 generator.data.table <- merge(generator.data.table, 
@@ -336,9 +411,16 @@ generator.data.table[,Generator := paste("GEN", Node, id, sep = "_")]
 # clean up
 generator.data.table[,c("node.number", "id") := NULL]
 
-setcolorder(generator.data.table, c("Generator", "Node", "Max Capacity",  
-                                    "Min Stable Level", "Status"))
+# reorder cols. ownership cols are optional and may not exist, so only reorder
+# required columns
+known.cols <- c("Generator", "Node", "Max Capacity", "Min Stable Level", 
+                "Status")
+all.cols <- colnames(generator.data.table)
 
+setcolorder(generator.data.table, 
+            c(known.cols, all.cols[!(all.cols %in% known.cols)]))
+
+                                   
 # add to list to write out
 reformatted.tables <- c(reformatted.tables, "generator.data.table")
 
