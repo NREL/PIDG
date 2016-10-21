@@ -18,8 +18,8 @@ if (exists('units.to.delete.files')) {
         
         to.delete <- fread(file.path(inputfiles.dir, fname))
         Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Object.Name])]
-        Properties.sheet <- Properties.sheet[!(child_object %in% 
-                                                 to.delete[,Object.Name])]
+        Properties.sheet <- Properties.sheet[!(child_object %in% to.delete[,Object.Name]) &
+                                             !(parent_object %in% to.delete[,Object.Name])]
         Memberships.sheet <- 
           Memberships.sheet[!(child_object %in% to.delete[,Object.Name]) & 
                               !(parent_object %in% to.delete[,Object.Name])]
