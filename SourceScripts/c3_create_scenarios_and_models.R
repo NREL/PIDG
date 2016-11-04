@@ -787,6 +787,10 @@ if (exists("interleave.models.list")) {
         cur.fname = item[1]
         cur.template.fuel.name = item[["template.fuel"]]
         cur.template.object.name = item[["template.object"]]
+        cur.interleave = item[["interleave"]]
+        
+        # correct interleave
+        if (is.null(cur.interleave)) cur.interleave <- FALSE
         
         # make sure interleave file and template file both exist 
         if (all(
@@ -805,6 +809,7 @@ if (exists("interleave.models.list")) {
                                 cur.fname, cur.template.fuel.name, 
                                 paste0(cur.template.object.name, collapse = ", ")))
             }
+            
             
             # do actual work  
             # parse this file
@@ -911,7 +916,8 @@ if (exists("interleave.models.list")) {
                     datafileobj.scenario = cur.tab[i, datafileobj.scenario],
                     template.fuel = cur.template.fuel,
                     template.object = ifelse(exists("cur.template.object"), 
-                                             cur.template.object, NA))
+                                             cur.template.object, NA),
+                    interleave = cur.interleave)
             }
             
             # rm(cur.fname, cur.template.fuel, cur.tab, 

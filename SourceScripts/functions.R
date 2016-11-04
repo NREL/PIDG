@@ -692,7 +692,8 @@ make_interleave_pointers <- function(parent.model, child.model,
                                      filepointer.scenario, datafileobj.scenario, 
                                      template.fuel = NA, 
                                      template.object = NA,
-                                     add.scen.to.model = TRUE) {
+                                     add.scen.to.model = TRUE,
+                                     interleave = TRUE) {
     
     # check to make sure both models exist (warn, skip if not)
     if (!(parent.model %in% Objects.sheet$name &
@@ -707,16 +708,18 @@ make_interleave_pointers <- function(parent.model, child.model,
     # create interleaved membership between models - maybe consider 
     # restructuring so that don't have to merge each time with 
     # Memberships.sheet?
-    int.to.memberships = initialize_table(Memberships.sheet, 
-                                          1, 
-                                          list(parent_class = "Model", 
-                                               child_class = "Model", 
-                                               collection = "Interleaved", 
-                                               parent_object = parent.model, 
-                                               child_object = child.model))
-    
-    Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, 
-                                              int.to.memberships)
+    if (interleave) {
+        int.to.memberships = initialize_table(Memberships.sheet, 
+                                              1, 
+                                              list(parent_class = "Model", 
+                                                   child_class = "Model", 
+                                                   collection = "Interleaved", 
+                                                   parent_object = parent.model, 
+                                                   child_object = child.model))
+        
+        Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, 
+                                                  int.to.memberships)
+    }
     
     # use template to create properties with pointers under scenario
     
