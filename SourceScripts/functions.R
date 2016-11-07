@@ -705,6 +705,9 @@ make_interleave_pointers <- function(parent.model, child.model,
         return()
     }
     
+    # make sure don't mess with global copy (this is a small table; copying is ok)
+    template.fuel <- copy(template.fuel)
+    
     # create interleaved membership between models - maybe consider 
     # restructuring so that don't have to merge each time with 
     # Memberships.sheet?
@@ -743,9 +746,8 @@ make_interleave_pointers <- function(parent.model, child.model,
         pointers = template.fuel.copy[,lapply(.SD, function(x) na.omit(x)[1]), 
                                       .SDcols = -1] 
         
-        setnames(pointers, 
-                 names(pointers), 
-                 paste("Pass", names(pointers), "property"))
+        # HEREHERE this is where names get set and used as datafile obj names
+        # can modify names and properties here
         
         pointers = melt(pointers, measure.vars = colnames(pointers), 
                         variable.name = "Data File", value.name = "filename")
@@ -759,25 +761,70 @@ make_interleave_pointers <- function(parent.model, child.model,
         # file paths to name of datafile objects, then add these to properties 
         # sheet, overwriting what already exists
         
-        for (j in names(template.fuel.copy)[-1])
+        for (j in names(template.fuel.copy)[-1]) {
             set(template.fuel.copy, 
                 which(!is.na(template.fuel.copy[[j]])), j, 
-                paste("{Object}Pass", j, "property"))        
+                paste0("{Object}", j))        
+        }
+        
+        # set names back to just properies so can pass to add_to_properties_sheet
+        nmes <- gsub("Pass ", "", copy(names(template.fuel.copy)))
+        nmes <- tstrsplit(nmes, ": ")[[1]]
+        names(nmes) <- copy(names(template.fuel.copy))
+        
+        # handle duplicated columns by combining them. does not allow dupliacate
+        # filepointers for same property for same fuel type
+        duped <- nmes[duplicated(nmes)]
+        duped <- nmes[nmes %in% duped]
+        
+        if (length(duped) > 0) {
+            
+            # make sure works if multiple properties have duplicates
+            for (prop in unique(duped)) {
+                
+                cur.duped <- duped[duped == prop]
+                
+                # iterate through cols, fill in first col with rest, where is.na
+                first.duped <- cur.duped[1]
+                rest.duped <- cur.duped[-1]
+                
+                for (colname in names(rest.duped)) {
+                    
+                    # replace values
+                    template.fuel.copy[is.na(get(names(first.duped))),
+                                  (names(first.duped)) := get(colname)]
+                    
+                    template.fuel.copy[,(colname) := NULL]
+                    
+                }
+                
+                # set first col name to property
+                setnames(template.fuel.copy, names(first.duped), first.duped)
+                
+                nmes <- nmes[!(nmes %in% duped[duped == prop])]
+            }
+            
+        }
+        
+        # setnames with old and new
+        setnames(template.fuel.copy, names(nmes), nmes)
+        
+        
         
         # map by fuel, then add to properties sheet with given scenario
         cur.mapped.tab = merge_property_by_fuel(template.fuel.copy, 
-                                                prop.cols = template.fuel.cols)
+                                                prop.cols = names(template.fuel.copy[,.SD,.SDcols = -"Fuel"]))
+        
+        prop.cols <- names(cur.mapped.tab)
+        prop.cols <- prop.cols[prop.cols != "Generator"]
         
         add_to_properties_sheet(cur.mapped.tab, 
-                                object.class = "Generator",
-                                names.col = "Generator", 
-                                collection.name = "Generators", 
-                                datafile.col = template.fuel.cols,
+                                datafile.col = prop.cols,
                                 overwrite = TRUE, 
                                 overwrite.cols = "filename",
                                 scenario.name = datafileobj.scenario)
     }
-    
+
     if (is.data.table(template.object[1])) {
         # template.object is a list, so loop through
         # assume first column is objects and object class is name of column

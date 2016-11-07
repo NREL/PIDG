@@ -764,21 +764,69 @@ if (exists("interleave.models.list")) {
             
             # ---- first, process templates
             
-            # look at all templates and check whether all datafile objects 
-            # already exist. if they don't, create them.
-            # objects will always be named "Pass _____ property" 
-            # properties are in column names of templates
-            all.propnames = colnames(cur.template.fuel[,.SD, .SDcols = -1])
-            if (!is.null(cur.template.object.name)) {
-                all.propnames = c(all.propnames, 
-                                  sapply(cur.template.object, 
-                                         function(x) colnames(x[,.SD, .SDcols = -1])))
-            }
+            # if something exists in the "property" row, then process it. 
+            # 1 - change names of datafile objects to include property
+            # 2 - create name to property vector to map back to properties later
+            #     (inside function)
+            # 3 - if the object exists but its property doesn't, then add that 
+            #     property back to the object
             
-            all.propnames = paste("Pass", all.propnames, "property")
+            if ("Attribute" %in% cur.template.fuel$Fuel) {
+                
+                # if this exists, add the propname to the colname to be able
+                # to uniquely identify datafile objects with different 
+                # properties, and keep track of what properties need to be added
+                # later. The colon will be an indicator later about whether
+                # names should be split
+                
+                # column names to set names
+                props <- unlist(cur.template.fuel[Fuel == "Attribute"])
+                props["Fuel"] <- ""
+                props[props != ""] <- paste0(": ", props[props != ""])
+
+                setnames(cur.template.fuel, 
+                         paste0("Pass ", names(props), props))
+                setnames(cur.template.fuel, "Pass Fuel", "Fuel") # hacky but... 
+                
+                # grab table of properties to set
+                dfo.props <- cur.template.fuel[Fuel == "Attribute"]
+                dfo.props <- melt(dfo.props, 
+                                  measure.vars = colnames(dfo.props),
+                                  variable.name = "name",
+                                  value.name = "attribute")
+                
+                # get rid of NAs, blanks, the fuel column 
+                dfo.props <- dfo.props[!is.na(attribute) & 
+                                       !(attribute %in% c("", "Attribute"))]
+                
+                # separate names and properties and format to be added to 
+                # attributes sheet
+                dfo.props[,c("attribute", "value") := tstrsplit(attribute, 
+                                                               "=| = | =|= ")]
+                
+                dfo.props[,class := "Data File"]
+                
+                # dfo props will be used later, after making sure all df objects
+                # exist, to add attributes
+                
+                # remove attribute row from cur.template.fuel
+                cur.template.fuel <- cur.template.fuel[Fuel != "Attribute"]
+                
+                
+            } else {
+                
+                # set names with no property specification
+                prop.cols <- names(cur.template.fuel)
+                prop.cols <- prop.cols[prop.cols != "Fuel"]
+                
+                setnames(cur.template.fuel, prop.cols, paste("Pass", prop.cols))
+            }
             
             # check if any of these datafile objets aren't in objects sheet. 
             # if they aren't, add them
+            all.propnames <- names(cur.template.fuel)
+            all.propnames <- all.propnames[all.propnames != "Fuel"]
+            
             missing.propnames = all.propnames[
                 !(all.propnames %in% Objects.sheet[class == "Data File", name])]
             
@@ -794,13 +842,21 @@ if (exists("interleave.models.list")) {
                 rm(dfobj.to.obects)
             }
             
+            # add specified properties to datafile objects, if they were 
+            # specified
+            if (exists("dfo.props") && nrow(dfo.props) > 0) {
+                
+                Attributes.sheet <- merge_sheet_w_table(Attributes.sheet, 
+                                                        dfo.props)
+            }
+            
             # change blanks to NAs (easier to handle) and check that template 
             # doesn't have more than one file pointer per col
             for (j in seq_len(ncol(cur.template.fuel)))
                 set(cur.template.fuel,which(cur.template.fuel[[j]] == ""),j,NA)
             
-            if (cur.template.fuel[,
-                                  any(sapply(.SD, function(x) length(unique(na.omit(x))) > 1)), .SDcols = -1]) {
+            if (cur.template.fuel[, any(sapply(.SD, function(x) length(unique(na.omit(x))) > 1)), 
+                                  .SDcols = -1]) {
                 
                 message(sprintf(paste(">>  all filepointers in template %s are",
                                       "not identical. this will not be read correctly ... skipping"),
@@ -848,6 +904,7 @@ if (exists("interleave.models.list")) {
                     interleave = cur.interleave)
             }
             
+        
             # rm(cur.fname, cur.template.fuel, cur.tab, 
             # all.propnames, missing.propnames, cur.template.fuel.name,
             # cur.template.object.name)
