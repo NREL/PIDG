@@ -576,7 +576,7 @@ if(data.check.plots){
 # check for fatal import/run errors ----
 #------------------------------------------------------------------------------#
 
-# make sure there are no required values missing in properties.sheet
+# ** make sure there are no required values missing in properties.sheet ----
 problem.row.mask = Properties.sheet[, 
                                     !complete.cases(list(parent_object, child_object, parent_class, 
                                                          child_class, collection, property, value, band_id))]
@@ -592,7 +592,7 @@ if (any(problem.row.mask)) {
   sink()
 }
 
-# make sure there are no blanks in Memberships.sheet
+# ** make sure there are no blanks in Memberships.sheet ----
 problem.row.mask = !complete.cases(Memberships.sheet)
 
 if (any(problem.row.mask)) {
@@ -608,7 +608,7 @@ if (any(problem.row.mask)) {
   sink()
 }
 
-# make sure no region has no nodes
+# ** make sure no region has no nodes ----
 all.regions <- Objects.sheet[class == "Region",name]
 regions.w.nodes <- Memberships.sheet[parent_class == "Node" & collection == 
                                        "Region",child_object]
@@ -622,7 +622,7 @@ if (!all(all.regions %in% regions.w.nodes)) {
   sink()
 }
 
-# make sure no object name has more than 50 characters 
+# ** make sure no object name has more than 50 characters ----
 if (any(Objects.sheet[,nchar(name) > 50])) {
   sink(fatal.warnings, append = T) 
   cat("\n\n")
@@ -633,7 +633,7 @@ if (any(Objects.sheet[,nchar(name) > 50])) {
   sink()
 }
 
-# check for properties that periods that require non-NA period_type_ids
+# ** check for properties that periods that require non-NA period_type_ids ----
 # have only tested a couple of these,
 period_id_props = Properties.sheet[grepl("(Hour|Day|Week|Month|Year)$", property)]
 period_id_table = data.table(period_id = c(6, 1, 2, 3, 4),
@@ -676,7 +676,7 @@ if (nrow(unknown.issues) > 0) {
 
 rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
 
-# check to see if a property is defined twice for on object in one scenario
+# ** check to see if a property is defined twice for on object in one scenario ----
 dupes = duplicated(Properties.sheet, 
                    by = c("parent_object", "child_object", "property", "scenario", 
                           "band_id"))
@@ -695,8 +695,7 @@ if (any(dupes)) {
 
 rm(dupes)
 
-# check to make sure that all objects mentioned in properties sheet also exist
-# as objects
+# ** check to make sure that all objects in properties.sheet exist as objects ----
 object.list = Properties.sheet[,unique(child_object)]
 
 object.list = object.list[!(object.list %in% Objects.sheet[,name])]
@@ -715,7 +714,7 @@ if (length(object.list) > 0) {
 
 rm(object.list)
 
-# check to make sure all scenarios have {Object} in front of them
+# ** check to make sure all scenarios have {Object} in front of them ----
 non.object.scens = Properties.sheet[,
                                     !(grepl("^\\{Object\\}", scenario) | is.na(scenario) | scenario == "")]
 
@@ -733,7 +732,7 @@ if (any(non.object.scens)) {
 
 rm(non.object.scens)
 
-# check to make sure all data files have either slashes or {Object}
+# ** check to make sure all data files have either slashes or {Object} ----
 non.object.dfs = Properties.sheet[,
                                   !(grepl("^\\{Object\\}", filename) | is.na(filename) | grepl("[/\\\\]", filename))]
 
@@ -789,7 +788,11 @@ for(item in missing.items.list){
   }
 }
 
-# show data check reports
+#------------------------------------------------------------------------------|
+# write out warnings ----
+#------------------------------------------------------------------------------|
+
+# show data check reports 
 if(data.check.plots == TRUE){
     file.show(db.summary)
 }
