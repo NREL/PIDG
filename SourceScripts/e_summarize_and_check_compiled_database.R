@@ -751,7 +751,23 @@ if (any(non.object.dfs)) {
 
 rm(non.object.dfs)
 
-# generate warnings and save .csv files for missing data
+# ** check to make sure no value is non-numeric ----
+nonnum.value = suppressWarnings(Properties.sheet[,is.na(as.numeric(value))])
+
+if (any(nonnum.value)) {
+  sink(fatal.warnings, append = T) 
+  cat("\n\n")
+  cat(paste0("WARNING: the following Properties.sheet rows have non-numeric ",
+             "'value' entries. This will not import.\n"))
+  print(Properties.sheet[nonnum.value], 
+        row.names = F,
+        n = nrow(Properties.sheet[nonnum.value]))
+  sink()
+}
+
+rm(nonnum.value)
+
+# ** generate warnings and save .csv files for missing data ----
 for(item in missing.items.list){
   if(nrow(get(item)) > 0){
     write.csv(get(item), 
