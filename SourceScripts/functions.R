@@ -642,50 +642,122 @@ add_to_properties_sheet <- function(input.table,
 #   sense.col = sense value defining the inequality (-1='<=')
 # data files should be saved as : DataFiles\Constraint_Category\Constraint_name.csv
 #  with one file for every defined constraint
-import_constraint = function(constraint.table,obj.col = 'generator.name',constraint.type = 'RHS Month',collection='Generators',
-                             child_class='Generator',constraint.col = 'constraint',category.col = 'category',prop.col = 'property',
+import_constraint = function(constraint.table,obj.col = 'generator.name',
+                             constraint.type = 'RHS Month',collection='Generators',
+                             child_class='Generator',constraint.col = 'constraint',
+                             category.col = 'category',prop.col = 'property',
                              sense.col = 'sense', scenario.col='scenario') {
-  if (constraint.type !='RHS Month') error(paste0('import_constraint() not yet defined for ',constraint.type))
-  period_type_id = 3
-  new.object.table = data.table(expand.grid(name=unique(constraint.table[,get(constraint.col)]),class = c('Constraint','Data File')),description=NA,key='name')
-  setkeyv(constraint.table,constraint.col)
-  new.object.table[constraint.table,category:=get(category.col)]
-  
-  scenario.list = NA
-  if (scenario.col %in% names(constraint.table)) {
-    scenario.list=unique(constraint.table[,.SD,.SDcols=c(scenario.col,category.col)])
-    new.object.table = rbind(new.object.table,data.table(expand.grid(name=scenario.list[,get(scenario.col)],category=scenario.list[,get(category.col)],class = c('Scenario')),description=NA))
-  } else {
-    constraint.table[,eval(scenario.col):=NA]
-  }
-  
-  new.category.table = constraint.table[!duplicated(constraint.table[,.(get(category.col))]),
-                                        .(class=c('Constraint','Data File'),category=get(category.col))]
-  
-  new.attribute.table = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),
-                                         .(name=get(constraint.col),class='Data File', attribute='Enabled', value=-1)]
-  new.membership.table = constraint.table[!duplicated(constraint.table[,.(get(obj.col))]),
-                                          .(parent_class='Constraint',child_class,collection,parent_object=get(constraint.col),
-                                            child_object=get(obj.col))]
-  
-  constraint.table[!is.na(get(scenario.col)),eval(scenario.col):=paste0('{Object}',get(scenario.col))]
-  
-  new.properties.table = constraint.table[!duplicated(constraint.table[,.(get(obj.col),get(constraint.col))]), .(parent_class='Constraint',child_class,collection,parent_object=get(constraint.col),child_object=get(obj.col),property=get(prop.col),band_id=1,value=1,filename=NA,period_type_id=NA,scenario=get(scenario.col))]
-  
-  sense.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),.(parent_class='System',child_class='Constraint',collection='Constraints',parent_object='System',child_object=get(constraint.col),property='Sense',band_id=1,value=get(sense.col),filename=NA,period_type_id=NA,scenario=get(scenario.col))]
-  
-  constraint.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),.(parent_class='System',child_class='Constraint',collection='Constraints',parent_object='System',child_object=get(constraint.col),property=constraint.type,band_id=1,value=0,filename=paste0('{Object}',get(constraint.col)),period_type_id,scenario=get(scenario.col))]
-  
-  datafile.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),.(parent_class='System',child_class='Data File',collection='Data Files',parent_object='System',child_object=get(constraint.col),property='Filename',band_id=1,value=0,filename=paste('DataFiles',gsub(' ','_',x=get(category.col)),paste0(gsub(' ','_',x=get(constraint.col)),'.csv'),sep='\\'),period_type_id=NA,scenario=get(scenario.col))]
-  
-  new.properties.table = rbind(new.properties.table,sense.props,constraint.props,datafile.props)
-  
-  Objects.sheet <<- merge_sheet_w_table(Objects.sheet,new.object.table)
-  Categories.sheet <<- merge_sheet_w_table(Categories.sheet,new.category.table)
-  Attributes.sheet <<- merge_sheet_w_table(Attributes.sheet,new.attribute.table)
-  Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet,new.membership.table)
-  Properties.sheet <<- merge_sheet_w_table(Properties.sheet,new.properties.table)
+    
+    if (constraint.type !='RHS Month') error(paste0('import_constraint() not yet defined for ',constraint.type))
+    period_type_id = 3
+    new.object.table = data.table(expand.grid(name = unique(constraint.table[,get(constraint.col)]),
+                                              class = c('Constraint','Data File')),
+                                  description = NA,
+                                  key = 'name')
+    setkeyv(constraint.table,constraint.col)
+    new.object.table[constraint.table,category:=get(category.col)]
+    
+    scenario.list = NA
+    if (scenario.col %in% names(constraint.table)) {
+        
+        scenario.list=unique(constraint.table[,.SD,.SDcols=c(scenario.col,category.col)])
+        
+        new.object.table = rbind(new.object.table,
+                                 data.table(expand.grid(name = scenario.list[,get(scenario.col)],
+                                                        category = scenario.list[,get(category.col)],
+                                                        class = c('Scenario')),
+                                            description = NA))
+    } else {
+        constraint.table[,eval(scenario.col):=NA]
+    }
+    
+    new.category.table = constraint.table[!duplicated(constraint.table[,.(get(category.col))]),
+                                          .(class=c('Constraint','Data File'), 
+                                            category=get(category.col))]
+    
+    new.attribute.table = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),
+                                           .(name=get(constraint.col),
+                                             class='Data File', 
+                                             attribute='Enabled', 
+                                             value=-1)]
+    
+    new.membership.table = constraint.table[!duplicated(constraint.table[,.(get(obj.col))]),
+                                            .(parent_class='Constraint',
+                                              child_class,
+                                              collection,
+                                              parent_object=get(constraint.col),
+                                              child_object=get(obj.col))]
+    
+    constraint.table[!is.na(get(scenario.col)),
+                     eval(scenario.col):=paste0('{Object}',get(scenario.col))]
+    
+    new.properties.table = constraint.table[!duplicated(constraint.table[,.(get(obj.col),get(constraint.col))]), 
+                                            .(parent_class='Constraint',
+                                              child_class,
+                                              collection,
+                                              parent_object=get(constraint.col),
+                                              child_object=get(obj.col),
+                                              property=get(prop.col),
+                                              band_id=1,
+                                              value=1,
+                                              filename=NA,
+                                              period_type_id=NA,
+                                              scenario=get(scenario.col))]
+    
+    sense.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),
+                                   .(parent_class='System',
+                                     child_class='Constraint',
+                                     collection='Constraints',
+                                     parent_object='System',
+                                     child_object=get(constraint.col),
+                                     property='Sense',
+                                     band_id=1,
+                                     value=get(sense.col),
+                                     filename=NA,
+                                     period_type_id=NA,
+                                     scenario=get(scenario.col))]
+    
+    constraint.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),
+                                        .(parent_class='System',
+                                          child_class='Constraint',
+                                          collection='Constraints',
+                                          parent_object='System',
+                                          child_object=get(constraint.col),
+                                          property=constraint.type,
+                                          band_id=1,
+                                          value=0,
+                                          filename=paste0('{Object}',get(constraint.col)),
+                                          period_type_id,
+                                          scenario=get(scenario.col))]
+    
+    datafile.props = constraint.table[!duplicated(constraint.table[,.(get(constraint.col))]),
+                                      .(parent_class='System',
+                                        child_class='Data File',
+                                        collection='Data Files',
+                                        parent_object='System',
+                                        child_object=get(constraint.col),
+                                        property='Filename',
+                                        band_id=1,
+                                        value=0,
+                                        filename=paste('DataFiles',
+                                                       gsub(' ','_',x=get(category.col)),
+                                                       paste0(gsub(' ','_',x=get(constraint.col)),'.csv'),
+                                                       sep='\\'),
+                                        period_type_id=NA,
+                                        scenario=get(scenario.col))]
+    
+    new.properties.table = rbind(new.properties.table,
+                                 sense.props,
+                                 constraint.props,
+                                 datafile.props)
+    
+    Objects.sheet <<- merge_sheet_w_table(Objects.sheet,new.object.table)
+    Categories.sheet <<- merge_sheet_w_table(Categories.sheet,new.category.table)
+    Attributes.sheet <<- merge_sheet_w_table(Attributes.sheet,new.attribute.table)
+    Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet,new.membership.table)
+    Properties.sheet <<- merge_sheet_w_table(Properties.sheet,new.properties.table)
 }
+
 
 # create interleave pointers
 make_interleave_pointers <- function(parent.model, child.model, 
