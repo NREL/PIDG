@@ -825,7 +825,7 @@ make_interleave_pointers <- function(parent.model, child.model,
                                 scenario.name = datafileobj.scenario)
     }
 
-    if (is.data.table(template.object[1])) {
+    if (is.data.table(template.object[[1]])) {
         # template.object is a list, so loop through
         # assume first column is objects and object class is name of column
         
@@ -852,9 +852,9 @@ make_interleave_pointers <- function(parent.model, child.model,
             pointers = template.object.copy[,lapply(.SD, function(x) na.omit(x)[1]), 
                                             .SDcols = -1] 
             
-            setnames(pointers, 
-                     names(pointers), 
-                     paste("Pass", names(pointers), "property"))
+            setnames(pointers,
+                     names(pointers),
+                     paste("Pass", names(pointers)))
             
             pointers = melt(pointers, 
                             measure.vars = colnames(pointers), 
@@ -876,7 +876,7 @@ make_interleave_pointers <- function(parent.model, child.model,
             for (j in names(template.object.copy)[-1])
                 set(template.object.copy, 
                     which(!is.na(template.object.copy[[j]])), j, 
-                    paste("{Object}Pass", j, "property")) 
+                    paste("{Object}Pass", j)) 
             
             add_to_properties_sheet(template.object.copy, 
                                     object.class = object.class.col,

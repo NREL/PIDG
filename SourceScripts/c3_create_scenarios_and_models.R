@@ -852,8 +852,11 @@ if (exists("interleave.models.list")) {
             
             # change blanks to NAs (easier to handle) and check that template 
             # doesn't have more than one file pointer per col
-            for (j in seq_len(ncol(cur.template.fuel)))
-                set(cur.template.fuel,which(cur.template.fuel[[j]] == ""),j,NA)
+            if (length(which(cur.template.fuel == "")) > 0) {
+                for (j in seq_len(ncol(cur.template.fuel))) {
+                    set(cur.template.fuel,which(cur.template.fuel[[j]] == ""),j,NA)    
+                }
+            }
             
             if (cur.template.fuel[, any(sapply(.SD, function(x) length(unique(na.omit(x))) > 1)), 
                                   .SDcols = -1]) {
@@ -869,8 +872,12 @@ if (exists("interleave.models.list")) {
             if (!is.null(cur.template.object.name)) {
                 for (i in seq_along(cur.template.object)) {
                     
-                    for (j in seq_len(ncol(i)))
-                        set(i,which(i[[j]] == ""),j,NA)
+                    # change blanks to NA if there are any 
+                    for (j in seq_len(ncol(cur.template.object[[i]]))) {
+                        if (length(which(cur.template.object[[i]][[j]] == "") > 0)) {
+                            set(i,which(cur.template.object[[i]][[j]] == ""),j,NA)    
+                        }
+                    }
                     
                     if (cur.template.object[[i]][,
                                                  any(sapply(.SD, function(x) length(unique(na.omit(x))) > 1)), .SDcols = -1]) {
@@ -880,7 +887,39 @@ if (exists("interleave.models.list")) {
                                         cur.template.object.name[i]))
                         
                         cur.template.object[[i]] <- NA
+                        
+                        break()
                     }
+                    
+                    # add datafile objects
+                    
+                    # set names with no property specification
+                    cur.prop.cols <- names(cur.template.object[[i]])
+                    cur.prop.cols <- cur.prop.cols[-1] 
+                    
+                    # setnames(cur.template.object[[i]], cur.prop.cols, 
+                    #          paste("Pass", cur.prop.cols))
+                    
+                    # check for existence of datafile objects, add them if don't already exist
+                    # check if any of these datafile objets aren't in objects sheet. 
+                    # if they aren't, add them
+                    cur.all.propnames <- paste("Pass", cur.prop.cols)
+                    
+                    missing.propnames = cur.all.propnames[
+                        !(cur.all.propnames %in% Objects.sheet[class == "Data File", name])]
+                    
+                    if (length(missing.propnames) > 0) {
+                        dfobj.to.obects = initialize_table(Objects.sheet, 
+                                                           length(missing.propnames), 
+                                                           list(class = "Data File",
+                                                                name = missing.propnames, 
+                                                                category = "Pass properties"))
+                        
+                        Objects.sheet <- merge_sheet_w_table(Objects.sheet, dfobj.to.obects)
+                        
+                        rm(dfobj.to.obects)
+                    } 
+                
                 }
                 rm(i,j)
             }
