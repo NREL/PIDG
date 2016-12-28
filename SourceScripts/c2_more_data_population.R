@@ -126,11 +126,20 @@ if (exists("map.region.to.load.file")) {
     
     Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.scens.to.objects)
     
+    # clean up
+    rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
+       lpf.to.node.properties, load.scens, cur.tab, load.scens.to.objects)
     
+} else {
+    message(">>  map.region.to.load.file does not exist ... skipping")
+}
+
+if (exists("load.data.table")) {
+
     # add load participation factor to nodes
     # uses Load.table, node.data.table
     
-    message('... Adding load participation factor from current raw file')
+    message('... Adding load participation factor from load.data.table')
     
     # original table has duplicates which aren't related to each other--only select
     # one. Should refine later. 
@@ -177,11 +186,10 @@ if (exists("map.region.to.load.file")) {
                             names.col = 'Node', collection.name = 'Nodes')
     
     # clean up
-    rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
-       load.part.fact.table, lpf.to.node.properties, load.scens, cur.tab, 
-       load.scens.to.objects)
+    rm(load.part.fact.table)
+    
 } else {
-    message(">>  map.region.to.load.file does not exist ... skipping")
+    message(">>  load.data.table does not exist ... skipping")
 }
     
 #------------------------------------------------------------------------------|
