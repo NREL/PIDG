@@ -17,254 +17,259 @@
 # [[Tx configuration]] Aggregate transmission scenario ----
 # -----------------------------------------------------------------------------|
 
-#turn on "Aggregate Transmission" property for each region and assign a 
-#reference node to each region
-
-#scenario to objects
-scenario.agTx.to.objects <- initialize_table(Objects.sheet, 1, list(
-    class = "Scenario", name = "Aggregate transmission in all regions", 
-    category = "Transmission configuration"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, scenario.agTx.to.objects)
-
-#set aggregate Tx to 1 in each region
-#uses regions.to.objects
-all.regions <- unique(node.data.table[,Region])
-
-agTx.to.properties <- initialize_table(Properties.sheet, 
-                                       length(all.regions), 
-                                       list(parent_class = "System",
-                                            child_class = "Region", 
-                                            collection = "Regions", 
-                                            parent_object = "System", 
-                                            band_id = 1, 
-                                            property = "Aggregate Transmission", 
-                                            value = -1,
-                                            scenario = "{Object}Aggregate transmission in all regions"))
-
-agTx.to.properties[, child_object := all.regions]
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, agTx.to.properties)
-
-# add one node as reference node to every region
-# uses node.data.table, remap.reference.nodes, map.ref.node.file
-
-# if there is an external file and this option is turned on, grab it and 
-# note and regions that aren't included
-if (exists('remap.reference.nodes')) {
-    if (remap.reference.nodes == TRUE) {
-        if (file.exists(file.path(inputfiles.dir, map.ref.node.file))) {
-            
-            external.refnode <- fread(file.path(inputfiles.dir, map.ref.node.file))
-            
-            # keep track of what regions aren't in this file to assign ref node to them
-            other.regions <- node.data.table[,unique(Region)]
-            other.regions <- other.regions[!(other.regions %in% 
-                                                 external.refnode[,unique(Region)])]
-            
-        }} else {
-            message(paste('... remap.reference.nodes is FALSE.',
-                          'Assigning first node in each region as reference node'))
-            other.regions <- node.data.table[,unique(Region)]
-        }
-} else {
-    message(paste('... remap.reference.nodes or doesn\'t exist.',
-                  'Assigning first node in each region as reference node'))
-    other.regions <- node.data.table[,unique(Region)]
+if (exists("make.aggtx.scenario") && make.aggtx.scenario == TRUE) {
+    
+    #turn on "Aggregate Transmission" property for each region and assign a 
+    #reference node to each region
+    
+    #scenario to objects
+    scenario.agTx.to.objects <- initialize_table(Objects.sheet, 1, list(
+        class = "Scenario", name = "Aggregate transmission in all regions", 
+        category = "Transmission configuration"))
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, scenario.agTx.to.objects)
+    
+    #set aggregate Tx to 1 in each region
+    #uses regions.to.objects
+    all.regions <- unique(node.data.table[,Region])
+    
+    agTx.to.properties <- initialize_table(Properties.sheet, 
+                                           length(all.regions), 
+                                           list(parent_class = "System",
+                                                child_class = "Region", 
+                                                collection = "Regions", 
+                                                parent_object = "System", 
+                                                band_id = 1, 
+                                                property = "Aggregate Transmission", 
+                                                value = -1,
+                                                scenario = "{Object}Aggregate transmission in all regions"))
+    
+    agTx.to.properties[, child_object := all.regions]
+    
+    Properties.sheet <- merge_sheet_w_table(Properties.sheet, agTx.to.properties)
+    
+    # add one node as reference node to every region
+    # uses node.data.table, remap.reference.nodes, map.ref.node.file
+    
+    # if there is an external file and this option is turned on, grab it and 
+    # note and regions that aren't included
+    if (exists('remap.reference.nodes')) {
+        if (remap.reference.nodes == TRUE) {
+            if (file.exists(file.path(inputfiles.dir, map.ref.node.file))) {
+                
+                external.refnode <- fread(file.path(inputfiles.dir, map.ref.node.file))
+                
+                # keep track of what regions aren't in this file to assign ref node to them
+                other.regions <- node.data.table[,unique(Region)]
+                other.regions <- other.regions[!(other.regions %in% 
+                                                     external.refnode[,unique(Region)])]
+                
+            }} else {
+                message(paste('... remap.reference.nodes is FALSE.',
+                              'Assigning first node in each region as reference node'))
+                other.regions <- node.data.table[,unique(Region)]
+            }
+    } else {
+        message(paste('... remap.reference.nodes or doesn\'t exist.',
+                      'Assigning first node in each region as reference node'))
+        other.regions <- node.data.table[,unique(Region)]
+    }
+    
+    if (!exists("other.regions")) {
+        other.regions <- character()
+    }
+    
+    # for any missing regions, grab a reference node and output full table, 
+    # then combine all refnode tables so that all info is contained in 
+    # ref.node.region.table
+    if (length(other.regions) > 0) {
+        
+        message(sprintf('... Assigning reference node as first node in %s', 
+                        paste0(other.regions, collapse = ', ')))
+        
+        ref.node.region.table <- node.data.table[Region %in% other.regions, 
+                                                 .(Region = Region, 
+                                                   `Region.Reference Node` = Node)]
+        
+        ref.node.region.table <- ref.node.region.table[!duplicated(Region),]
+        
+        if (exists('external.refnode')) {
+            ref.node.region.table <- merge(ref.node.region.table, external.refnode, 
+                                           by = c('Region', 'Region.Reference Node'), all = T)
+        } 
+    } else {
+        ref.node.region.table <- external.refnode
+    }
+    
+    agTx.refnode.region.to.memberships <- initialize_table(Memberships.sheet, 
+                                                           nrow(ref.node.region.table), 
+                                                           list(parent_class = "Region", 
+                                                                child_class = "Node", 
+                                                                collection = "Reference Node"))
+    
+    agTx.refnode.region.to.memberships[, parent_object := 
+                                           ref.node.region.table[,Region]]
+    agTx.refnode.region.to.memberships[, child_object := 
+                                           ref.node.region.table[,`Region.Reference Node`]]
+    
+    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                             agTx.refnode.region.to.memberships)
+    
+    # clean up
+    rm(ref.node.region.table, agTx.refnode.region.to.memberships, other.regions, 
+       scenario.agTx.to.objects, agTx.to.properties)
 }
-
-if (!exists("other.regions")) {
-    other.regions <- character()
-}
-
-# for any missing regions, grab a reference node and output full table, 
-# then combine all refnode tables so that all info is contained in 
-# ref.node.region.table
-if (length(other.regions) > 0) {
-    
-    message(sprintf('... Assigning reference node as first node in %s', 
-                    paste0(other.regions, collapse = ', ')))
-    
-    ref.node.region.table <- node.data.table[Region %in% other.regions, 
-                                             .(Region = Region, 
-                                               `Region.Reference Node` = Node)]
-    
-    ref.node.region.table <- ref.node.region.table[!duplicated(Region),]
-    
-    if (exists('external.refnode')) {
-        ref.node.region.table <- merge(ref.node.region.table, external.refnode, 
-                                       by = c('Region', 'Region.Reference Node'), all = T)
-    } 
-} else {
-    ref.node.region.table <- external.refnode
-}
-
-agTx.refnode.region.to.memberships <- initialize_table(Memberships.sheet, 
-                                                       nrow(ref.node.region.table), 
-                                                       list(parent_class = "Region", 
-                                                            child_class = "Node", 
-                                                            collection = "Reference Node"))
-
-agTx.refnode.region.to.memberships[, parent_object := 
-                                       ref.node.region.table[,Region]]
-agTx.refnode.region.to.memberships[, child_object := 
-                                       ref.node.region.table[,`Region.Reference Node`]]
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                         agTx.refnode.region.to.memberships)
-
-# clean up
-rm(ref.node.region.table, agTx.refnode.region.to.memberships, other.regions, 
-   scenario.agTx.to.objects, agTx.to.properties)
 
 #------------------------------------------------------------------------------|
 # [[Tx onfiguration]] Add scen. tag to interfaces ----
 # -----------------------------------------------------------------------------|
 
-# ---- ZONAL INTERFACES
-interface.names <- Objects.sheet[class == "Interface" & 
-                                     category == 'Zonal interfaces', name]
+if (exists("make.interface.scenario") && make.interface.scenario == TRUE) {
+    # ---- ZONAL INTERFACES
+    interface.names <- Objects.sheet[class == "Interface" & 
+                                         category == 'Zonal interfaces', name]
+    
+    # add dummy min up, min down, start costs to objects
+    interf.scen.to.objects <- initialize_table(Objects.sheet, 
+                                               1, 
+                                               list(class = "Scenario", 
+                                                    name = "Include zonal interfaces", 
+                                                    category = "Transmission configuration"))
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, interf.scen.to.objects)
+    
+    # add scenario tag to these properties
+    # uses interface.names
+    interf.off.to.properties <- initialize_table(Properties.sheet, 
+                                                 length(interface.names), 
+                                                 list(parent_class = "System", 
+                                                      parent_object = "System",
+                                                      collection = "Interfaces", 
+                                                      child_class = "Interface", 
+                                                      band_id = 1,    
+                                                      child_object = interface.names, 
+                                                      property = "Units", value = 0))
+    
+    interf.scen.to.properties <- initialize_table(Properties.sheet, 
+                                                  length(interface.names), 
+                                                  list(parent_class = "System", 
+                                                       parent_object = "System", 
+                                                       collection = "Interfaces", 
+                                                       child_class = "Interface", 
+                                                       band_id = 1, 
+                                                       child_object = interface.names, 
+                                                       property = "Units", 
+                                                       value = 1, 
+                                                       scenario = "{Object}Include zonal interfaces"))
+    
+    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                            interf.scen.to.properties)
+    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                            interf.off.to.properties)
+    
+    # ---- REGIONAL INTERFACES
+    interface.names <- Objects.sheet[class == "Interface" & 
+                                         category == 'Regional interfaces', name]
+    
+    # add dummy min up, min down, start costs to objects
+    interf.scen.to.objects <- initialize_table(Objects.sheet, 
+                                               1, 
+                                               list(class = "Scenario", 
+                                                    name = "Include regional interfaces", 
+                                                    category = "Transmission configuration"))
+    
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, interf.scen.to.objects)
+    
+    # add scenario tag to these properties
+    # uses interface.names
+    interf.off.to.properties <- initialize_table(Properties.sheet, 
+                                                 length(interface.names), 
+                                                 list(parent_class = "System", 
+                                                      parent_object = "System", 
+                                                      collection = "Interfaces", 
+                                                      child_class = "Interface",
+                                                      band_id = 1,
+                                                      child_object = interface.names, 
+                                                      property = "Units", 
+                                                      value = 0))
+    
+    interf.scen.to.properties <- initialize_table(Properties.sheet, 
+                                                  length(interface.names), 
+                                                  list(parent_class = "System", 
+                                                       parent_object = "System",
+                                                       collection = "Interfaces", 
+                                                       child_class = "Interface", 
+                                                       band_id = 1, 
+                                                       child_object = interface.names, 
+                                                       property = "Units",
+                                                       value = 1, scenario = "{Object}Include regional interfaces"))
+    
+    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                            interf.scen.to.properties)
+    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                            interf.off.to.properties)
+}
+    
+# #------------------------------------------------------------------------------|
+# # [[Tx configuration]] Don't enforce intERstate lines ----
+# # -----------------------------------------------------------------------------|
+# # scneario to objects
+# scenario.no.intrastate.lines <- initialize_table(Objects.sheet, 
+#                                                  1, 
+#                                                  list(class = "Scenario", 
+#                                                       name = "Turn off interstate lines", 
+#                                                       category = "Transmission configuration"))
+# Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+#                                      scenario.no.intrastate.lines)
+# 
+# # scenario to properties
+# # uses line.data.table
+# interstate.lines <- line.data.table[grepl("Interstate", category), Line]
+# scenario.no.inters.lines.to.propterties <- initialize_table(Properties.sheet, 
+#                                                             length(interstate.lines), 
+#                                                             list(parent_class = "System", 
+#                                                                  child_class = "Line", 
+#                                                                  parent_object = "System", 
+#                                                                  band_id = 1, 
+#                                                                  collection = "Lines"))
+# 
+# scenario.no.inters.lines.to.propterties[,child_object := interstate.lines]
+# scenario.no.inters.lines.to.propterties[,property := "Enforce Limits"]
+# scenario.no.inters.lines.to.propterties[,value := "0"]
+# scenario.no.inters.lines.to.propterties[,scenario := "{Object}Turn off interstate lines"]
+# 
+# Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+#                                         scenario.no.inters.lines.to.propterties)
 
-# add dummy min up, min down, start costs to objects
-interf.scen.to.objects <- initialize_table(Objects.sheet, 
-                                           1, 
-                                           list(class = "Scenario", 
-                                                name = "Include zonal interfaces", 
-                                                category = "Transmission configuration"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, interf.scen.to.objects)
 
-# add scenario tag to these properties
-# uses interface.names
-interf.off.to.properties <- initialize_table(Properties.sheet, 
-                                             length(interface.names), 
-                                             list(parent_class = "System", 
-                                                  parent_object = "System",
-                                                  collection = "Interfaces", 
-                                                  child_class = "Interface", 
-                                                  band_id = 1,    
-                                                  child_object = interface.names, 
-                                                  property = "Units", value = 0))
-
-interf.scen.to.properties <- initialize_table(Properties.sheet, 
-                                              length(interface.names), 
-                                              list(parent_class = "System", 
-                                                   parent_object = "System", 
-                                                   collection = "Interfaces", 
-                                                   child_class = "Interface", 
-                                                   band_id = 1, 
-                                                   child_object = interface.names, 
-                                                   property = "Units", 
-                                                   value = 1, 
-                                                   scenario = "{Object}Include zonal interfaces"))
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        interf.scen.to.properties)
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        interf.off.to.properties)
-
-# ---- REGIONAL INTERFACES
-interface.names <- Objects.sheet[class == "Interface" & 
-                                     category == 'Regional interfaces', name]
-
-# add dummy min up, min down, start costs to objects
-interf.scen.to.objects <- initialize_table(Objects.sheet, 
-                                           1, 
-                                           list(class = "Scenario", 
-                                                name = "Include regional interfaces", 
-                                                category = "Transmission configuration"))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, interf.scen.to.objects)
-
-# add scenario tag to these properties
-# uses interface.names
-interf.off.to.properties <- initialize_table(Properties.sheet, 
-                                             length(interface.names), 
-                                             list(parent_class = "System", 
-                                                  parent_object = "System", 
-                                                  collection = "Interfaces", 
-                                                  child_class = "Interface",
-                                                  band_id = 1,
-                                                  child_object = interface.names, 
-                                                  property = "Units", 
-                                                  value = 0))
-
-interf.scen.to.properties <- initialize_table(Properties.sheet, 
-                                              length(interface.names), 
-                                              list(parent_class = "System", 
-                                                   parent_object = "System",
-                                                   collection = "Interfaces", 
-                                                   child_class = "Interface", 
-                                                   band_id = 1, 
-                                                   child_object = interface.names, 
-                                                   property = "Units",
-                                                   value = 1, scenario = "{Object}Include regional interfaces"))
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        interf.scen.to.properties)
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        interf.off.to.properties)
-
-#------------------------------------------------------------------------------|
-# [[Tx configuration]] Don't enforce intERstate lines ----
-# -----------------------------------------------------------------------------|
-# scneario to objects
-scenario.no.intrastate.lines <- initialize_table(Objects.sheet, 
-                                                 1, 
-                                                 list(class = "Scenario", 
-                                                      name = "Turn off interstate lines", 
-                                                      category = "Transmission configuration"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-                                     scenario.no.intrastate.lines)
-
-# scenario to properties
-# uses line.data.table
-interstate.lines <- line.data.table[grepl("Interstate", category), Line]
-scenario.no.inters.lines.to.propterties <- initialize_table(Properties.sheet, 
-                                                            length(interstate.lines), 
-                                                            list(parent_class = "System", 
-                                                                 child_class = "Line", 
-                                                                 parent_object = "System", 
-                                                                 band_id = 1, 
-                                                                 collection = "Lines"))
-
-scenario.no.inters.lines.to.propterties[,child_object := interstate.lines]
-scenario.no.inters.lines.to.propterties[,property := "Enforce Limits"]
-scenario.no.inters.lines.to.propterties[,value := "0"]
-scenario.no.inters.lines.to.propterties[,scenario := "{Object}Turn off interstate lines"]
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        scenario.no.inters.lines.to.propterties)
-
-
-#------------------------------------------------------------------------------|
-# [[Tx configuration]] Don't enforce intRAstate lines ----
-# -----------------------------------------------------------------------------|
-# scneario to objects
-scenario.no.intrastate.lines <- initialize_table(Objects.sheet, 
-                                                 1, 
-                                                 list(class = "Scenario", 
-                                                      name = "For PsN - don't enforce intrastate lines", 
-                                                      category = "Transmission configuration"))
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-                                     scenario.no.intrastate.lines)
-
-# scenario to properties
-# uses line.data.table
-intrastate.lines <- line.data.table[!grepl("Interstate", category), Line]
-scenario.no.intras.lines.to.propterties <- initialize_table(Properties.sheet, 
-                                                            length(intrastate.lines), 
-                                                            list(parent_class = "System", 
-                                                                 child_class = "Line", 
-                                                                 parent_object = "System", 
-                                                                 band_id = 1, 
-                                                                 collection = "Lines"))
-
-scenario.no.intras.lines.to.propterties[,child_object := intrastate.lines]
-scenario.no.intras.lines.to.propterties[,property := "Enforce Limits"]
-scenario.no.intras.lines.to.propterties[,value := "0"]
-scenario.no.intras.lines.to.propterties[, scenario := "{Object}For PsN - don't enforce intrastate lines"]
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        scenario.no.intras.lines.to.propterties)
+# #------------------------------------------------------------------------------|
+# # [[Tx configuration]] Don't enforce intRAstate lines ----
+# # -----------------------------------------------------------------------------|
+# # scneario to objects
+# scenario.no.intrastate.lines <- initialize_table(Objects.sheet, 
+#                                                  1, 
+#                                                  list(class = "Scenario", 
+#                                                       name = "For PsN - don't enforce intrastate lines", 
+#                                                       category = "Transmission configuration"))
+# Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+#                                      scenario.no.intrastate.lines)
+# 
+# # scenario to properties
+# # uses line.data.table
+# intrastate.lines <- line.data.table[!grepl("Interstate", category), Line]
+# scenario.no.intras.lines.to.propterties <- initialize_table(Properties.sheet, 
+#                                                             length(intrastate.lines), 
+#                                                             list(parent_class = "System", 
+#                                                                  child_class = "Line", 
+#                                                                  parent_object = "System", 
+#                                                                  band_id = 1, 
+#                                                                  collection = "Lines"))
+# 
+# scenario.no.intras.lines.to.propterties[,child_object := intrastate.lines]
+# scenario.no.intras.lines.to.propterties[,property := "Enforce Limits"]
+# scenario.no.intras.lines.to.propterties[,value := "0"]
+# scenario.no.intras.lines.to.propterties[, scenario := "{Object}For PsN - don't enforce intrastate lines"]
+# 
+# Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+#                                         scenario.no.intras.lines.to.propterties)
 
 
 if (choose.input == "raw.psse") {
@@ -459,45 +464,11 @@ if (exists('compact.generic.import.files')) {
     }
     
     # clean up
-    rm(cur.tab, cur.obj.type)
+    if (exists("cur.tab")) rm(cur.tab)
+    if (exists("cur.obj.type")) rm(cur.obj.type)
     
 } else { message('>>  no compact generic import files defined ... skipping')}
 
-
-
-#------------------------------------------------------------------------------|
-# [[Scenario archive for other configs]] Add Max Energy Penalty ----
-#------------------------------------------------------------------------------| 
-# scenario to objects
-scenario.max.en.penalty <- initialize_table(Objects.sheet, 
-                                            1, 
-                                            list(class = "Scenario", 
-                                                 name = "Add Max Energy Penalty", 
-                                                 category = "Scenario archive for other configurations"))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, scenario.max.en.penalty)
-
-# get the names of all hydro gens that have a Max Energy Month property
-max.en.mo.gens <- Properties.sheet[property == "Max Energy Month", child_object]
-
-if (length(max.en.mo.gens)/12 > length(unique(max.en.mo.gens))) {print(
-
-        "STOP! Some gens have too many max energy month assignments.")}
-
-max.en.penalty.to.properties <- initialize_table(Properties.sheet, 
-                                                 length(unique(max.en.mo.gens)), 
-                                                 list(parent_class = "System",
-                                                      parent_object = "System", 
-                                                      collection = "Generators", 
-                                                      child_class = "Generator", 
-                                                      child_object = unique(max.en.mo.gens), 
-                                                      band_id = 1,
-                                                      property = "Max Energy Penalty", 
-                                                      value = 10000000000,
-                                                      scenario = "{Object}Add Max Energy Penalty"))
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        max.en.penalty.to.properties)
 
 
 #------------------------------------------------------------------------------|
@@ -505,35 +476,36 @@ Properties.sheet <- merge_sheet_w_table(Properties.sheet,
 # -----------------------------------------------------------------------------|
 # hopefully, this forces model to run transport instead of DCOPF
 
-# scneario to objects
-scenario.dc.lines <- initialize_table(Objects.sheet, 
-                                      1, 
-                                      list(class = "Scenario", 
-                                           name = "Make all lines DC", 
-                                           category = "Scenario archive for other configurations"))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, scenario.dc.lines)
-
-# scenario to properties
-# uses line.data.table
-# create table of only AC lines to use
-ac.lines <- line.data.table[Type == 'AC']
-scenario.dc.lines.to.properties <- initialize_table(Properties.sheet, 
-                                                    nrow(ac.lines), 
-                                                    list(parent_class = "System", 
-                                                         child_class = "Line",
-                                                         parent_object = "System", 
-                                                         band_id = 1, 
-                                                         collection = "Lines"))
-
-scenario.dc.lines.to.properties[,child_object := ac.lines[,Line]]
-scenario.dc.lines.to.properties[,property := "Reactance"]
-scenario.dc.lines.to.properties[,value := "0"]
-scenario.dc.lines.to.properties[,scenario := "{Object}Make all lines DC"]
-
-Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                        scenario.dc.lines.to.properties)
-
+if (exists("make.dcline.scenario") && make.dcline.scenario == TRUE) {
+    # scneario to objects
+    scenario.dc.lines <- initialize_table(Objects.sheet, 
+                                          1, 
+                                          list(class = "Scenario", 
+                                               name = "Make all lines DC", 
+                                               category = "Scenario archive for other configurations"))
+    
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, scenario.dc.lines)
+    
+    # scenario to properties
+    # uses line.data.table
+    # create table of only AC lines to use
+    ac.lines <- line.data.table[Type == 'AC']
+    scenario.dc.lines.to.properties <- initialize_table(Properties.sheet, 
+                                                        nrow(ac.lines), 
+                                                        list(parent_class = "System", 
+                                                             child_class = "Line",
+                                                             parent_object = "System", 
+                                                             band_id = 1, 
+                                                             collection = "Lines"))
+    
+    scenario.dc.lines.to.properties[,child_object := ac.lines[,Line]]
+    scenario.dc.lines.to.properties[,property := "Reactance"]
+    scenario.dc.lines.to.properties[,value := "0"]
+    scenario.dc.lines.to.properties[,scenario := "{Object}Make all lines DC"]
+    
+    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                            scenario.dc.lines.to.properties)
+}
 
 #------------------------------------------------------------------------------|
 # [[Scenario archive for other configs]] Lines to enforce for natnl study ----
