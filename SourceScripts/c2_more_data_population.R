@@ -128,7 +128,7 @@ if (exists("map.region.to.load.file")) {
     
     # clean up
     rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
-       lpf.to.node.properties, load.scens, cur.tab, load.scens.to.objects)
+       load.scens, cur.tab, load.scens.to.objects)
     
 } else {
     message(">>  map.region.to.load.file does not exist ... skipping")
@@ -186,7 +186,7 @@ if (exists("load.data.table")) {
                             names.col = 'Node', collection.name = 'Nodes')
     
     # clean up
-    rm(load.part.fact.table)
+    rm(lpf.to.node.properties, load.part.fact.table)
     
 } else {
     message(">>  load.data.table does not exist ... skipping")
