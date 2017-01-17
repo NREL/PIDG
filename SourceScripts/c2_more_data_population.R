@@ -895,11 +895,10 @@ if(exists('reserve.files')) {
                                              reserve.to.regs.to.memberships)
     
     # add reserve.region properties to properties .sheet
-    reserve.region.properties <- reserves[,!c("Region"),with = F]
-    
-    add_to_properties_sheet(reserve.region.properties, object.class = 'Reserve', 
-                            names.col = 'Reserve', 
-                            collection.name = 'Reserve.Regions')
+    add_to_properties_sheet(reserve.regions, object.class = 'Region',
+                            parent.col = 'Reserve',
+                            names.col = 'Region', 
+                            collection.name = 'Regions')
   }else {
     message(sprintf('>> file %s not found ... skipping',
                     reserve.files$reserve.regions))
