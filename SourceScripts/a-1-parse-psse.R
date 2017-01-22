@@ -106,8 +106,10 @@ for (i in 2:length(table.delims)) {
     all.blank  <- sub.table[, sapply(.SD, function(x) all(x == "" | is.na(x)))]
     all.blank <- names(all.blank[all.blank])
     
-    sub.table[, (all.blank) := NULL] 
-
+    if (length(all.blank) > 0) {
+        sub.table[, (all.blank) := NULL]     
+    }
+    
     # clean sub-table: change "numeric" cols to numeric (suppress NA-related 
     # warnings) and remove extra quotes and spaces from character cols
     sub.table <- sub.table[, lapply(.SD, function(x) {

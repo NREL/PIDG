@@ -623,7 +623,7 @@ if (!all(all.regions %in% regions.w.nodes)) {
 }
 
 # ** make sure no object name has more than 50 characters ----
-if (any(Objects.sheet[,nchar(name) > 50])) {
+if (any(Objects.sheet[!is.na(name),nchar(name) > 50])) {
   sink(fatal.warnings, append = T) 
   cat("\n\n")
   cat("WARNING: the following object(s) have names with > 50 characters. This will not import.\n")
