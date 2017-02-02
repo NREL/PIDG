@@ -91,7 +91,11 @@ if (choose.input == "raw.psse") {
     }
 }
 
-node.data.table[, Units := 1]
+if (!("Units" %in% colnames(node.data.table))) {
+    message("No Units specified for nodes ... setting Units = 1 for all")
+    node.data.table[, Units := 1]    
+}
+
 
 #------------------------------------------------------------------------------|
 # Add nodes to .sheet tables ----
@@ -269,7 +273,10 @@ rm(lines.to.objects, lines.to.properties, lines.to.nodes.to.memberships)
 
 message("arranging generator data")
 
-generator.data.table[, Units := 1]
+if (!("Units" %in% colnames(generator.data.table))) {
+    message("No Units specified for generators ... setting Units = 1 for all")
+    generator.data.table[, Units := 1]    
+}
 
 # add region
 generator.data.table <- merge(generator.data.table, 
