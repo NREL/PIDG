@@ -833,7 +833,7 @@ if(exists('reserve.files')) {
                               names.col = 'Reserve',
                               collection.name = 'Reserves')
       
-      # add reserve scenarios to objects .sheet
+      # add reserve scenarios to objects.sheet
       reserve.scenario.to.objects <- initialize_table(Objects.sheet, 
                                                       length(reserve.scenarios),
                                                       list(class = "Scenario",
@@ -873,6 +873,37 @@ if(exists('reserve.files')) {
                       reserve.files$reserve.generators))
     }
   
+  # add reserve regions
+  if(file.exists(file.path(inputfiles.dir,reserve.files$reserve.regions))){
+    # read reserve regions file
+    message(sprintf("...Adding reserves from %s", reserve.files$reserve.regions))
+    reserve.regions <- fread(file.path(inputfiles.dir,
+                                       reserve.files$reserve.regions))
+    
+    # add reserve-region memberships to memberships.sheet
+    reserve.to.regs.to.memberships <- 
+      initialize_table(Memberships.sheet, nrow(reserve.regions), 
+                       list(parent_class = "Reserve", child_class = "Region", 
+                            collection = "Regions"))
+    
+    reserve.to.regs.to.memberships[,parent_object := 
+                                     reserve.regions[,Reserve]]
+    
+    reserve.to.regs.to.memberships[,child_object := reserve.regions[,Region]]
+    
+    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                             reserve.to.regs.to.memberships)
+    
+    # add reserve.region properties to properties .sheet
+    add_to_properties_sheet(reserve.regions, object.class = 'Region',
+                            parent.col = 'Reserve',
+                            names.col = 'Region', 
+                            collection.name = 'Regions')
+  }else {
+    message(sprintf('>> file %s not found ... skipping',
+                    reserve.files$reserve.regions))
+  }
+    
 }else {
     message('>>  no reserves files defined ... skipping')
 }
