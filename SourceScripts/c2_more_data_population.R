@@ -848,7 +848,8 @@ if(exists('reserve.files')) {
     }
     
     # add reserve generators 
-    if(file.exists(file.path(inputfiles.dir,reserve.files$reserve.generators))){
+    if(length(reserve.files$reserve.generators) > 0 &&
+       file.exists(file.path(inputfiles.dir,reserve.files$reserve.generators))){
       # read reserve generators file
       message(sprintf("...Adding reserves from %s", reserve.files$reserve.generators))
       reserve.generators <- fread(file.path(inputfiles.dir,
@@ -869,12 +870,15 @@ if(exists('reserve.files')) {
                                                reserve.to.gens.to.memberships)
       
     }else {
-      message(sprintf('>>  file %s not found ... skipping', 
-                      reserve.files$reserve.generators))
+        if (length(reserve.files$reserve.regions) > 0) {
+            message(sprintf('>> file %s not found ... skipping',
+                            reserve.files$reserve.generators))
+        }
     }
   
   # add reserve regions
-  if(file.exists(file.path(inputfiles.dir,reserve.files$reserve.regions))){
+  if(length(reserve.files$reserve.regions) > 0 &&
+      file.exists(file.path(inputfiles.dir,reserve.files$reserve.regions))){
     # read reserve regions file
     message(sprintf("...Adding reserves from %s", reserve.files$reserve.regions))
     reserve.regions <- fread(file.path(inputfiles.dir,
@@ -900,8 +904,10 @@ if(exists('reserve.files')) {
                             names.col = 'Region', 
                             collection.name = 'Regions')
   }else {
-    message(sprintf('>> file %s not found ... skipping',
-                    reserve.files$reserve.regions))
+      if (length(reserve.files$reserve.regions) > 0) {
+          message(sprintf('>> file %s not found ... skipping',
+                          reserve.files$reserve.regions))
+      }
   }
     
 }else {
