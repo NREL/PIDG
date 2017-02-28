@@ -3,27 +3,25 @@
 **********
 __Introduction__
 
-Plexos can read in any Excel file that has the following structure: one workbook with 6 worksheets named Objects, Categories, Memberships, Attributes, Properties, and Reports, each with specified columns. These worksheets can hold all the information needed to construct and personalize a working model in Plexos. This set of scripts creates 6 data.tables, each corresponding to one required worksheet (referred to as .sheet tables throughout these comments and the code). Once these tables are created, the scripts compile all input data, format the data to correspond with Plexos's excel input file format, and add the data chunks to the .sheet tables. Lastly, the fully populated .sheet tables are exported into one Excel workbook, which can be imported directly into Plexos. 
-
-The database is built starting with a PSSE .raw file. Other input .csv are used to supplement and build off of the PSSE database. See "REQUIRED INPUT FILES" (documentation not complete as of 4/10/16) section for more detail.
+Plexos can read in any Excel file that has the following structure: one workbook with 6 worksheets named Objects, Categories, Memberships, Attributes, Properties, and Reports, each with specified columns. These worksheets can hold all the information needed to construct and personalize a working model in Plexos. This set of scripts reads in data describing a plexos network, either based off a PSSE file or a set of other csvs (format defined below) and creates 6 data.tables, each corresponding to one required worksheet (referred to as .sheet tables throughout these comments and the code). Once these tables are created, the scripts compile all input data, format the data to correspond with Plexos's excel input file format, and add the data chunks to the .sheet tables. Lastly, the fully populated .sheet tables are exported into one Excel workbook, which can be imported directly into Plexos. 
 
 
 __To run__
 
 Load required variables into environment. Basic required variables are: 
 
-* location of master PSSE2PLEXOS script (**create\_plexos\_db\_from\_raw\_master\_script.R**) 
-* location of file defining input parameters (this isn't fully documented yet but will be, see *example\_inputs* dir for now)
-* location of directory containing all input files 
-* location of directory where output excel file should be saved
-* name that R should use when saving the output excel file 
+* path to directory containing master PSSE2PLEXOS script (**create\_plexos\_db\_from\_raw\_master\_script.R**), defined as variable `master.script.dir`
+* path to input parameters file, defined as variable `input.params`
+* path to directory containing all input files  (input parameters file should refer to input files relative to this directory), defined as variable `inputfiles.dir`
+* path to directory where output excel file should be saved (will be created if does not exist), defined as variable `outputfiles.dir`
+* name of output excel file, defined as variable `output.wb.name`
 
 Then, run **create\_plexos\_db\_from\_raw\_master\_script.R**. This will sequentially run the scripts in the directory *SourceScripts* and write the output into an excel file.
 
 
 ####Basic structure of *SourceScripts*
 
-* **a_import_raw.R:** reads in and parses the .raw file, based on expected PSSE version-specific table structure. Currently based on documentation for PSSE v31. If intending to use a .raw file from a different version of PSSE, this script should be modified to ensure that columns are named correctly. This is the only script that is dependent on the version of PSSE being used.
+* REDO THIS **a_import_raw.R:** reads in and parses the .raw file, based on expected PSSE version-specific table structure. Currently based on documentation for PSSE v31. If intending to use a .raw file from a different version of PSSE, this script should be modified to ensure that columns are named correctly. This is the only script that is dependent on the version of PSSE being used.
 * **b_create_sheet_tables.R:** This script creates empty .sheet tables (Objects.sheet, Categories.sheet, Memberships.sheet, Attributes.sheet, Properties.sheet, and Reports.sheet), as well as prototypes of these tables to be used in the initialize_table function (see below).
 * **c1_populate_sheet_tables_with_raw_tables.R:** populates .sheets tables using data from the .raw file created in script (a). It also creates node.data.table, generator.data.table, line.data.table, and transformer.data.table, which contain information about each type of object to be referenced later in the scripts when information is needed about these objects. 
 * **c2_more_data_population.R:** populates .sheet tables with information in other .csv input files. 
@@ -31,7 +29,21 @@ Then, run **create\_plexos\_db\_from\_raw\_master\_script.R**. This will sequent
 * **d_data_cleanup.R:** database cleaning and some data checks. Ideally the database-specific corrections will be moved to database-specific input files later.
 * **e_export_to_excel.R:** gathers fully-populated .sheet tables and exports them as separate sheets in output Excel workbook, which can be imported directly into Plexos.
 
-####Guide to functions and input file formats
+
+####Guide to input parameter file
+
+This file defines parameters that will be used to read in data and create a Plexos database. This works by defining certain variables as a combination of file pointers and other parameters, which the scripts will use to pull in and process data. This is a list of the different variables that can be defined in the input parameters file, with the required format for associated files.
+
+Note: all file pointers should be relative to whatever input files directory (`inputfiles.dir`) is defined to be.
+
+* `choose.input`: character, set to "raw.psse" or "pre.parsed". If `choose.input` == "raw.psse", the scripts will expect to read in a psse file, so the variable `raw.file.path` is required. If `choose.input` == "pre.parsed", the scripts will expect to read in csvs to define the base network, so the files `node.file`, `line.file`, and `generator.file` are required.
+	* to define network data with PSSE file:
+		* `raw.file.path`: character, set to path to PSSE file. Only used if `choose.input` == "raw.psse". PSSE file should be in v31 format.
+	* alternate way of defining network data:
+		* `node.file`: character, path to csv that defines node data. Format: requires columns "Node", "Region". Listed nodes and regions will be created, and nodes will be categorized by region. Optional columns are "Zone", "Voltage", and "Units". If "Voltage" does not exist, nodes will be created without a voltage. If "Units" does not exist, all Nodes will be created with Units == 1. A "notes" column may exist, which will not be used. 
+
+The database is built starting with a PSSE .raw file. Other input .csv are used to supplement and build off of the PSSE database. See "REQUIRED INPUT FILES" (documentation not complete as of 4/10/16) section for more detail.
+
 
 This needs to be filled in more, leaving sketches for now. See *functions.R* for more details on required arguments for these functions.
 
