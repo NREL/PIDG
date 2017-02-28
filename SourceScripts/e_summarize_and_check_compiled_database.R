@@ -509,11 +509,11 @@ line.map[is.na(resis.scenario),resis.scenario:="No scenario"]
 line.map[,reac.scenario:=gsub("{Object}","Scenario: ",reac.scenario,fixed = T)]
 line.map[is.na(reac.scenario),reac.scenario:="No scenario"]
 
-# change columns that can be numeric to numeric
-line.map <- line.map[, lapply(.SD, function(x) {
-  if (!is.na(suppressWarnings(as.numeric(x[1])))) {
-    suppressWarnings(as.numeric(x))} else x
-})]
+# # change columns that can be numeric to numeric
+# line.map <- line.map[, lapply(.SD, function(x) {
+#   if (!is.na(suppressWarnings(as.numeric(x[1])))) {
+#     suppressWarnings(as.numeric(x))} else x
+# })]
 
 # flag any lines with missing Node.From and/or Node.To
 lines.missing.nodes <- line.map[is.na(Node.From) | is.na(Node.To),
