@@ -110,8 +110,15 @@ nodes.to.objects <- initialize_table(Objects.sheet,
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, nodes.to.objects)
 
-# add nodes to properties .sheet : Voltage, Units
-nodes.to.properties <- node.data.table[,.(Node, Voltage, Units)]
+# TODO: add nodes to properties .sheet : for now, there is some membership data
+# included in the node.data.table. for now, specifically exclude that. in the
+# future, should separated or differentiate membership and proprerty data
+
+# what columns should note be considered properties?
+excluded.cols <- c("notes", "Region", "Zone", "Owner")
+excluded.cols <- excluded.cols[excluded.cols %in% names(node.data.table)]
+
+nodes.to.properties <- node.data.table[,!excluded.cols, with = FALSE]
 
 add_to_properties_sheet(nodes.to.properties, 
                         object.class = 'Node', 
@@ -119,7 +126,8 @@ add_to_properties_sheet(nodes.to.properties,
                         collection.name = 'Nodes')
 
 # clean up
-rm(nodes.to.objects, nodes.to.properties)
+rm(nodes.to.objects, nodes.to.properties, excluded.cols)
+
 
 #------------------------------------------------------------------------------|
 # Add regions to .sheet tables ----
