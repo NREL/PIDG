@@ -348,46 +348,25 @@ rm(lines.to.objects, excluded.cols, lines.to.properties,
 
 message("arranging generator data")
 
-if (!("Units" %in% colnames(generator.data.table))) {
-    message("No Units specified for generators ... setting Units = 1 for all")
-    generator.data.table[, Units := 1]    
-}
-
 # add region
 generator.data.table <- merge(generator.data.table, 
                               node.data.table[,.(Node, Region)],
                               by = "Node", 
                               all.x = TRUE)
 
-# adjust gen cap if needed
-# if (choose.input == "raw.psse") {
-    # temporary!! adjust max capacity needed
-    if (exists("adjust.max.cap")) {
-        if(file.exists(file.path(inputfiles.dir, adjust.max.cap))) {
-            
-            message(sprintf("... adjusting max capacity of generators in %s", 
-                            adjust.max.cap))
-            
-            new.cap <- fread(file.path(inputfiles.dir, adjust.max.cap))
-            
-            generator.data.table <- merge(generator.data.table, 
-                                          new.cap,
-                                          by = "Generator", 
-                                          all.x = TRUE)
-            
-            generator.data.table[!is.na(new.capacity), 
-                                 `Max Capacity` := new.capacity]
-            generator.data.table[, new.capacity := NULL]
-            
-            rm(new.cap)
-            
-        } else {
-            message(sprintf(">>  %s does not exist ... skipping", 
-                            adjust.max.cap))
-        }
-            
-    }
-# }
+if (!("Units" %in% colnames(generator.data.table))) {
+    message("No Units specified for generators ... setting Units = 1 for all")
+    generator.data.table[, Units := 1]    
+}
+
+# use category column if it exists; otherwise, categorize by region
+if (!("category" %in% colnames(generator.data.table))){
+    generator.data.table[, category := Region]   
+}
+
+# make sure blanks are turned into NAs 
+generator.data.table[category %in% c("", " "), category := NULL]
+
 
 #------------------------------------------------------------------------------|
 # Add generators to .sheet tables ----
@@ -398,7 +377,7 @@ gens.to.objects <- initialize_table(Objects.sheet,
                                     nrow(generator.data.table), 
                                     list(class = "Generator", 
                                          name = generator.data.table$Generator,
-                                         category = generator.data.table$Region))
+                                         category = generator.data.table$category))
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, gens.to.objects)
 
