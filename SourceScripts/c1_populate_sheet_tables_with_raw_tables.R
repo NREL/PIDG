@@ -97,6 +97,15 @@ if (!("Units" %in% colnames(node.data.table))) {
     node.data.table[, Units := 1]    
 }
 
+# use category column if it exists; otherwise, categorize by region
+if (!("category" %in% colnames(node.data.table))){
+    if ("Region" %in% colnames(node.data.table)) {
+        node.data.table[, category := Region]   
+    } else {
+        node.data.table[, category := NA]
+    }
+}
+
 
 #------------------------------------------------------------------------------|
 # Add nodes to .sheet tables ----
@@ -107,7 +116,7 @@ nodes.to.objects <- initialize_table(Objects.sheet,
                                      nrow(node.data.table),
                                      list(class = "Node",
                                           name = node.data.table$Node,
-                                          category = node.data.table$Region))
+                                          category = node.data.table$category))
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, nodes.to.objects)
 
