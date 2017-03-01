@@ -174,31 +174,38 @@ if ("Region" %in% names(node.data.table) &&
 # Add zones to .sheet tables ----
 #------------------------------------------------------------------------------|
 
-# add zones to objects .sheet
-all.zones <- unique(node.data.table$Zone)
-
-zones.to.objects <- initialize_table(Objects.sheet, 
-                                     length(all.zones),
-                                     list(class = "Zone",
-                                          name = all.zones))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, zones.to.objects)
-
-# add zone-region membership to memberships .sheet
-zones.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
-                                                  nrow(node.data.table), 
-                                                  list(parent_class = "Node", 
-                                                       child_class = "Zone", 
-                                                       collection = "Zone"))
-
-zones.to.nodes.to.memberships[, parent_object := node.data.table$Node]
-zones.to.nodes.to.memberships[, child_object := node.data.table$Zone]
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                         zones.to.nodes.to.memberships)
-
-# clean up
-rm(all.zones, zones.to.objects, zones.to.nodes.to.memberships)
+if ("Zone" %in% names(node.data.table) && 
+    node.data.table[!is.na(Zone) & !(Zone %in% c("", " ")), .N] > 0) {
+    
+    message("... adding Zones")
+    
+    # add zones to objects .sheet
+    node.zones <- node.data.table[!is.na(Zone) & !(Zone %in% c("", " "))]
+    all.zones <- node.zones[,unique(Zone)]
+    
+    zones.to.objects <- initialize_table(Objects.sheet, 
+                                         length(all.zones),
+                                         list(class = "Zone",
+                                              name = all.zones))
+    
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, zones.to.objects)
+    
+    # add zone-region membership to memberships .sheet
+    zones.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
+                                                      nrow(node.zones), 
+                                                      list(parent_class = "Node", 
+                                                           child_class = "Zone", 
+                                                           collection = "Zone"))
+    
+    zones.to.nodes.to.memberships[, parent_object := node.zones$Node]
+    zones.to.nodes.to.memberships[, child_object := node.zones$Zone]
+    
+    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                             zones.to.nodes.to.memberships)
+    
+    # clean up
+    rm(node.zones, all.zones, zones.to.objects, zones.to.nodes.to.memberships)
+}
 
 
 #------------------------------------------------------------------------------|
