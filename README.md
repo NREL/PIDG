@@ -36,11 +36,11 @@ This file defines parameters that will be used to read in data and create a Plex
 
 Note: all file pointers should be relative to whatever input files directory (`inputfiles.dir`) is defined to be.
 
-* `choose.input`: character, set to "raw.psse" or "pre.parsed". If `choose.input` == "raw.psse", the scripts will expect to read in a psse file, so the variable `raw.file.path` is required. If `choose.input` == "pre.parsed", the scripts will expect to read in csvs to define the base network, so the files `node.file`, `line.file`, and `generator.file` are required.
+* `choose.input`: character, set to "raw.psse" or "pre.parsed". If `choose.input == "raw.psse"`, the scripts will expect to read in a psse file, so the variable `raw.file.path` is required. If `choose.input` == "pre.parsed", the scripts will expect to read in csvs to define the base network, so the files `node.file`, `line.file`, and `generator.file` are required.
 	* to define network data with PSSE file:
-		* `raw.file.path`: character, set to path to PSSE file. Only used if `choose.input` == "raw.psse". PSSE file should be in v31 format.
+		* `raw.file.path`: character, set to path to PSSE file. Only used if `choose.input == "raw.psse"`. **Format:** PSSE file should be in v31 format.
 	* alternate way of defining network data:
-		* `node.file`: character, path to csv that defines node data. Format: requires columns "Node", "Region". Listed nodes and regions will be created, and nodes will be categorized by region. Optional columns are "Zone", "Voltage", and "Units". If "Voltage" does not exist, nodes will be created without a voltage. If "Units" does not exist, all Nodes will be created with Units == 1. A "notes" column may exist, which will not be used. 
+		* `node.file`: character, path to csv that defines node data. **Format:** requires columns "Node", "Region". Listed nodes and regions will be created, and nodes will be categorized by region. Optional columns are "Zone" and any other Node property (frequently: Voltage, Unit, etc). If "Zone" exists, Zones will be created and attached to Nodes. If "Units" does not exist, all Nodes will be created with Units == 1. A "notes" column may exist, which will not be used. Any other column (but "Ownership" for now) will be treated as a property of the Node and added accordingly. Blanks or values of `NA` in any column but "Node" will be ignored.
 
 The database is built starting with a PSSE .raw file. Other input .csv are used to supplement and build off of the PSSE database. See "REQUIRED INPUT FILES" (documentation not complete as of 4/10/16) section for more detail.
 

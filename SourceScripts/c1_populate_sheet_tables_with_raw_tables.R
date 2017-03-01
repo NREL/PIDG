@@ -91,6 +91,7 @@ if (choose.input == "raw.psse") {
     }
 }
 
+# the Units property is required
 if (!("Units" %in% colnames(node.data.table))) {
     message("No Units specified for nodes ... setting Units = 1 for all")
     node.data.table[, Units := 1]    
