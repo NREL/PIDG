@@ -134,10 +134,7 @@ excluded.cols <- excluded.cols[excluded.cols %in% names(node.data.table)]
 
 nodes.to.properties <- node.data.table[,!excluded.cols, with = FALSE]
 
-add_to_properties_sheet(nodes.to.properties, 
-                        object.class = 'Node', 
-                        names.col = 'Node',
-                        collection.name = 'Nodes')
+add_to_properties_sheet(nodes.to.properties)
 
 # clean up
 rm(nodes.to.objects, nodes.to.properties, excluded.cols)
@@ -332,10 +329,7 @@ excluded.cols <- excluded.cols[excluded.cols %in% names(line.data.table)]
 
 lines.to.properties <- line.data.table[,!excluded.cols, with = FALSE]
 
-add_to_properties_sheet(lines.to.properties, 
-                        object.class = 'Line', 
-                        names.col = 'Line', 
-                        collection.name = 'Lines')
+add_to_properties_sheet(lines.to.properties)
 
 # clean up
 rm(lines.to.objects, excluded.cols, lines.to.properties, 
@@ -381,21 +375,6 @@ gens.to.objects <- initialize_table(Objects.sheet,
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, gens.to.objects)
 
-# add generator properties to properties .sheet
-gens.to.properties <- generator.data.table[, .(Generator, Units,
-                                               `Max Capacity`)]
-
-add_to_properties_sheet(gens.to.properties, 
-                        names.col = 'Generator',
-                        object.class = 'Generator', 
-                        collection.name = 'Generators')
-
-if ("Min Stable Level" %in% generator.data.table) {
-    msl.to.props <- generator.data.table[, .(Generator, `Min Stable Level`)]
-
-    add_to_properties_sheet(msl.to.props)
-}
-
 # add generator-node membership to memberships .sheet
 gens.to.memberships <- initialize_table(Memberships.sheet,
                                         nrow(generator.data.table), 
@@ -408,8 +387,21 @@ gens.to.memberships[, child_object := generator.data.table$Node]
 
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, gens.to.memberships)
 
+# add generator properties
+
+# what columns should not be considered properties? (everything after 
+# 'Node Participation' is relic from PSSE parsing)
+excluded.cols <- c("notes", "category", "Region", "Node", "Node Participation", 
+                   "Status", grep("Owner", names(generator.data.table)))
+
+excluded.cols <- excluded.cols[excluded.cols %in% names(generator.data.table)]
+
+gens.to.properties <- generator.data.table[,!excluded.cols, with = FALSE]
+
+add_to_properties_sheet(gens.to.properties)
+
 # clean up
-rm(gens.to.objects, gens.to.properties, gens.to.memberships)
+rm(gens.to.objects, gens.to.properties, gens.to.memberships, excluded.cols)
 
 
 #------------------------------------------------------------------------------|
