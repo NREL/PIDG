@@ -68,6 +68,11 @@ if (choose.input == "pre.parsed") {
 
 message("arranging node data")
 
+# check for object duplicates and capitalization errors in 'category', 'notes' 
+check_for_dupes(node.data.table, "Node")
+check_colname_cap(node.data.table)
+
+# if needed, remap regions and/or zones
 if (choose.input == "raw.psse") {
     # if there are input files to remap the nodes' regions and zones, remap them
     if (rename.regions) { 
@@ -225,6 +230,10 @@ if ("Zone" %in% names(node.data.table) &&
 
 message("arranging line data")
 
+# check for object duplicates and capitalization errors in 'category', 'notes' 
+check_for_dupes(line.data.table, "Line")
+check_colname_cap(line.data.table)
+
 # find regions from and to for line categorize
 line.data.table <- merge(line.data.table,
                          node.data.table[,.(`Node From` = Node, 
@@ -265,7 +274,6 @@ if (!("category" %in% colnames(line.data.table))) {
         
     } else {
         # category is just region
-        
         line.data.table[Region.From == Region.To, 
                         category := paste0(Region.From)]
         
@@ -341,6 +349,16 @@ rm(lines.to.objects, excluded.cols, lines.to.properties,
 #------------------------------------------------------------------------------|
 
 message("arranging generator data")
+
+# check for object duplicates and capitalization errors in 'category', 'notes' 
+# only allow duplicates in generator if Node Participation is provided (TODO temp)
+if ("Node Participation" %in% names(generator.data.table)) {
+    check_for_dupes(generator.data.table, c("Generator", "Node"))
+} else {
+    check_for_dupes(generator.data.table, "Generator")
+}
+
+check_colname_cap(generator.data.table)
 
 # add region
 generator.data.table <- merge(generator.data.table, 
