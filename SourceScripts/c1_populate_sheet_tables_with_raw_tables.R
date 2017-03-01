@@ -443,7 +443,7 @@ if ("Generation Participation Factor" %in% names(generator.data.table)) {
 # what columns should not be considered properties? (everything after 
 # 'Node' is relic from PSSE parsing)
 excluded.cols <- c("notes", "category", "Region", "Node", "Status", 
-                   grep("Owner", names(gen.props)))
+                   grep("Owner", names(gen.props), value = TRUE))
 
 excluded.cols <- excluded.cols[excluded.cols %in% names(gen.props)]
 
