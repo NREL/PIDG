@@ -352,7 +352,7 @@ message("arranging generator data")
 
 # check for object duplicates and capitalization errors in 'category', 'notes' 
 # only allow duplicates in generator if Node Participation is provided (TODO temp)
-if ("Node Participation" %in% names(generator.data.table)) {
+if ("Generation Participation Factor" %in% names(generator.data.table)) {
     check_for_dupes(generator.data.table, c("Generator", "Node"))
 } else {
     check_for_dupes(generator.data.table, "Generator")
@@ -384,12 +384,15 @@ generator.data.table[category %in% c("", " "), category := NULL]
 # Add generators to .sheet tables ----
 #------------------------------------------------------------------------------|
 
+# because might have dupes, take unique values
+gen.object <- unique(generator.data.table, by = c("Generator", "category"))
+
 # add generators to objects .sheet, categorizing by region
 gens.to.objects <- initialize_table(Objects.sheet, 
-                                    nrow(generator.data.table), 
+                                    nrow(gen.object), 
                                     list(class = "Generator", 
-                                         name = generator.data.table$Generator,
-                                         category = generator.data.table$category))
+                                         name = gen.object$Generator,
+                                         category = gen.object$category))
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, gens.to.objects)
 
@@ -407,19 +410,50 @@ Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, gens.to.memberships)
 
 # add generator properties
 
+# special case: if there is a 'Generation Participation Factor' column, 
+# split off that column with add add it to Generator.Nodes objects
+if ("Generation Participation Factor" %in% names(generator.data.table)) {
+    
+    # add Generation Participation Factor to Generator.Nodes Nodes
+    gen.nodes.props <- generator.data.table[,.(Node, Generator,
+                                               `Generation Participation Factor`)]
+        
+    add_to_properties_sheet(gen.nodes.props, parent.col = "Generator")
+    
+    # get rid of dupes so can add other properties if they exist
+    gen.props <- generator.data.table[,!c("Node", 
+                                          "Generation Participation Factor"), 
+                                      with = FALSE]
+    
+    if (uniqueN(gen.props) != gen.props[, uniqueN(Generator)]) {
+        stop(paste0("At least one generator in generator.data.table is ",
+                    "repeated and does not have identical information in each ",
+                    "non-Node/non-GPF entry. Please check."))
+    }
+    
+    gen.props <- unique(gen.props)
+    
+    # clean up
+    rm(gen.nodes.props)
+} else {
+    
+    gen.props <- generator.data.table
+}
+
 # what columns should not be considered properties? (everything after 
-# 'Node Participation' is relic from PSSE parsing)
-excluded.cols <- c("notes", "category", "Region", "Node", "Node Participation", 
-                   "Status", grep("Owner", names(generator.data.table)))
+# 'Node' is relic from PSSE parsing)
+excluded.cols <- c("notes", "category", "Region", "Node", "Status", 
+                   grep("Owner", names(gen.props)))
 
-excluded.cols <- excluded.cols[excluded.cols %in% names(generator.data.table)]
+excluded.cols <- excluded.cols[excluded.cols %in% names(gen.props)]
 
-gens.to.properties <- generator.data.table[,!excluded.cols, with = FALSE]
+gens.to.properties <- gen.props[,!excluded.cols, with = FALSE]
 
 add_to_properties_sheet(gens.to.properties)
 
 # clean up
-rm(gens.to.objects, gens.to.properties, gens.to.memberships, excluded.cols)
+rm(gen.object, gens.to.objects, gens.to.properties, gens.to.memberships, 
+   excluded.cols)
 
 
 #------------------------------------------------------------------------------|
