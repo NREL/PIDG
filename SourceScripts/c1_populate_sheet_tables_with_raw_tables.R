@@ -228,12 +228,6 @@ if ("Zone" %in% names(node.data.table) &&
 
 message("arranging line data")
 
-# add line units. currently only avaiable for pre.parsed. maybe in the future
-# can change automatically assign status to units 
-if (!("Units" %in% colnames(line.data.table))) {
-    line.data.table[, Units := 1]
-}
-
 # find regions from and to for line categorize
 line.data.table <- merge(line.data.table,
                          node.data.table[,.(`Node From` = Node, 
@@ -247,15 +241,49 @@ line.data.table <- merge(line.data.table,
                          by = "Node To",
                          all.x = TRUE)
 
-# add categories
-if (!("Type" %in% colnames(line.data.table))) {
-    
-    line.data.table[is.na(Reactance) | Reactance == 0, Type := "DC"]
-    line.data.table[!(is.na(Reactance) | Reactance == 0), Type := "AC"]
+# the Units property is required
+if (!("Units" %in% colnames(line.data.table))) {
+    message("No Units specified for lines ... setting Units = 1 for all")
+    line.data.table[, Units := 1]    
 }
 
-line.data.table[Region.From == Region.To, category := paste0(Type, "_", Region.From)]
-line.data.table[Region.From != Region.To, category := paste0("Interstate_", Type)]
+# use category column if it exists; otherwise, categorize by region, ac or dc
+if (!("category" %in% colnames(line.data.table))) {
+    
+    if ("Reactance" %in% colnames(line.data.table)) {
+        # category is AC/DC AND region
+        
+        # categorize by AC/DC (check what happens w/ Reactance=0--should be AC?)
+        line.data.table[is.na(Reactance) | Reactance == 0, Type := "DC"]
+        line.data.table[!(is.na(Reactance) | Reactance == 0), Type := "AC"]
+        
+        # add category
+        line.data.table[Region.From == Region.To, 
+                        category := paste0(Type, "_", Region.From)]
+        
+        line.data.table[Region.From != Region.To, 
+                        category := paste0("Interregion_", Type)]
+    
+        line.data.table[, Type := NULL]
+        
+    } else {
+        # category is just region
+        
+        line.data.table[Region.From == Region.To, 
+                        category := paste0(Region.From)]
+        
+        line.data.table[Region.From != Region.To, 
+                        category := paste0("Interregion")]
+    }
+        
+    # clean up
+    line.data.table[,c("Region.From", "Region.To") := NULL]
+    
+}
+
+# make sure blanks are turned into NAs 
+line.data.table[category %in% c("", " "), category := NULL]
+
 
 #------------------------------------------------------------------------------|
 # Add lines to .sheet tables ----
@@ -292,10 +320,17 @@ lines.to.nodes.to.memberships <- melt(lines.to.nodes.to.memberships,
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                          lines.to.nodes.to.memberships)
 
-# add lines to properties .sheet : pull relevant properties from line.data.table 
-# and add them to the properties .sheet
-lines.to.properties <- line.data.table[,.(Line, Units, `Max Flow`, `Min Flow`,
-                                          Resistance,  Reactance)]
+# add lines properties
+
+# what columns should not be considered properties? (everything after 
+# 'Node To' is relic from PSSE parsing)
+excluded.cols <- c("notes", "category", "Node From", "Node To", 
+                   "Voltage.From", "Voltage.To", "ratingA", "ratingB", 
+                   "ratingC", "Status", "Length", "Region.From", "Region.To")
+
+excluded.cols <- excluded.cols[excluded.cols %in% names(line.data.table)]
+
+lines.to.properties <- line.data.table[,!excluded.cols, with = FALSE]
 
 add_to_properties_sheet(lines.to.properties, 
                         object.class = 'Line', 
@@ -303,7 +338,8 @@ add_to_properties_sheet(lines.to.properties,
                         collection.name = 'Lines')
 
 # clean up
-rm(lines.to.objects, lines.to.properties, lines.to.nodes.to.memberships)
+rm(lines.to.objects, excluded.cols, lines.to.properties, 
+   lines.to.nodes.to.memberships)
 
 
 #------------------------------------------------------------------------------|
