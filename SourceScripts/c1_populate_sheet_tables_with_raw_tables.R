@@ -133,32 +133,42 @@ rm(nodes.to.objects, nodes.to.properties, excluded.cols)
 # Add regions to .sheet tables ----
 #------------------------------------------------------------------------------|
 
-# add regions to object .sheet
-all.regions <- unique(node.data.table$Region)
-
-regions.to.objects <- initialize_table(Objects.sheet, 
-                                       length(all.regions),
-                                       list(class = "Region",
-                                            name = all.regions))
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, regions.to.objects)
-
-# add node-region membership to memberships .sheet
-regions.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
-                                                    nrow(node.data.table), 
-                                                    list(parent_class = "Node", 
-                                                         child_class = "Region",
-                                                         collection = "Region"))
-
-regions.to.nodes.to.memberships[, parent_object := node.data.table$Node]
-regions.to.nodes.to.memberships[, child_object := node.data.table$Region]
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                         regions.to.nodes.to.memberships)
-
-# clean up
-rm(all.regions, regions.to.objects, regions.to.nodes.to.memberships)
-
+if ("Region" %in% names(node.data.table) && 
+    node.data.table[!is.na(Region) & !(Region %in% c("", " ")), .N] > 0) {
+    
+    message("... adding Regions")
+    
+    # add regions to object .sheet
+    node.regions <- node.data.table[!is.na(Region) & !(Region %in% c("", " "))]
+    all.regions <- node.regions[,unique(Region)]
+    
+    regions.to.objects <- initialize_table(Objects.sheet, 
+                                           length(all.regions),
+                                           list(class = "Region",
+                                                name = all.regions))
+    
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, regions.to.objects)
+    
+    # add node-region membership to memberships .sheet
+    regions.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
+                                                        nrow(node.regions), 
+                                                        list(parent_class = "Node", 
+                                                             child_class = "Region",
+                                                             collection = "Region"))
+    
+    regions.to.nodes.to.memberships[, parent_object := node.regions$Node]
+    regions.to.nodes.to.memberships[, child_object := node.regions$Region]
+    
+    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                             regions.to.nodes.to.memberships)
+    
+    # clean up
+    rm(node.regions, all.regions, regions.to.objects, 
+       regions.to.nodes.to.memberships)
+    
+} else {
+    stop("At least one region is required. Please add a Region column to node.file")
+}
 
 #------------------------------------------------------------------------------|
 # Add zones to .sheet tables ----
