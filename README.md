@@ -1,5 +1,5 @@
 **********
-###OVERVIEW OF CODE STRUCTURE
+### OVERVIEW OF CODE STRUCTURE
 **********
 __Introduction__
 
@@ -19,9 +19,9 @@ Load required variables into environment. Basic required variables are:
 Then, run **create\_plexos\_db\_from\_raw\_master\_script.R**. This will sequentially run the scripts in the directory *SourceScripts* and write the output into an excel file.
 
 
-####Basic structure of *SourceScripts*
+#### Basic structure of *SourceScripts*
 
-* REDO THIS **a_import_raw.R:** reads in and parses the .raw file, based on expected PSSE version-specific table structure. Currently based on documentation for PSSE v31. If intending to use a .raw file from a different version of PSSE, this script should be modified to ensure that columns are named correctly. This is the only script that is dependent on the version of PSSE being used.
+* TODO: REDO THIS **a_import_raw.R:** reads in and parses the .raw file, based on expected PSSE version-specific table structure. Currently based on documentation for PSSE v31. If intending to use a .raw file from a different version of PSSE, this script should be modified to ensure that columns are named correctly. This is the only script that is dependent on the version of PSSE being used.
 * **b_create_sheet_tables.R:** This script creates empty .sheet tables (Objects.sheet, Categories.sheet, Memberships.sheet, Attributes.sheet, Properties.sheet, and Reports.sheet), as well as prototypes of these tables to be used in the initialize_table function (see below).
 * **c1_populate_sheet_tables_with_raw_tables.R:** populates .sheets tables using data from the .raw file created in script (a). It also creates node.data.table, generator.data.table, line.data.table, and transformer.data.table, which contain information about each type of object to be referenced later in the scripts when information is needed about these objects. 
 * **c2_more_data_population.R:** populates .sheet tables with information in other .csv input files. 
@@ -30,7 +30,7 @@ Then, run **create\_plexos\_db\_from\_raw\_master\_script.R**. This will sequent
 * **e_export_to_excel.R:** gathers fully-populated .sheet tables and exports them as separate sheets in output Excel workbook, which can be imported directly into Plexos.
 
 
-####Guide to input parameter file
+#### Guide to input parameter file
 
 This file defines parameters that will be used to read in data and create a Plexos database. This works by defining certain variables as a combination of file pointers and other parameters, which the scripts will use to pull in and process data. This is a list of the different variables that can be defined in the input parameters file, with the required format for associated files.
 
@@ -40,7 +40,7 @@ Note: all file pointers should be relative to whatever input files directory (`i
 	* to define network data with PSSE file:
 		* `raw.file.path`: character, set to path to PSSE file. Only used if `choose.input == "raw.psse"`. **Format:** PSSE file should be in v31 format.
 	* alternate way of defining network data:
-		* `node.file`: character, path to csv that defines node data. **Format:** requires columns "Node", "Region". Listed nodes and regions will be created, and nodes will be categorized by region. Optional columns are "Zone" and any other Node property (frequently: Voltage, Unit, etc). If "Zone" exists, Zones will be created and attached to Nodes. If "Units" does not exist, all Nodes will be created with Units == 1. A "notes" column may exist, which will not be used. A "category" column may exist and will be used to categorize nodes (blanks or NA values mean the node will not be categorized); otherwise, nodes will be categorized by region. Any other column (but "Ownership" for now) will be treated as a property of the Node and added accordingly. Blanks or values of `NA` in any column but "Node" will be ignored.
+		* `node.file`: character, path to csv that defines node data, required. **Format:** requires columns "Node", "Region". Listed nodes and regions will be created, and nodes will be categorized by region. Optional columns are "Zone" and any other Node property (frequently: Voltage, Unit, etc). If "Zone" exists, Zones will be created and attached to Nodes. If "Units" does not exist, all Nodes will be created with Units == 1. A "notes" column may exist, which will not be used. A "category" column may exist and will be used to categorize nodes (blanks or NA values mean the node will not be categorized); otherwise, nodes will be categorized by region. Any other column (but "Ownership" for now) will be treated as a property of the Node and added accordingly. Blanks or values of `NA` in any column but "Node" will be ignored. Node names should not be repeated.
 
 The database is built starting with a PSSE .raw file. Other input .csv are used to supplement and build off of the PSSE database. See "REQUIRED INPUT FILES" (documentation not complete as of 4/10/16) section for more detail.
 

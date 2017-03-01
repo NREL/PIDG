@@ -106,6 +106,9 @@ if (!("category" %in% colnames(node.data.table))){
     }
 }
 
+# make sure blanks are turned into NAs 
+node.data.table[category %in% c("", " "), category := NULL]
+
 
 #------------------------------------------------------------------------------|
 # Add nodes to .sheet tables ----
@@ -120,12 +123,13 @@ nodes.to.objects <- initialize_table(Objects.sheet,
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, nodes.to.objects)
 
-# TODO: add nodes to properties .sheet : for now, there is some membership data
-# included in the node.data.table. for now, specifically exclude that. in the
-# future, should separated or differentiate membership and proprerty data
+# add node properties
+# TODO: for now, there is some membership data included in the node.data.table. 
+# for now, specifically exclude that. in the future, should separated or 
+# differentiate membership and proprerty data
 
-# what columns should note be considered properties?
-excluded.cols <- c("notes", "Region", "Zone", "Owner")
+# what columns should not be considered properties? ('Owner' is relic of PSSE)
+excluded.cols <- c("notes", "category", "Region", "Zone", "Owner")
 excluded.cols <- excluded.cols[excluded.cols %in% names(node.data.table)]
 
 nodes.to.properties <- node.data.table[,!excluded.cols, with = FALSE]
