@@ -285,7 +285,7 @@ generator.data.table <- merge(generator.data.table,
                               all.x = TRUE)
 
 # adjust gen cap if needed
-if (choose.input == "raw.psse") {
+# if (choose.input == "raw.psse") {
     # temporary!! adjust max capacity needed
     if (exists("adjust.max.cap")) {
         if(file.exists(file.path(inputfiles.dir, adjust.max.cap))) {
@@ -312,7 +312,7 @@ if (choose.input == "raw.psse") {
         }
             
     }
-}
+# }
 
 #------------------------------------------------------------------------------|
 # Add generators to .sheet tables ----
