@@ -4,400 +4,433 @@
 # constants, populate this table, add table to full sheet table
 
 # uses:
-# rename.regions
-# rename.zones
-# map.newregion.file (optional)
-# map.newzone.file (optional)
-# unit.status.file
+
+# node.file
+# line.file
+# generator.file
+# transformer.file
 
 #------------------------------------------------------------------------------|
-# Create node data table ----
+# import data if needed ----
 #------------------------------------------------------------------------------|
-# uses Bus.table
 
-# start populating node.data.table with all information about nodes
-node.data.table <- Bus.table[,.(BusNumber, BusName, Region, Zone, Voltage.kV)]
-node.data.table[, BusName := paste0(BusNumber, "_", BusName, "_", Voltage.kV)]
+# either read in network data or procede
 
-# add region and zone names to node.data.table
-node.data.table <- merge(node.data.table, 
-  Area.interchange.table[, .(RegionName, Region)], by = "Region", all.x = TRUE)
+if (choose.input == "pre.parsed") {
+    
+    message("reading in pre-parsed network data")
+    
+    if (file.exists(file.path(inputfiles.dir, node.file))) {
+        node.data.table <- fread(file.path(inputfiles.dir, node.file))
+    } else {
+        stop(sprintf("!!  %s does not exist", node.file))
+    }
+    
+    if (file.exists(file.path(inputfiles.dir, line.file))) {
+        line.data.table <- fread(file.path(inputfiles.dir, line.file))
+    } else {
+        stop(sprintf(" !!  %s does not exist", line.file))
+    }
 
-node.data.table <- merge(node.data.table, Zone.table[, .(ZoneName, 
-  Zone)], by = "Zone", all.x = TRUE)
-
-# if there are input files to remap the nodes' regions and zones, remap them
-if (rename.regions) { 
-  
-  map.newregions <- fread(file.path(inputfiles.dir, map.newregion.file))
-  
-  node.data.table <- merge(node.data.table[,RegionName := NULL], 
-    map.newregions[,.(BusNumber, RegionName)], by = "BusNumber", all.x = TRUE)
-  #node.data.table <- node.data.table[!
-  #duplicated(node.data.table),] #commenting out b/c input file is clean
+    if (file.exists(file.path(inputfiles.dir, generator.file))) {
+        generator.data.table <- fread(file.path(inputfiles.dir, generator.file))
+    } else {
+        stop(sprintf("!!  %s does not exist", generator.file))
+    }
+    
+    if (exists("transformer.file")) {
+        if (file.exists(file.path(inputfiles.dir, transformer.file))) {
+            transformer.data.table <- fread(file.path(inputfiles.dir, transformer.file))
+        } else {
+            stop(sprintf("!!  %s does not exist", transformer.file))
+        }
+    } else {
+        message(sprintf(">>  transformer.file does not exist ... skipping"))
+    }
+    
+    if (exists("load.file")) {
+        if (file.exists(file.path(inputfiles.dir, load.file))) {
+            load.data.table <- suppressWarnings(fread(file.path(inputfiles.dir, load.file))) 
+            # for bumping load type col to character type in posoco
+        } else {
+            stop(sprintf("!!  %s does not exist", load.file))
+        }
+    } else {
+        message(sprintf(">>  load.file does not exist ... skipping"))
+    }
+    
 }
 
-if (rename.zones) {
-
-  map.newzones <- fread(file.path(inputfiles.dir, map.newzone.file))
-  
-  node.data.table <- merge(node.data.table[,ZoneName := NULL], 
-    map.newzones[,.(BusNumber, ZoneName)], by = "BusNumber", all.x = TRUE)
-  #node.data.table <- node.data.table[
-  #!duplicated(node.data.table),] #commenting out b/c input file is clean
-}
 
 #------------------------------------------------------------------------------|
-# Add nodes ----
+# nodes ----
+#------------------------------------------------------------------------------|
+
+message("arranging node data")
+
+if (choose.input == "raw.psse") {
+    # if there are input files to remap the nodes' regions and zones, remap them
+    if (rename.regions) { 
+      
+      map.newregions <- fread(file.path(inputfiles.dir, map.newregion.file))
+      
+      node.data.table <- merge(node.data.table[,Region := NULL], 
+                               map.newregions[,.(Node, Region)], 
+                               by = "Node", 
+                               all.x = TRUE)
+    }
+    
+    if (rename.zones) {
+    
+      map.newzones <- fread(file.path(inputfiles.dir, map.newzone.file))
+      
+      node.data.table <- merge(node.data.table[,Zone := NULL], 
+                               map.newzones[,.(Node, Zone)], 
+                               by = "Node", 
+                               all.x = TRUE)
+    }
+}
+
+if (!("Units" %in% colnames(node.data.table))) {
+    message("No Units specified for nodes ... setting Units = 1 for all")
+    node.data.table[, Units := 1]    
+}
+
+
+#------------------------------------------------------------------------------|
+# Add nodes to .sheet tables ----
 #------------------------------------------------------------------------------|
 
 # add nodes to object .sheet
-nodes.to.objects <- initialize_table(Objects.sheet, nrow(node.data.table),
-  c(class = "Node"))
-nodes.to.objects[, name := node.data.table[,BusName]]
-nodes.to.objects[, category := node.data.table[,RegionName]]
+nodes.to.objects <- initialize_table(Objects.sheet, 
+                                     nrow(node.data.table),
+                                     list(class = "Node",
+                                          name = node.data.table$Node,
+                                          category = node.data.table$Region))
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, nodes.to.objects)
 
-# add nodes to properties .sheet : first pull properties (Voltage and Units),
-# format table correctly, then add to properties .sheet
-nodes.to.properties <- node.data.table[,.(BusName, Voltage.kV)]
-setnames(nodes.to.properties, 'Voltage.kV', 'Voltage')
-nodes.to.properties[,Units := 1]
+# add nodes to properties .sheet : Voltage, Units
+nodes.to.properties <- node.data.table[,.(Node, Voltage, Units)]
 
-add_to_properties_sheet(nodes.to.properties, 'Node', names.col = 'BusName', 
-  collection.name = 'Nodes')
+add_to_properties_sheet(nodes.to.properties, 
+                        object.class = 'Node', 
+                        names.col = 'Node',
+                        collection.name = 'Nodes')
 
 # clean up
 rm(nodes.to.objects, nodes.to.properties)
 
-
 #------------------------------------------------------------------------------|
-# Add regions ----
+# Add regions to .sheet tables ----
 #------------------------------------------------------------------------------|
 
 # add regions to object .sheet
-all.regions <- unique(node.data.table[,RegionName])
+all.regions <- unique(node.data.table$Region)
 
-regions.to.objects <- initialize_table(Objects.sheet, length(all.regions), 
-  list(class = "Region"))
-regions.to.objects[, name :=  all.regions]
+regions.to.objects <- initialize_table(Objects.sheet, 
+                                       length(all.regions),
+                                       list(class = "Region",
+                                            name = all.regions))
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, regions.to.objects)
 
 # add node-region membership to memberships .sheet
 regions.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
-  nrow(node.data.table), list(parent_class = "Node", child_class = "Region",
-  collection = "Region"))
-regions.to.nodes.to.memberships[, parent_object := node.data.table[,BusName]]
-regions.to.nodes.to.memberships[, child_object := node.data.table[,RegionName]]
+                                                    nrow(node.data.table), 
+                                                    list(parent_class = "Node", 
+                                                         child_class = "Region",
+                                                         collection = "Region"))
+
+regions.to.nodes.to.memberships[, parent_object := node.data.table$Node]
+regions.to.nodes.to.memberships[, child_object := node.data.table$Region]
 
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  regions.to.nodes.to.memberships)
+                                         regions.to.nodes.to.memberships)
 
 # clean up
 rm(all.regions, regions.to.objects, regions.to.nodes.to.memberships)
 
 
 #------------------------------------------------------------------------------|
-# Add zones ----
+# Add zones to .sheet tables ----
 #------------------------------------------------------------------------------|
 
 # add zones to objects .sheet
-all.zones <- unique(node.data.table[,ZoneName])
+all.zones <- unique(node.data.table$Zone)
 
-zones.to.objects <- initialize_table(Objects.sheet, length(all.zones), 
-  c(class = "Zone"))
-zones.to.objects[, name :=  all.zones]
+zones.to.objects <- initialize_table(Objects.sheet, 
+                                     length(all.zones),
+                                     list(class = "Zone",
+                                          name = all.zones))
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, zones.to.objects)
 
 # add zone-region membership to memberships .sheet
 zones.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
-  nrow(node.data.table), list(parent_class = "Node", child_class = "Zone", 
-  collection = "Zone"))
-zones.to.nodes.to.memberships[, parent_object := node.data.table[,BusName]]
-zones.to.nodes.to.memberships[, child_object := node.data.table[,ZoneName]]
+                                                  nrow(node.data.table), 
+                                                  list(parent_class = "Node", 
+                                                       child_class = "Zone", 
+                                                       collection = "Zone"))
+
+zones.to.nodes.to.memberships[, parent_object := node.data.table$Node]
+zones.to.nodes.to.memberships[, child_object := node.data.table$Zone]
 
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  zones.to.nodes.to.memberships)
+                                         zones.to.nodes.to.memberships)
 
 # clean up
 rm(all.zones, zones.to.objects, zones.to.nodes.to.memberships)
 
 
 #------------------------------------------------------------------------------|
-# Create line data table ----
+# lines ----
 #------------------------------------------------------------------------------|
-# uses Branch.table
 
-line.data.table <- Branch.table[,.(BranchFromBus, BranchToBus, ID, 
-  Resistance.pu, Reactance.pu, RatingA, RatingB, RatingC, Status, Length)]
-  
-# add BranchFromBus attributes
-line.data.table <- merge(line.data.table, node.data.table[, .(BusNumber, 
-  BusName, RegionName, ZoneName, Voltage.kV)], by.x = 'BranchFromBus', 
-  by.y = 'BusNumber')
-setnames(line.data.table, c('BusName', 'RegionName', 'ZoneName', 'Voltage.kV'), 
-  c('FromBusName', 'FromRegion', 'FromZone', 'FromKV'))
-  
-# add BranchToBus attributes
-line.data.table <- merge(line.data.table, node.data.table[, .(BusNumber, 
-  BusName, RegionName, ZoneName, Voltage.kV)], by.x = 'BranchToBus', 
-  by.y = 'BusNumber')
-setnames(line.data.table, c('BusName', 'RegionName', 'ZoneName', 'Voltage.kV'), 
-  c('ToBusName', 'ToRegion', 'ToZone', 'ToKV'))
+message("arranging line data")
 
-# add name, category, and that these are AC lines 
-line.data.table[, name := paste0(BranchFromBus, "_", BranchToBus, "_", 
-  ID, "_CKT")] 
-line.data.table[FromRegion == ToRegion, category := paste0("AC_", FromRegion)]
-line.data.table[FromRegion != ToRegion, category := "Interstate_AC"]
-line.data.table[,ACorDC := 'AC']
+# add line units. currently only avaiable for pre.parsed. maybe in the future
+# can change automatically assign status to units 
+if (!("Units" %in% colnames(line.data.table))) {
+    line.data.table[, Units := 1]
+}
 
+# find regions from and to for line categorize
+line.data.table <- merge(line.data.table,
+                         node.data.table[,.(`Node From` = Node, 
+                                            `Region.From` = Region)],
+                         by = "Node From",
+                         all.x = TRUE)
 
-#------------------------------------------------------------------------------|
-# Add DC lines to line data table ----
-#------------------------------------------------------------------------------|
-# uses DC.line.table
-                
-dc.line.data.table <- DC.line.table[,.(BranchFromBus = FromBusNumber, 
-  BranchToBus = ToBusNumber, ID = LineName, Resistance.pu, 
-  RatingB = MaxFlow.MW)]
-                  
-# add BranchFromBus attributes
-dc.line.data.table <- merge(dc.line.data.table, node.data.table[, .(BusNumber, 
-  BusName, RegionName, ZoneName, Voltage.kV)], by.x = 'BranchFromBus', 
-  by.y = 'BusNumber')
-setnames(dc.line.data.table, c('BusName', 'RegionName', 'ZoneName', 
-  'Voltage.kV'), c('FromBusName', 'FromRegion', 'FromZone', 'FromKV'))
-                  
-# add BranchToBus attributes
-dc.line.data.table <- merge(dc.line.data.table, node.data.table[, .(BusNumber, 
-  BusName, RegionName, ZoneName, Voltage.kV)], by.x = 'BranchToBus', 
-  by.y = 'BusNumber')
-setnames(dc.line.data.table, c('BusName', 'RegionName', 'ZoneName', 
-  'Voltage.kV'), c('ToBusName', 'ToRegion', 'ToZone', 'ToKV'))
-                
-# add name, category, and that these are AC lines 
-dc.line.data.table[, name := paste0(BranchFromBus, "_", BranchToBus, "_", 
-  ID, "_CKT_DC")] 
-dc.line.data.table[FromRegion == ToRegion, 
-  category := paste0("DC_", FromRegion)]
-dc.line.data.table[FromRegion != ToRegion, category := "Interstate_DC"]
-dc.line.data.table[,ACorDC := 'DC']
+line.data.table <- merge(line.data.table,
+                         node.data.table[,.(`Node To` = Node, 
+                                            `Region.To` = Region)],
+                         by = "Node To",
+                         all.x = TRUE)
 
-# add to line.data.table
-line.data.table <- rbind(line.data.table, dc.line.data.table, fill = TRUE)
-                
-# clean up
-rm(dc.line.data.table)
+# add categories
+if (!("Type" %in% colnames(line.data.table))) {
+    
+    line.data.table[is.na(Reactance) | Reactance == 0, Type := "DC"]
+    line.data.table[!(is.na(Reactance) | Reactance == 0), Type := "AC"]
+}
 
+line.data.table[Region.From == Region.To, category := paste0(Type, "_", Region.From)]
+line.data.table[Region.From != Region.To, category := paste0("Interstate_", Type)]
 
 #------------------------------------------------------------------------------|
-# Add lines ----
+# Add lines to .sheet tables ----
 #------------------------------------------------------------------------------|
   
 # add lines to objects .sheet
-lines.to.objects <- initialize_table(Objects.sheet, nrow(line.data.table), 
-  list(class = "Line"))
-lines.to.objects[, name := line.data.table[,name]] 
-lines.to.objects[, category := line.data.table[,category]]
+lines.to.objects <- initialize_table(Objects.sheet, 
+                                     nrow(line.data.table), 
+                                     list(class = "Line"))
+
+lines.to.objects[, name := line.data.table$Line] 
+lines.to.objects[, category := line.data.table$category]
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, lines.to.objects)
 
 # add lines to memberships .sheet
 lines.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
-  nrow(line.data.table), list(parent_class = "Line", child_class = "Node"))
-lines.to.nodes.to.memberships[, parent_object := line.data.table[,name]]
-lines.to.nodes.to.memberships[, `Node From` := line.data.table[,FromBusName]]
-lines.to.nodes.to.memberships[, `Node To` := line.data.table[,ToBusName]]
+                                                  nrow(line.data.table), 
+                                                  list(parent_class = "Line", 
+                                                       child_class = "Node"))
 
-lines.to.nodes.to.memberships <- melt(lines.to.nodes.to.memberships[, 
-  c("collection", "child_object") := NULL], measure.vars = 
-    c("Node From", "Node To"), variable.name = "collection", 
-  value.name = "child_object")
+lines.to.nodes.to.memberships[, parent_object := line.data.table$Line]
+lines.to.nodes.to.memberships[, `Node From` := line.data.table$`Node From`]
+lines.to.nodes.to.memberships[, `Node To` := line.data.table$`Node To`]
+
+# prepare for melting, then melt down to separate Node From and Node To
+lines.to.nodes.to.memberships[, c("collection", "child_object") := NULL]
+
+lines.to.nodes.to.memberships <- melt(lines.to.nodes.to.memberships, 
+                                      measure.vars = c("Node From", "Node To"), 
+                                      variable.name = "collection", 
+                                      value.name = "child_object")
 
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-  lines.to.nodes.to.memberships)
-
-# check to see if lines have a RatingB... if not, use RatingC, then RatingA
-line.data.table[ACorDC == 'AC' & RatingB == '0', RatingB := 
-                  apply(line.data.table[ACorDC == 'AC' &
-                                          RatingB == '0', 
-                                        .(RatingA,RatingC)],1,max)]
+                                         lines.to.nodes.to.memberships)
 
 # add lines to properties .sheet : pull relevant properties from line.data.table 
 # and add them to the properties .sheet
-# for now, AC and DC are done separately because they have different properties.
-lines.to.properties.ac <- line.data.table[ACorDC == 'AC',.(name, Units = 1, 
-  `Max Flow` = RatingB, `Min Flow` = -1 * RatingB,
-  `Overload Max Rating` = RatingC, `Overload Min Rating` = -1 * RatingC,
-  Resistance = Resistance.pu,  Reactance = Reactance.pu )]
+lines.to.properties <- line.data.table[,.(Line, Units, `Max Flow`, `Min Flow`,
+                                          Resistance,  Reactance)]
 
-add_to_properties_sheet(lines.to.properties.ac, 'Line', names.col = 'name', 
-  collection.name = 'Lines')
+add_to_properties_sheet(lines.to.properties, 
+                        object.class = 'Line', 
+                        names.col = 'Line', 
+                        collection.name = 'Lines')
 
-lines.to.properties.dc <- line.data.table[ACorDC == 'DC',.(name, Units = 1, 
-  `Max Flow` = RatingB, `Min Flow` = -1 * RatingB,
-  Resistance = Resistance.pu)]
-
-add_to_properties_sheet(lines.to.properties.dc, 'Line', names.col = 'name', 
-  collection.name = 'Lines')
-
-  # clean up
-rm(lines.to.objects, lines.to.properties.ac, lines.to.properties.dc, 
-  lines.to.nodes.to.memberships)
+# clean up
+rm(lines.to.objects, lines.to.properties, lines.to.nodes.to.memberships)
 
 
 #------------------------------------------------------------------------------|
-# Create generator data table ----
+# generators ----
 #------------------------------------------------------------------------------|
-# uses Generator.table
 
-generator.data.table <- Generator.table[,.(BusNumber, ID, MaxOutput.MW, 
-  MinOutput.MW, Status)]
+message("arranging generator data")
 
-# add node's attributes to this table
-generator.data.table <- merge(generator.data.table, node.data.table, 
-  by = 'BusNumber')
-
-generator.data.table[,Generator.Name := paste0("GEN_", BusName, "_", ID)]
-generator.data.table[,Units := 1]
-
-# temporary!! adjust max capacity needed
-if (exists("adjust.max.cap")) {
-    if(file.exists(file.path(inputfiles.dir, adjust.max.cap))) {
-        
-        message(sprintf("... adjusting max capacity of generators in %s", 
-                        adjust.max.cap))
-        
-        new.cap <- fread(file.path(inputfiles.dir, adjust.max.cap))
-        
-        generator.data.table <- merge(generator.data.table, 
-                                      new.cap,
-                                      by = "Generator.Name", 
-                                      all.x = TRUE)
-        
-        generator.data.table[!is.na(new.capacity), MaxOutput.MW := new.capacity]
-        generator.data.table[, new.capacity := NULL]
-        
-        rm(new.cap)
-        
-    } else {
-        message(sprintf(">>  %s does not exist ... skipping", 
-                        adjust.max.cap))
-    }
-        
+if (!("Units" %in% colnames(generator.data.table))) {
+    message("No Units specified for generators ... setting Units = 1 for all")
+    generator.data.table[, Units := 1]    
 }
 
+# add region
+generator.data.table <- merge(generator.data.table, 
+                              node.data.table[,.(Node, Region)],
+                              by = "Node", 
+                              all.x = TRUE)
+
+# adjust gen cap if needed
+# if (choose.input == "raw.psse") {
+    # temporary!! adjust max capacity needed
+    if (exists("adjust.max.cap")) {
+        if(file.exists(file.path(inputfiles.dir, adjust.max.cap))) {
+            
+            message(sprintf("... adjusting max capacity of generators in %s", 
+                            adjust.max.cap))
+            
+            new.cap <- fread(file.path(inputfiles.dir, adjust.max.cap))
+            
+            generator.data.table <- merge(generator.data.table, 
+                                          new.cap,
+                                          by = "Generator", 
+                                          all.x = TRUE)
+            
+            generator.data.table[!is.na(new.capacity), 
+                                 `Max Capacity` := new.capacity]
+            generator.data.table[, new.capacity := NULL]
+            
+            rm(new.cap)
+            
+        } else {
+            message(sprintf(">>  %s does not exist ... skipping", 
+                            adjust.max.cap))
+        }
+            
+    }
+# }
 
 #------------------------------------------------------------------------------|
-# Add generators ----
+# Add generators to .sheet tables ----
 #------------------------------------------------------------------------------|
-# uses units.turned.off.file
 
 # add generators to objects .sheet, categorizing by region
 gens.to.objects <- initialize_table(Objects.sheet, 
-  nrow(generator.data.table), 
-  list(class = "Generator", name = generator.data.table[,Generator.Name], 
-  category = generator.data.table[,Region]))
+                                    nrow(generator.data.table), 
+                                    list(class = "Generator", 
+                                         name = generator.data.table$Generator,
+                                         category = generator.data.table$Region))
 
 Objects.sheet <- merge_sheet_w_table(Objects.sheet, gens.to.objects)
 
 # add generator properties to properties .sheet
-gens.to.properties <- generator.data.table[, .(Generator.Name, Units = 1,
-  `Max Capacity` = MaxOutput.MW, `Min Stable Level` = MinOutput.MW)]
+gens.to.properties <- generator.data.table[, .(Generator, Units,
+                                               `Max Capacity`)]
 
-# create table with units that should be turned off, based on NLDC data
-# this should go into c2 once the add properties function has an option
-# to replace 
-# units.off <- fread(file.path(inputfiles.dir, units.turned.off.file))[[1]]
-# gens.to.properties[Generator.Name %in% units.off, Units := 0]
+add_to_properties_sheet(gens.to.properties, 
+                        names.col = 'Generator',
+                        object.class = 'Generator', 
+                        collection.name = 'Generators')
 
-add_to_properties_sheet(gens.to.properties, names.col = 'Generator.Name', 
-  object.class = 'Generator', collection.name = 'Generators')
+if ("Min Stable Level" %in% generator.data.table) {
+    msl.to.props <- generator.data.table[, .(Generator, `Min Stable Level`)]
+
+    add_to_properties_sheet(msl.to.props)
+}
 
 # add generator-node membership to memberships .sheet
-gens.to.memberships <- initialize_table(Memberships.sheet, 
-  nrow(generator.data.table), list(parent_class = "Generator", 
-    child_class = "Node", collection = "Nodes"))
-gens.to.memberships[, parent_object := generator.data.table[, Generator.Name]]
-gens.to.memberships[, child_object := generator.data.table[, BusName]]
+gens.to.memberships <- initialize_table(Memberships.sheet,
+                                        nrow(generator.data.table), 
+                                        list(parent_class = "Generator", 
+                                             child_class = "Node", 
+                                             collection = "Nodes"))
+
+gens.to.memberships[, parent_object := generator.data.table$Generator]
+gens.to.memberships[, child_object := generator.data.table$Node]
 
 Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, gens.to.memberships)
 
 # clean up
-rm(gens.to.objects, gens.to.properties, gens.to.memberships)#, units.off)
+rm(gens.to.objects, gens.to.properties, gens.to.memberships)
 
 
 #------------------------------------------------------------------------------|
-# Create transformer.data.table ----
+# transformers ----
 #------------------------------------------------------------------------------|
-# uses Transformer.table.edit
 
-transformer.data.table <- Transformer.table.edit[,.(FromBusNumber, ToBusNumber, 
-  ID, Status, Resistance.pu, Reactance.pu, Rating.MW, OverloadRating.MW)]
-
-# add FromBusNumber attributes
-transformer.data.table <- merge(transformer.data.table, node.data.table[, 
-  .(BusNumber, BusName, RegionName, ZoneName, Voltage.kV)], 
-  by.x = 'FromBusNumber', by.y = 'BusNumber')
-setnames(transformer.data.table, c('BusName', 'RegionName', 'ZoneName', 
-  'Voltage.kV'), c('FromBusName', 'FromRegion', 'FromZone', 'FromKV'))
-  
-# add ToBusNumber attributes
-transformer.data.table <- merge(transformer.data.table, node.data.table[, 
-  .(BusNumber, BusName, RegionName, ZoneName, Voltage.kV)], 
-  by.x = 'ToBusNumber', by.y = 'BusNumber')
-setnames(transformer.data.table, c('BusName', 'RegionName', 'ZoneName', 
-  'Voltage.kV'), c('ToBusName', 'ToRegion', 'ToZone', 'ToKV'))
-
-# add name and category
-transformer.data.table[, name := paste0(FromBusNumber, "_", ToBusNumber, "_", 
-  ID, "_tfmr")] 
-transformer.data.table[FromRegion == ToRegion, category := FromRegion]
-transformer.data.table[FromRegion != ToRegion, category := "Interstate_tfmr"]
-
+if (exists("transformer.data.table")) {
+    
+    message("arranging transformer data")
+    
+    transformer.data.table[, Units := 1]
+    
+    # find regions from and to for line categorize
+    transformer.data.table <- merge(transformer.data.table,
+                                    node.data.table[,.(`Node From` = Node,
+                                                       `Region.From` = Region)],
+                                    by = "Node From",
+                                    all.x = TRUE)
+    
+    transformer.data.table <- merge(transformer.data.table,
+                                    node.data.table[,.(`Node To` = Node,
+                                                       `Region.To` = Region)],
+                                    by = "Node To",
+                                    all.x = TRUE)
+    
+    # add category
+    transformer.data.table[Region.From == Region.To, category := Region.From]
+    transformer.data.table[Region.From != Region.To, category := "Interstate_tfmr"]
+}
 
 #------------------------------------------------------------------------------|
-# Add transformers ----
+# Add transformers to .sheet tables ----
 #------------------------------------------------------------------------------|
-# check to see if transformers have an Overload Rating if not, use Rating
-transformer.data.table[OverloadRating.MW == '0', OverloadRating.MW := 
-                         transformer.data.table[OverloadRating.MW == '0', 
-                                                Rating.MW]]
-# add transformers to objects .sheet
-transf.to.objects <- initialize_table(Objects.sheet, 
-  nrow(transformer.data.table), 
-  list(class = "Transformer",
-  name = transformer.data.table[,name], 
-  category = transformer.data.table[,category]))
 
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, transf.to.objects)
-
-# add transformers to properties .sheet
-transf.to.properties <- transformer.data.table[,.(name, Units = 1, 
-  Rating = Rating.MW, `Overload Rating` = OverloadRating.MW, 
-  Resistance = Resistance.pu, Reactance = Reactance.pu)]
-
-add_to_properties_sheet(transf.to.properties, names.col = 'name', 
-  object.class = 'Transformer', collection.name = 'Transformers')
-
-# add transformer-node membership to memberships .sheet
-transf.to.memberships <- initialize_table(Memberships.sheet, 
-  nrow(transformer.data.table), list(parent_class = "Transformer", 
-    child_class = "Node"))
-transf.to.memberships[,parent_object := transformer.data.table[,name]]
-transf.to.memberships[,`Node From` := transformer.data.table[,FromBusName]]
-transf.to.memberships[,`Node To` := transformer.data.table[,ToBusName]]
-
-transf.to.memberships <- melt(transf.to.memberships[,c("collection", 
-  "child_object") := NULL], measure.vars = c("Node From", "Node To"), 
-  variable.name = "collection", value.name = "child_object")
-
-Memberships.sheet  <- merge_sheet_w_table(Memberships.sheet, 
-  transf.to.memberships)
-
-# clean up
-rm(transf.to.objects, transf.to.properties, transf.to.memberships)
+if (exists("transformer.data.table")) {
+    
+    # add transformers to objects .sheet
+    transf.to.objects <- initialize_table(Objects.sheet, 
+                                          nrow(transformer.data.table), 
+                                          list(class = "Transformer",
+                                               name = transformer.data.table$Transformer, 
+                                               category = transformer.data.table$category))
+    
+    Objects.sheet <- merge_sheet_w_table(Objects.sheet, transf.to.objects)
+    
+    # add transformers to properties .sheet
+    transf.to.properties <- transformer.data.table[,.(Transformer, Units, Rating, 
+                                                      Resistance, Reactance)]
+    
+    add_to_properties_sheet(transf.to.properties, 
+                            names.col = 'Transformer', 
+                            object.class = 'Transformer', 
+                            collection.name = 'Transformers')
+    
+    # add transformer-node membership to memberships .sheet
+    transf.to.memberships <- initialize_table(Memberships.sheet, 
+                                              nrow(transformer.data.table), 
+                                              list(parent_class = "Transformer",
+                                                   child_class = "Node"))
+    
+    transf.to.memberships[, parent_object := transformer.data.table$Transformer]
+    transf.to.memberships[,`Node From` := transformer.data.table$`Node From`]
+    transf.to.memberships[,`Node To` := transformer.data.table$`Node To`]
+    
+    # get rid of automatically generated columns for melting
+    transf.to.memberships[,c("collection", "child_object") := NULL]
+    
+    transf.to.memberships <- melt(transf.to.memberships, 
+                                  measure.vars = c("Node From", "Node To"),
+                                  variable.name = "collection", 
+                                  value.name = "child_object")
+    
+    Memberships.sheet  <- merge_sheet_w_table(Memberships.sheet, 
+                                              transf.to.memberships)
+    
+    # clean up
+    rm(transf.to.objects, transf.to.properties, transf.to.memberships)
+}
