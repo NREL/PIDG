@@ -112,7 +112,7 @@ if (!("category" %in% colnames(node.data.table))){
 }
 
 # make sure blanks are turned into NAs 
-node.data.table[category %in% c("", " "), category := NULL]
+node.data.table[category %in% c("", " "), category := NA]
 
 
 #------------------------------------------------------------------------------|
@@ -287,7 +287,7 @@ if (!("category" %in% colnames(line.data.table))) {
 }
 
 # make sure blanks are turned into NAs 
-line.data.table[category %in% c("", " "), category := NULL]
+line.data.table[category %in% c("", " "), category := NA]
 
 
 #------------------------------------------------------------------------------|
@@ -377,7 +377,7 @@ if (!("category" %in% colnames(generator.data.table))){
 }
 
 # make sure blanks are turned into NAs 
-generator.data.table[category %in% c("", " "), category := NULL]
+generator.data.table[category %in% c("", " "), category := NA]
 
 
 #------------------------------------------------------------------------------|
@@ -490,7 +490,7 @@ if (exists("transformer.data.table")) {
     }
     
     # make sure blanks are turned into NAs 
-    transformer.data.table[category %in% c("", " "), category := NULL]
+    transformer.data.table[category %in% c("", " "), category := NA]
     
 }
 
