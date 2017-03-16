@@ -139,7 +139,7 @@ excluded.cols <- excluded.cols[excluded.cols %in% names(node.data.table)]
 
 nodes.to.properties <- node.data.table[,!excluded.cols, with = FALSE]
 
-add_to_properties_sheet(nodes.to.properties)
+add_to_properties_sheet(nodes.to.properties, names.col = "Node")
 
 # clean up
 rm(nodes.to.objects, nodes.to.properties, excluded.cols)
@@ -337,7 +337,7 @@ excluded.cols <- excluded.cols[excluded.cols %in% names(line.data.table)]
 
 lines.to.properties <- line.data.table[,!excluded.cols, with = FALSE]
 
-add_to_properties_sheet(lines.to.properties)
+add_to_properties_sheet(lines.to.properties, names.col = "Line")
 
 # clean up
 rm(lines.to.objects, excluded.cols, lines.to.properties, 
@@ -449,7 +449,7 @@ excluded.cols <- excluded.cols[excluded.cols %in% names(gen.props)]
 
 gens.to.properties <- gen.props[,!excluded.cols, with = FALSE]
 
-add_to_properties_sheet(gens.to.properties)
+add_to_properties_sheet(gens.to.properties, names.col = "Generator")
 
 # clean up
 rm(gen.object, gens.to.objects, gens.to.properties, gens.to.memberships, 
