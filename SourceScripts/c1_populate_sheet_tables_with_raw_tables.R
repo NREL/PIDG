@@ -479,9 +479,19 @@ if (exists("transformer.data.table")) {
                                     by = "Node To",
                                     all.x = TRUE)
     
-    # add category
-    transformer.data.table[Region.From == Region.To, category := Region.From]
-    transformer.data.table[Region.From != Region.To, category := "Interstate_tfmr"]
+    # use category column if it exists; otherwise, categorize by region
+    if (!("category" %in% colnames(transformer.data.table))){
+        
+        transformer.data.table[Region.From == Region.To, 
+                               category := Region.From]
+        
+        transformer.data.table[Region.From != Region.To, 
+                               category := "Interregion_tfmr"]
+    }
+    
+    # make sure blanks are turned into NAs 
+    transformer.data.table[category %in% c("", " "), category := NULL]
+    
 }
 
 #------------------------------------------------------------------------------|
