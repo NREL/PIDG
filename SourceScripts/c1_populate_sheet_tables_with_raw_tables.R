@@ -331,7 +331,8 @@ Memberships.sheet <- merge_sheet_w_table(Memberships.sheet,
 # 'Node To' is relic from PSSE parsing)
 excluded.cols <- c("notes", "category", "Node From", "Node To", 
                    "Voltage.From", "Voltage.To", "ratingA", "ratingB", 
-                   "ratingC", "Status", "Length", "Region.From", "Region.To")
+                   "ratingC", "rateA", "rateB", "rateC", "Status", "Length",
+                   "Region.From", "Region.To")
 
 excluded.cols <- excluded.cols[excluded.cols %in% names(line.data.table)]
 
