@@ -1,4 +1,47 @@
 #------------------------------------------------------------------------------|
+# General helper functions ----
+#------------------------------------------------------------------------------|
+
+### check_colname_cap 
+# check to see if there are capitalization errors in category and notes cols, 
+# fix if they exist ("notes" and "category" are the only cols checked)
+check_colname_cap <- function(dt) {
+    
+    # check category
+    cat.name <- names(dt)[tolower(names(dt)) == "category"]
+    
+    if (length(cat.name) > 0 && cat.name != "category") {
+        setnames(dt, cat.name, "category")
+    }
+    
+    # check notes
+    note.name <- names(dt)[tolower(names(dt)) == "notes"]
+    
+    if (length(note.name) > 0 && note.name != "notes") {
+        setnames(dt, note.name, "notes")
+    }
+}
+
+### check_for_dupes
+# check to see if there are dupes and error out if there are. 
+# pass in dt and cols (character vector) to consider
+# assumes first col is named by type
+check_for_dupes <- function(dt, cols) {
+    
+    if (anyDuplicated(dt, by = cols) != 0) {
+        
+        type <- names(dt)[1]
+        
+        dupes <- dt[duplicated(dt, by = cols), unique(get(type))]
+        
+        stop(paste0("The following ", type, "s are duplicated in ", 
+                    type, ".data.table: ", paste(dupes, collapse = ", "), 
+                    ". Please remove duplicates."))
+        
+    }
+}
+
+#------------------------------------------------------------------------------|
 # Functions for creating and merging tables for data population ----
 #------------------------------------------------------------------------------|
 
