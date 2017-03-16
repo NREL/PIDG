@@ -464,7 +464,9 @@ if (exists("transformer.data.table")) {
     
     message("arranging transformer data")
     
-    transformer.data.table[, Units := 1]
+    # check for object duplicates and capitalization errors in 'category', 'notes' 
+    check_for_dupes(transformer.data.table, "Transformer")
+    check_colname_cap(transformer.data.table)
     
     # find regions from and to for line categorize
     transformer.data.table <- merge(transformer.data.table,
@@ -478,6 +480,12 @@ if (exists("transformer.data.table")) {
                                                        `Region.To` = Region)],
                                     by = "Node To",
                                     all.x = TRUE)
+    
+    # the Units property is required
+    if (!("Units" %in% colnames(transformer.data.table))) {
+        message("No Units specified for transformers ... setting Units = 1 for all")
+        transformer.data.table[, Units := 1]    
+    }
     
     # use category column if it exists; otherwise, categorize by region
     if (!("category" %in% colnames(transformer.data.table))){
@@ -509,15 +517,6 @@ if (exists("transformer.data.table")) {
     
     Objects.sheet <- merge_sheet_w_table(Objects.sheet, transf.to.objects)
     
-    # add transformers to properties .sheet
-    transf.to.properties <- transformer.data.table[,.(Transformer, Units, Rating, 
-                                                      Resistance, Reactance)]
-    
-    add_to_properties_sheet(transf.to.properties, 
-                            names.col = 'Transformer', 
-                            object.class = 'Transformer', 
-                            collection.name = 'Transformers')
-    
     # add transformer-node membership to memberships .sheet
     transf.to.memberships <- initialize_table(Memberships.sheet, 
                                               nrow(transformer.data.table), 
@@ -538,6 +537,21 @@ if (exists("transformer.data.table")) {
     
     Memberships.sheet  <- merge_sheet_w_table(Memberships.sheet, 
                                               transf.to.memberships)
+    
+    
+    # add transformers to properties .sheet
+
+    # what columns should not be considered properties? (everything after
+    # 'Node To' is relic from PSSE parsing)
+    excluded.cols <- c("notes", "category", "Node From", "Node To", 
+                       "Voltage.From", "Voltage.To", "Status", 
+                       "Region.From", "Region.To")
+    
+    excluded.cols <- excluded.cols[excluded.cols %in% names(transformer.data.table)]
+    
+    transf.to.properties <- transformer.data.table[,!excluded.cols, with = FALSE]
+    
+    add_to_properties_sheet(transf.to.properties, names.col = "Transformer")
     
     # clean up
     rm(transf.to.objects, transf.to.properties, transf.to.memberships)
