@@ -674,6 +674,40 @@ add_to_properties_sheet <- function(input.table,
     }
 }
 
+
+##import_objects
+#
+# input.table: dt of objects to be created. colname of objects should be their 
+#              PLEXOS class (i.e. "Generator"). a "category" column is optional
+#              (if not given, object will not be categorized). Any other columns
+#              will be ignored
+# object.col: character with name of column containing objects to be created. 
+#             if not given, first col of input.table will be used.
+             
+import_objects <- function(input.table, 
+                           object.col = NA) {
+    
+    # get object col if not given
+    if (is.na(object.col)) object.col <- names(input.table)[1] 
+    
+    # make sure category is capitalized correctly if it exists
+    check_colname_cap(input.table)
+    
+    # add category col if not given
+    if (!("category" %in% names(input.table))) input.table[,category := NA]
+    
+    # add to Objects.sheet (in global environment)
+    to.objects <- initialize_table(Objects.sheet, 
+                                   nrow(input.table),
+                                   list(class = object.col,
+                                        name = input.table[[object.col]],
+                                        category = input.table$category))
+    
+    
+    Objects.sheet <<- merge_sheet_w_table(Objects.sheet, to.objects)
+}
+
+
 ##import_constraint
 #shortcut for importing a table of constraints (all of the same type) and 
 # adding objects, categories, attributes, memberships, and properties to sheets.
