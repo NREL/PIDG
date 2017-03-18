@@ -55,7 +55,7 @@ check_for_dupes <- function(dt, cols) {
 # different types. If cols.vec is a list, nothing bad will happen, but all 
 # numbers will be coerced into characters and that will throw a warning 
 # (but not error) later.
-initialize_table <- function (model.table, nrows, cols.list) {
+initialize_table <- function (model.table, nrows, cols.list = list()) {
     
     # create dummy column to initialize table with proper number of rows
     new.table <- data.table(init.col = character(nrows))
