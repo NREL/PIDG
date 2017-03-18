@@ -674,6 +674,66 @@ add_to_properties_sheet <- function(input.table,
     }
 }
 
+##import_memberships
+#
+# input.table: dt of memberships to be created. currently can only be in a 
+#              format of one parent object type in one col (colname of parent 
+#              objects must be their class, i.e. "Generator") and all other 
+#              cols the children. child object colnames must be of format 
+#              collection_childclass (i.e. "Head Storage_Storage"). A "notes" 
+#              column will be ignored, but no other cols should be included.
+# object.col: character name of column containing parent objects. if not given, 
+#             first column will be used.
+
+import_memberships <- function(input.table, 
+                               object.col = NA) {
+    
+    # get object col if not given
+    if (is.na(object.col)) object.col <- names(input.table)[1] 
+    
+    # make sure notes is capitalized correctly if it exists, then delete it
+    check_colname_cap(input.table)
+    
+    if ("notes" %in% names(input.table)) input.table[, notes := NULL]
+    
+    # loop through other columns, add them as memberships to objs in first col
+    all.membs <- initialize_table(model.table = Memberships.sheet, 
+                                  nrows = 0)
+    
+    child.cols <- names(input.table[,!object.col, with = FALSE])
+    
+    for (cname in child.cols) {
+            
+        # child object class and collection?
+        cur.coll <- tstrsplit(cname, "_")[[1]]
+        cur.chclass <- tstrsplit(cname, "_")[[2]]
+        
+        # get data, clear out NAs - is this slow? probably not, but can maybe 
+        # just subset in initialize_table
+        cur.data <- input.table[!duplicated(input.table, by = c(object.col, cname)) & 
+                                    !is.na(get(cname)) & 
+                                    !(get(cname) %in% c("", " ")),
+                                .(parent.objs = get(object.col), 
+                                  child.objs = get(cname))]
+        
+        # temp table for this iteration's data
+        cur.membs <- initialize_table(Memberships.sheet, 
+                                      nrows = nrow(cur.data))
+        
+        cur.membs[, parent_class := object.col]
+        cur.membs[, child_class := cur.chclass]
+        cur.membs[, collection := cur.coll]
+        cur.membs[, parent_object := cur.data$parent.objs]
+        cur.membs[, child_object := cur.data$child.objs]
+        
+        # add to full table
+        all.membs <- rbindlist(list(all.membs, cur.membs))
+    }
+    
+    # add this to Memberships.sheet
+    Memberships.sheet <<- merge_sheet_w_table(Memberships.sheet, all.membs)
+    
+}
 
 ##import_objects
 #
