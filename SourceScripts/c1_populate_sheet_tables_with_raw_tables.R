@@ -120,13 +120,8 @@ node.data.table[category %in% c("", " "), category := NA]
 #------------------------------------------------------------------------------|
 
 # add nodes to object .sheet
-nodes.to.objects <- initialize_table(Objects.sheet, 
-                                     nrow(node.data.table),
-                                     list(class = "Node",
-                                          name = node.data.table$Node,
-                                          category = node.data.table$category))
 
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, nodes.to.objects)
+import_objects(node.data.table)
 
 # add node properties
 # TODO: for now, there is some membership data included in the node.data.table. 
@@ -142,7 +137,7 @@ nodes.to.properties <- node.data.table[,!excluded.cols, with = FALSE]
 add_to_properties_sheet(nodes.to.properties, names.col = "Node")
 
 # clean up
-rm(nodes.to.objects, nodes.to.properties, excluded.cols)
+rm(nodes.to.properties, excluded.cols)
 
 
 #------------------------------------------------------------------------------|
@@ -156,14 +151,9 @@ if ("Region" %in% names(node.data.table) &&
     
     # add regions to object .sheet
     node.regions <- node.data.table[!is.na(Region) & !(Region %in% c("", " "))]
-    all.regions <- node.regions[,unique(Region)]
+    all.regions <- node.regions[,.(Region = unique(Region))]
     
-    regions.to.objects <- initialize_table(Objects.sheet, 
-                                           length(all.regions),
-                                           list(class = "Region",
-                                                name = all.regions))
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, regions.to.objects)
+    import_objects(all.regions)
     
     # add node-region membership to memberships .sheet
     regions.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
@@ -179,8 +169,7 @@ if ("Region" %in% names(node.data.table) &&
                                              regions.to.nodes.to.memberships)
     
     # clean up
-    rm(node.regions, all.regions, regions.to.objects, 
-       regions.to.nodes.to.memberships)
+    rm(node.regions, all.regions, regions.to.nodes.to.memberships)
     
 } else {
     stop("At least one region is required. Please add a Region column to node.file")
@@ -197,14 +186,9 @@ if ("Zone" %in% names(node.data.table) &&
     
     # add zones to objects .sheet
     node.zones <- node.data.table[!is.na(Zone) & !(Zone %in% c("", " "))]
-    all.zones <- node.zones[,unique(Zone)]
+    all.zones <- node.zones[,.(Zone = unique(Zone))]
     
-    zones.to.objects <- initialize_table(Objects.sheet, 
-                                         length(all.zones),
-                                         list(class = "Zone",
-                                              name = all.zones))
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, zones.to.objects)
+    import_objects(all.zones)
     
     # add zone-region membership to memberships .sheet
     zones.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
@@ -220,7 +204,7 @@ if ("Zone" %in% names(node.data.table) &&
                                              zones.to.nodes.to.memberships)
     
     # clean up
-    rm(node.zones, all.zones, zones.to.objects, zones.to.nodes.to.memberships)
+    rm(node.zones, all.zones, zones.to.nodes.to.memberships)
 }
 
 
@@ -295,14 +279,8 @@ line.data.table[category %in% c("", " "), category := NA]
 #------------------------------------------------------------------------------|
   
 # add lines to objects .sheet
-lines.to.objects <- initialize_table(Objects.sheet, 
-                                     nrow(line.data.table), 
-                                     list(class = "Line"))
 
-lines.to.objects[, name := line.data.table$Line] 
-lines.to.objects[, category := line.data.table$category]
-
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, lines.to.objects)
+import_objects(line.data.table, object.col = "Line")
 
 # add lines to memberships .sheet
 lines.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
@@ -341,8 +319,7 @@ lines.to.properties <- line.data.table[,!excluded.cols, with = FALSE]
 add_to_properties_sheet(lines.to.properties, names.col = "Line")
 
 # clean up
-rm(lines.to.objects, excluded.cols, lines.to.properties, 
-   lines.to.nodes.to.memberships)
+rm(excluded.cols, lines.to.properties, lines.to.nodes.to.memberships)
 
 
 #------------------------------------------------------------------------------|
@@ -389,13 +366,8 @@ generator.data.table[category %in% c("", " "), category := NA]
 gen.object <- unique(generator.data.table, by = c("Generator", "category"))
 
 # add generators to objects .sheet, categorizing by region
-gens.to.objects <- initialize_table(Objects.sheet, 
-                                    nrow(gen.object), 
-                                    list(class = "Generator", 
-                                         name = gen.object$Generator,
-                                         category = gen.object$category))
 
-Objects.sheet <- merge_sheet_w_table(Objects.sheet, gens.to.objects)
+import_objects(gen.object, object.col = "Generator")
 
 # add generator-node membership to memberships .sheet
 gens.to.memberships <- initialize_table(Memberships.sheet,
@@ -453,7 +425,7 @@ gens.to.properties <- gen.props[,!excluded.cols, with = FALSE]
 add_to_properties_sheet(gens.to.properties, names.col = "Generator")
 
 # clean up
-rm(gen.object, gens.to.objects, gens.to.properties, gens.to.memberships, 
+rm(gen.object, gens.to.properties, gens.to.memberships, 
    excluded.cols)
 
 
@@ -510,14 +482,9 @@ if (exists("transformer.data.table")) {
 if (exists("transformer.data.table")) {
     
     # add transformers to objects .sheet
-    transf.to.objects <- initialize_table(Objects.sheet, 
-                                          nrow(transformer.data.table), 
-                                          list(class = "Transformer",
-                                               name = transformer.data.table$Transformer, 
-                                               category = transformer.data.table$category))
     
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, transf.to.objects)
-    
+    import_objects(transformer.data.table, object.col = "Transformer")
+
     # add transformer-node membership to memberships .sheet
     transf.to.memberships <- initialize_table(Memberships.sheet, 
                                               nrow(transformer.data.table), 
@@ -555,5 +522,5 @@ if (exists("transformer.data.table")) {
     add_to_properties_sheet(transf.to.properties, names.col = "Transformer")
     
     # clean up
-    rm(transf.to.objects, transf.to.properties, transf.to.memberships)
+    rm(transf.to.properties, transf.to.memberships)
 }
