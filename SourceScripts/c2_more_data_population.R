@@ -278,7 +278,7 @@ if (exists("load.data.table")) {
 # add RE generators ----
 #------------------------------------------------------------------------------|
 # these will be added to generator.data.table
-if (add.RE.gens & exists("RE.gen.file.list")){
+if (exists("RE.gen.file.list") && add.RE.gens){
     
     for (item in RE.gen.file.list) {
         
