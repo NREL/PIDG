@@ -1,5 +1,8 @@
 # Run to check data and summarize the compiled database 
 
+# define print width
+p.width = 10000
+
 # function to adjust width of output to txt file
 withOptions <- function(optlist, expr)
 {
@@ -101,7 +104,10 @@ if(nrow(missing.properties.objects) > 0){
   cat("\n\n")
   cat("WARNING: The following objects in Properties.sheet are not found in ",
       "Objects.sheet\n\n")
-  print(missing.properties.objects, row.names = FALSE, quote = FALSE)
+  print(missing.properties.objects, 
+        row.names = FALSE, 
+        quote = FALSE, 
+        width = p.width)
   sink()
 }
 
@@ -120,7 +126,10 @@ if(nrow(missing.memberships.objects) > 0){
   cat("\n\n")
   cat("WARNING: The following objects in Memberships.sheet are not found in ",
       "Objects.sheet\n\n")
-  print(missing.memberships.objects, row.names = FALSE, quote = FALSE)
+  print(missing.memberships.objects, 
+        row.names = FALSE, 
+        quote = FALSE, 
+        width = p.width)
   sink()
 }
 
@@ -237,11 +246,10 @@ sink(db.summary, append = TRUE)
 cat("Summary of generators in database")
 cat("\n------------\n\n")
 cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n\n", data.check.dir))
-withOptions(list(width = 200), 
-			print(generator.fuels.summary,
+print(generator.fuels.summary,
 				  row.names = F, 
-				  n = nrow(generator.fuels.summary))
-				  )
+				  n = nrow(generator.fuels.summary), 
+				  width = p.width)
 cat("\n\n")
 sink()
 
@@ -314,7 +322,7 @@ if(nrow(duplicated.nodes) > 0){
   sink(fatal.warnings, append = T) 
   cat("WARNING: at least one node is assigned to more than one region and/or zone.")
   cat("\n Check these nodes: \n")
-  print(duplicated.nodes, quote = F, row.names = F)
+  print(duplicated.nodes, quote = F, row.names = F, width = p.width)
   sink()
 }
 
@@ -400,7 +408,8 @@ cat("Islands are any groups of nodes not connected to the largest connected comp
 cat("\n\n")
 print(setorder(components.table, -`Component size`, `Nodes in 'Remove Isolated Nodes' scenario`),
       row.names = F, 
-      n = nrow(components.table))
+      n = nrow(components.table), 
+      width = p.width)
 cat("\n\n")
 sink()
 
@@ -430,7 +439,8 @@ if(lpf.sum.to.one == F){
   print(region.lpf[region.lpf != 1, .(Region, 
                                       region.lpf = sprintf("%.10f", region.lpf))], 
         row.names = F,
-        n = nrow(region.lpf))
+        n = nrow(region.lpf), 
+        width = p.width)
   sink()
 }
 
@@ -588,7 +598,8 @@ if (any(problem.row.mask)) {
   print(Properties.sheet[problem.row.mask,
                          .(parent_object, child_object, property, value, scenario)],
         row.names = F,
-        n = nrow(Properties.sheet[problem.row.mask,]))
+        n = nrow(Properties.sheet[problem.row.mask,]), 
+        width = p.width)
   sink()
 }
 
@@ -604,7 +615,8 @@ if (any(problem.row.mask)) {
         "sheets, among other things.\n")
   print(Memberships.sheet[problem.row.mask], 
         row.names = F, 
-        n = nrow(Memberships.sheet[problem.row.mask]))
+        n = nrow(Memberships.sheet[problem.row.mask]),
+        width = p.width)
   sink()
 }
 
@@ -618,7 +630,8 @@ if (!all(all.regions %in% regions.w.nodes)) {
   cat("WARNING: the following region(s) have no nodes. This will not import.\n")
   print(all.regions[!(all.regions %in% regions.w.nodes)], 
         row.names = F, 
-        n = nrow(all.regions[!(all.regions %in% regions.w.nodes)]))
+        n = nrow(all.regions[!(all.regions %in% regions.w.nodes)]), 
+        width = p.width)
   sink()
 }
 
@@ -629,7 +642,8 @@ if (any(Objects.sheet[!is.na(name),nchar(name) > 50])) {
   cat("WARNING: the following object(s) have names with > 50 characters. This will not import.\n")
   print(Objects.sheet[nchar(name) > 50], 
         row.names = F, 
-        n = nrow(Objects.sheet[nchar(name) > 50]))
+        n = nrow(Objects.sheet[nchar(name) > 50]),
+        width = p.width)
   sink()
 }
 
@@ -657,7 +671,7 @@ if (nrow(known.issues) > 0) {
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
                "This will not run properly.\n"))
-  print(known.issues, row.names = F, n = nrow(known.issues))
+  print(known.issues, row.names = F, n = nrow(known.issues), width = p.width)
   sink()
 }
 
@@ -670,7 +684,7 @@ if (nrow(unknown.issues) > 0) {
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
                "This is untested but may not run properly.\n"))
-  print(unknown.issues, row.names = F, n = nrow(unknown.issues))
+  print(unknown.issues, row.names = F, n = nrow(unknown.issues), width = p.width)
   sink()
 }
 
@@ -689,7 +703,8 @@ if (any(dupes)) {
                "will not run.\n"))
   print(Properties.sheet[dupes], 
         row.names = F, 
-        n = nrow(Properties.sheet[dupes]))
+        n = nrow(Properties.sheet[dupes]),
+        width = p.width)
   sink()
 }
 
@@ -708,7 +723,8 @@ if (length(object.list) > 0) {
                "these properties to other object. This may not run.\n"))
   print(Properties.sheet[child_object %in% object.list,], 
         row.names = F, 
-        n = nrow(Properties.sheet[child_object %in% object.list,]))
+        n = nrow(Properties.sheet[child_object %in% object.list,]), 
+        width = p.width)
   sink()
 }
 
@@ -726,7 +742,8 @@ if (any(non.object.scens)) {
                " not be read correctly by PLEXOS.\n"))
   print(Properties.sheet[non.object.scens], 
         row.names = F, 
-        n = nrow(Properties.sheet[non.object.scens]))
+        n = nrow(Properties.sheet[non.object.scens]), 
+        width = p.width)
   sink()
 }
 
@@ -744,7 +761,8 @@ if (any(non.object.dfs)) {
                " not be read correctly by PLEXOS.\n"))
   print(Properties.sheet[non.object.dfs], 
         row.names = F,
-        n = nrow(Properties.sheet[non.object.dfs]))
+        n = nrow(Properties.sheet[non.object.dfs]),
+        width = p.width)
   sink()
 }
 
@@ -760,7 +778,8 @@ if (any(nonnum.value)) {
              "'value' entries. This will not import.\n"))
   print(Properties.sheet[nonnum.value], 
         row.names = F,
-        n = nrow(Properties.sheet[nonnum.value]))
+        n = nrow(Properties.sheet[nonnum.value]), 
+        width = p.width)
   sink()
 }
 
