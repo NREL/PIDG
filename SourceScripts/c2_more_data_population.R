@@ -2,6 +2,88 @@
 # TODO edit this
 
 #------------------------------------------------------------------------------|
+# test generic object/property adder ----
+#------------------------------------------------------------------------------|
+
+if (exists("objects.list")) {
+    
+    for (fname in objects.list) {
+        
+        if (file.exists(file.path(inputfiles.dir, fname))) {
+            
+            message(sprintf("... Adding objects/properties from %s", fname))
+            
+            # need to specify "sep" here so fread can handle single-column files
+            cur.dt <- fread(file.path(inputfiles.dir, fname), sep = ",")
+            
+            # do some cleaning/checking
+            check_for_dupes(cur.dt, names(cur.dt)[1])
+            check_colname_cap(cur.dt)
+            
+            # add objects
+            import_objects(cur.dt)
+            
+            # add properties
+            excluded.cols <- c("notes", "category")
+            
+            excluded.cols <- excluded.cols[excluded.cols %in% names(cur.dt)]
+            cur.dt.props <- cur.dt[,!excluded.cols, with = FALSE]
+            
+            add_to_properties_sheet(cur.dt.props)
+            
+        } else {
+            
+            message(sprintf(">>  %s does not exist ... skipping"), fname)
+        }
+        
+    }
+    
+    # clean up
+    rm(cur.dt, cur.dt.props, excluded.cols, fname)
+    
+} else {
+    
+    message(">>  objects.list does not exist ... skipping")
+}
+
+
+#------------------------------------------------------------------------------|
+# test generic membership adder ----
+#------------------------------------------------------------------------------|
+
+if (exists("memberships.list")) {
+    
+    for (fname in memberships.list) {
+        
+        if (file.exists(file.path(inputfiles.dir, fname))) {
+            
+            message(sprintf("... Adding memberships from %s", fname))
+            
+            cur.dt <- fread(file.path(inputfiles.dir, fname))
+            
+            # do some cleaning/checking
+            check_for_dupes(cur.dt, names(cur.dt))
+            check_colname_cap(cur.dt)
+            
+            # add memberships
+            import_memberships(cur.dt)
+            
+        } else {
+            
+            message(sprintf(">>  %s does not exist ... skipping"), fname)
+        }
+    }
+    
+    # clean up
+    rm(cur.dt, fname)
+    
+} else {
+    
+    message(">>  memberships.list does not exist ... skipping")
+}
+
+
+#------------------------------------------------------------------------------|
 # add fuels and categorize generators by fuel ----
 #------------------------------------------------------------------------------|
 
@@ -590,6 +672,7 @@ if (exists("object.property.list")) {
         if (file.exists(file.path(inputfiles.dir,object.property.list[[elem]][1]))) {
             message(sprintf("... Adding properties from %s", 
                             object.property.list[[elem]][1]))
+            
             # read in table
             cur.table <- fread(file.path(inputfiles.dir, 
                                          object.property.list[[elem]][1]))
