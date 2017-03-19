@@ -156,20 +156,10 @@ if ("Region" %in% names(node.data.table) &&
     import_objects(all.regions)
     
     # add node-region membership to memberships .sheet
-    regions.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
-                                                        nrow(node.regions), 
-                                                        list(parent_class = "Node", 
-                                                             child_class = "Region",
-                                                             collection = "Region"))
-    
-    regions.to.nodes.to.memberships[, parent_object := node.regions$Node]
-    regions.to.nodes.to.memberships[, child_object := node.regions$Region]
-    
-    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                             regions.to.nodes.to.memberships)
+    import_memberships(node.regions[,.(Node, Region_Region = Region)])
     
     # clean up
-    rm(node.regions, all.regions, regions.to.nodes.to.memberships)
+    rm(node.regions, all.regions)
     
 } else {
     stop("At least one region is required. Please add a Region column to node.file")
@@ -191,20 +181,10 @@ if ("Zone" %in% names(node.data.table) &&
     import_objects(all.zones)
     
     # add zone-region membership to memberships .sheet
-    zones.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
-                                                      nrow(node.zones), 
-                                                      list(parent_class = "Node", 
-                                                           child_class = "Zone", 
-                                                           collection = "Zone"))
-    
-    zones.to.nodes.to.memberships[, parent_object := node.zones$Node]
-    zones.to.nodes.to.memberships[, child_object := node.zones$Zone]
-    
-    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                             zones.to.nodes.to.memberships)
+    import_memberships(node.zones[,.(Node, Zone_Zone = Zone)])
     
     # clean up
-    rm(node.zones, all.zones, zones.to.nodes.to.memberships)
+    rm(node.zones, all.zones)
 }
 
 
@@ -283,25 +263,9 @@ line.data.table[category %in% c("", " "), category := NA]
 import_objects(line.data.table, object.col = "Line")
 
 # add lines to memberships .sheet
-lines.to.nodes.to.memberships <- initialize_table(Memberships.sheet, 
-                                                  nrow(line.data.table), 
-                                                  list(parent_class = "Line", 
-                                                       child_class = "Node"))
-
-lines.to.nodes.to.memberships[, parent_object := line.data.table$Line]
-lines.to.nodes.to.memberships[, `Node From` := line.data.table$`Node From`]
-lines.to.nodes.to.memberships[, `Node To` := line.data.table$`Node To`]
-
-# prepare for melting, then melt down to separate Node From and Node To
-lines.to.nodes.to.memberships[, c("collection", "child_object") := NULL]
-
-lines.to.nodes.to.memberships <- melt(lines.to.nodes.to.memberships, 
-                                      measure.vars = c("Node From", "Node To"), 
-                                      variable.name = "collection", 
-                                      value.name = "child_object")
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                         lines.to.nodes.to.memberships)
+import_memberships(line.data.table[, .(Line,
+                                       `Node From_Node` = `Node From`,
+                                       `Node To_Node` = `Node To`)])
 
 # add lines properties
 
@@ -319,7 +283,7 @@ lines.to.properties <- line.data.table[,!excluded.cols, with = FALSE]
 add_to_properties_sheet(lines.to.properties, names.col = "Line")
 
 # clean up
-rm(excluded.cols, lines.to.properties, lines.to.nodes.to.memberships)
+rm(excluded.cols, lines.to.properties)
 
 
 #------------------------------------------------------------------------------|
@@ -366,20 +330,10 @@ generator.data.table[category %in% c("", " "), category := NA]
 gen.object <- unique(generator.data.table, by = c("Generator", "category"))
 
 # add generators to objects .sheet, categorizing by region
-
 import_objects(gen.object, object.col = "Generator")
 
 # add generator-node membership to memberships .sheet
-gens.to.memberships <- initialize_table(Memberships.sheet,
-                                        nrow(generator.data.table), 
-                                        list(parent_class = "Generator", 
-                                             child_class = "Node", 
-                                             collection = "Nodes"))
-
-gens.to.memberships[, parent_object := generator.data.table$Generator]
-gens.to.memberships[, child_object := generator.data.table$Node]
-
-Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, gens.to.memberships)
+import_memberships(generator.data.table[,.(Generator, Nodes_Node = Node)])
 
 # add generator properties
 
@@ -425,8 +379,7 @@ gens.to.properties <- gen.props[,!excluded.cols, with = FALSE]
 add_to_properties_sheet(gens.to.properties, names.col = "Generator")
 
 # clean up
-rm(gen.object, gens.to.properties, gens.to.memberships, 
-   excluded.cols)
+rm(gen.object, gens.to.properties, excluded.cols, gen.props)
 
 
 #------------------------------------------------------------------------------|
@@ -486,27 +439,10 @@ if (exists("transformer.data.table")) {
     import_objects(transformer.data.table, object.col = "Transformer")
 
     # add transformer-node membership to memberships .sheet
-    transf.to.memberships <- initialize_table(Memberships.sheet, 
-                                              nrow(transformer.data.table), 
-                                              list(parent_class = "Transformer",
-                                                   child_class = "Node"))
-    
-    transf.to.memberships[, parent_object := transformer.data.table$Transformer]
-    transf.to.memberships[,`Node From` := transformer.data.table$`Node From`]
-    transf.to.memberships[,`Node To` := transformer.data.table$`Node To`]
-    
-    # get rid of automatically generated columns for melting
-    transf.to.memberships[,c("collection", "child_object") := NULL]
-    
-    transf.to.memberships <- melt(transf.to.memberships, 
-                                  measure.vars = c("Node From", "Node To"),
-                                  variable.name = "collection", 
-                                  value.name = "child_object")
-    
-    Memberships.sheet  <- merge_sheet_w_table(Memberships.sheet, 
-                                              transf.to.memberships)
-    
-    
+    import_memberships(transformer.data.table[, .(Transformer,
+                                                  `Node From_Node` = `Node From`,
+                                                  `Node To_Node` = `Node To`)])
+
     # add transformers to properties .sheet
 
     # what columns should not be considered properties? (everything after
@@ -522,5 +458,5 @@ if (exists("transformer.data.table")) {
     add_to_properties_sheet(transf.to.properties, names.col = "Transformer")
     
     # clean up
-    rm(transf.to.properties, transf.to.memberships)
+    rm(transf.to.properties)
 }
