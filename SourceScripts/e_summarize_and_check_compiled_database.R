@@ -211,6 +211,12 @@ generator.map <- generator.map[, lapply(.SD, function(x) {
     suppressWarnings(as.numeric(x))} else x
 })]
 
+# if don't have max capacity, sub in 0 so next lines don't break
+if (all(is.na(generator.map$Capacity))) {
+    generator.map[, Capacity := NULL] # is a char column
+    generator.map[, Capacity := 0]
+}
+
 # summarize generator properties by fuel and save to OutputFiles
 generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
                                            avg.capacity = mean(Capacity),
