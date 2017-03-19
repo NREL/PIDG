@@ -301,7 +301,7 @@ nodes = merge(nodes,
               by = "Node", all = T)
 
 node.missing.region <- nodes[is.na(Region), .(Node, Region, Fatal = T)]
-node.missing.zone <- nodes[is.na(Zone), .(Node, Zone, Fatal = T)]
+node.missing.zone <- nodes[is.na(Zone), .(Node, Zone)]
 
 missing.items.list <- c(missing.items.list,"node.missing.region", 
                         "node.missing.zone")
