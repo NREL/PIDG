@@ -706,9 +706,9 @@ if (length(object.list) > 0) {
   cat(paste0("WARNING: the following object(s) have defined properties but ",
                "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
                "these properties to other object. This may not run.\n"))
-  print(Objects.sheet[name %in% object.list,], 
+  print(Properties.sheet[child_object %in% object.list,], 
         row.names = F, 
-        Objects.sheet[name %in% object.list,])
+        n = nrow(Properties.sheet[child_object %in% object.list,]))
   sink()
 }
 
