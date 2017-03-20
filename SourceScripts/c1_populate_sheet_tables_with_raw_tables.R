@@ -367,10 +367,35 @@ if ("Generation Participation Factor" %in% names(generator.data.table)) {
     gen.props <- generator.data.table
 }
 
+# special case: add fuels and start fuels if they exist: should fix this later
+fuel.cols <- names(generator.data.table)
+fuel.cols <- fuel.cols[fuel.cols %in% c("Fuel", "Start Fuel")]
+
+if (length(fuel.cols > 0)) {
+    
+    # add fuel objects 
+    fuels <- unique(c(sapply(fuel.cols, 
+                             function(x) generator.data.table[,get(x)])))
+    
+    fuels <- fuels[!(fuels %in% c(NA, "", " "))]
+    
+    import_objects(data.table(Fuel = fuels))
+    
+    # format properly, then add memberships
+    fuel.membs <- generator.data.table[, c("Generator", fuel.cols), with = F] 
+    setnames(fuel.membs, fuel.cols, paste0(fuel.cols, "s_Fuel"))
+
+    import_memberships(fuel.membs)    
+    
+    # clean up
+    rm(fuels,fuel.membs)
+    
+}
+
 # what columns should not be considered properties? (everything after 
 # 'Node' is relic from PSSE parsing)
-excluded.cols <- c("notes", "category", "Region", "Node", "Status", 
-                   grep("Owner", names(gen.props), value = TRUE))
+excluded.cols <- c("notes", "category", "Region", "Node", "Status", "Fuel", 
+                   "Start Fuel", grep("Owner", names(gen.props), value = TRUE))
 
 excluded.cols <- excluded.cols[excluded.cols %in% names(gen.props)]
 
@@ -379,7 +404,7 @@ gens.to.properties <- gen.props[,!excluded.cols, with = FALSE]
 add_to_properties_sheet(gens.to.properties, names.col = "Generator")
 
 # clean up
-rm(gen.object, gens.to.properties, excluded.cols, gen.props)
+rm(gen.object, gens.to.properties, excluded.cols, gen.props, fuel.cols)
 
 
 #------------------------------------------------------------------------------|
