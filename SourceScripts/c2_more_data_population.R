@@ -869,6 +869,22 @@ if(exists('reserve.files')) {
       Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                                reserve.to.gens.to.memberships)
       
+      # add reserve-generator properties to properties.sheet
+      cnames <- colnames(reserve.generators)
+      
+      if (length(cnames[!(cnames %in% c("Reserve", "Generator", "notes"))]) > 0) {
+        
+        if ("notes" %in% cnames) {
+          reserve.generators[,notes := NULL]
+        }
+        
+        add_to_properties_sheet(reserve.generators, 
+                                names.col = "Generator",
+                                parent.col = "Reserve")
+      }
+      
+      rm(cnames)
+      
     }else {
         if (length(reserve.files$reserve.regions) > 0) {
             message(sprintf('>> file %s not found ... skipping',
