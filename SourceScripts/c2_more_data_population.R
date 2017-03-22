@@ -962,24 +962,27 @@ if(exists('reserve.files')) {
         # clean up
         rm(excluded.cols, reserve.properties, reserves, reserve.to.objects)
         
-    }else {
+    } else {
         message(sprintf('>>  file %s not found ... skipping', 
                         reserve.files$reserves))
     }
     
     # add reserve generators 
-    if(length(reserve.files$reserve.generators) > 0 &&
+    if (length(reserve.files$reserve.generators) > 0 &&
        file.exists(file.path(inputfiles.dir,reserve.files$reserve.generators))){
         
         # read reserve generators file
         message(sprintf("...Adding reserves from %s", reserve.files$reserve.generators))
+        
         reserve.generators <- fread(file.path(inputfiles.dir,
                                               reserve.files$reserve.generators))
         
         # add reserve-generator memberships to memberships.sheet
         reserve.to.gens.to.memberships <- 
-            initialize_table(Memberships.sheet, nrow(reserve.generators), 
-                             list(parent_class = "Reserve", child_class = "Generator", 
+            initialize_table(Memberships.sheet, 
+                             nrow(reserve.generators), 
+                             list(parent_class = "Reserve", 
+                                  child_class = "Generator", 
                                   collection = "Generators"))
         
         reserve.to.gens.to.memberships[,parent_object := 
@@ -990,10 +993,25 @@ if(exists('reserve.files')) {
         Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
                                                  reserve.to.gens.to.memberships)
         
+        # add reserve-generator properties to properties.sheet
+        cnames <- colnames(reserve.generators)
+        
+        if (length(cnames[!(cnames %in% c("Reserve", "Generator", "notes"))]) > 0) {
+            
+            if ("notes" %in% cnames) {
+                reserve.generators[,notes := NULL]
+            }
+            
+            add_to_properties_sheet(reserve.generators, 
+                                    names.col = "Generator",
+                                    parent.col = "Reserve")
+        }
+        
         # clean up
-        rm(reserve.generators, reserve.to.gens.to.memberships)
+        rm(reserve.generators, reserve.to.gens.to.memberships, cname)
         
     } else {
+        
         if (length(reserve.files$reserve.regions) > 0) {
             message(sprintf('>> file %s not found ... skipping',
                             reserve.files$reserve.generators))
@@ -1001,7 +1019,7 @@ if(exists('reserve.files')) {
     }
     
     # add reserve regions
-    if(length(reserve.files$reserve.regions) > 0 &&
+    if (length(reserve.files$reserve.regions) > 0 &&
        file.exists(file.path(inputfiles.dir,reserve.files$reserve.regions))){
         
         # read reserve regions file
