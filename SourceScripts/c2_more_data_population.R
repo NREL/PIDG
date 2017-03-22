@@ -230,10 +230,13 @@ if (exists("load.data.table")) {
     # remove any negative loads and replace them with zero
     # convert NaNs to zero for PLEXOS to read them in correctly
     
-    load.part.fact.table <- load.data.table[, .(Node, Load, Status)] 
+    if ("Status" %in% names(load.data.table)) {
+        
+        # remove Status = 0 load
+        load.data.table[,Load := Load * Staus]
+    }
     
-    # remove Status = 0 load
-    load.part.fact.table[, Load := Load * Status]
+    load.part.fact.table <- load.data.table[, .(Node, Load)] 
     
     # remove negative LPFs
     if (any(load.part.fact.table[,Load < 0])) {
