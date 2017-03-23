@@ -33,7 +33,7 @@ if (exists("objects.list")) {
             
         } else {
             
-            message(sprintf(">>  %s does not exist ... skipping"), fname)
+            message(sprintf(">>  %s does not exist ... skipping", fname))
         }
         
     }
@@ -70,7 +70,7 @@ if (exists("memberships.list")) {
             
         } else {
             
-            message(sprintf(">>  %s does not exist ... skipping"), fname)
+            message(sprintf(">>  %s does not exist ... skipping", fname))
         }
     }
     
