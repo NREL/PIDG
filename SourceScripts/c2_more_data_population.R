@@ -233,7 +233,7 @@ if (exists("load.data.table")) {
     if ("Status" %in% names(load.data.table)) {
         
         # remove Status = 0 load
-        load.data.table[,Load := Load * Staus]
+        load.data.table[,Load := Load * Status]
     }
     
     load.part.fact.table <- load.data.table[, .(Node, Load)] 
