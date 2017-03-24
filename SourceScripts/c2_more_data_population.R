@@ -1008,7 +1008,7 @@ if(exists('reserve.files')) {
         }
         
         # clean up
-        rm(reserve.generators, reserve.to.gens.to.memberships, cname)
+        rm(reserve.generators, reserve.to.gens.to.memberships, cnames)
         
     } else {
         
