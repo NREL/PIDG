@@ -699,7 +699,7 @@ rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
 # ** check to see if a property is defined twice for on object in one scenario ----
 dupes = duplicated(Properties.sheet, 
                    by = c("parent_object", "child_object", "property", "scenario", 
-                          "band_id"))
+                          "band_id", "pattern"))
 
 if (any(dupes)) {
   sink(fatal.warnings, append = T) 
