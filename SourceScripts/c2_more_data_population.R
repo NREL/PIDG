@@ -890,7 +890,7 @@ if(exists('reserve.files')) {
     if(file.exists(file.path(inputfiles.dir, reserve.files$reserves))){
         
         # read reserves file
-        message(sprintf("...Adding reserves from %s", reserve.files$reserves))
+        message(sprintf("... Adding reserves from %s", reserve.files$reserves))
         reserves <- fread(file.path(inputfiles.dir, reserve.files$reserves))
         
         # add reserves to objects sheet
@@ -972,7 +972,7 @@ if(exists('reserve.files')) {
        file.exists(file.path(inputfiles.dir,reserve.files$reserve.generators))){
         
         # read reserve generators file
-        message(sprintf("...Adding reserves from %s", reserve.files$reserve.generators))
+        message(sprintf("... Adding reserves from %s", reserve.files$reserve.generators))
         
         reserve.generators <- fread(file.path(inputfiles.dir,
                                               reserve.files$reserve.generators))
@@ -1023,7 +1023,7 @@ if(exists('reserve.files')) {
        file.exists(file.path(inputfiles.dir,reserve.files$reserve.regions))){
         
         # read reserve regions file
-        message(sprintf("...Adding reserves from %s", reserve.files$reserve.regions))
+        message(sprintf("... Adding reserves from %s", reserve.files$reserve.regions))
         reserve.regions <- fread(file.path(inputfiles.dir,
                                            reserve.files$reserve.regions))
         
