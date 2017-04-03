@@ -40,15 +40,21 @@ if (exists("objects.list")) {
             # check_for_dupes(cur.dt, names(cur.dt[1]))
             
             # add objects
-            import_objects(cur.dt)
+            obj.cols <- c(names(cur.dt)[1], 
+                          if ("category" %in% names(cur.dt)) "category")
+            
+            import_objects(unique(cur.dt[,obj.cols, with = FALSE]))
             
             # add properties
             excluded.cols <- c("notes", "category")
             
             excluded.cols <- excluded.cols[excluded.cols %in% names(cur.dt)]
-            cur.dt.props <- cur.dt[,!excluded.cols, with = FALSE]
             
-            add_to_properties_sheet(cur.dt.props)
+            if (length(excluded.cols) > 0) {
+                cur.dt <- cur.dt[,!excluded.cols, with = FALSE]
+            }
+            
+            add_to_properties_sheet(cur.dt)
             
         } else {
             
@@ -58,7 +64,7 @@ if (exists("objects.list")) {
     }
     
     # clean up
-    rm(cur.dt, cur.dt.props, excluded.cols, fname)
+    rm(cur.dt, excluded.cols, fname, memb.cols)
     
 } else {
     
