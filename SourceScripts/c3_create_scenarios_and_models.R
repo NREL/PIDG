@@ -657,23 +657,31 @@ if (exists('isolated.nodes.to.remove.args.list')) {
 
 
 #------------------------------------------------------------------------------|
-# [[user defined constraint import]]                                       ----
+# User-defined Constraint Import                                      ----
 # -----------------------------------------------------------------------------|
 # 
 if (exists('constraint.import.files')) {
+  
     for (i in seq_along(constraint.import.files)) {
+      
         if (file.exists(file.path(inputfiles.dir,
                                   constraint.import.files[[i]][1]))) {
+          
             message(sprintf("... importing constraint from  %s", 
                             constraint.import.files[[i]][1]))
-            #data.table(read.csv(file.path(inputfiles.dir, filename)))
+          
             import_constraint(fread(file.path(inputfiles.dir, 
                                               constraint.import.files[[i]][1])))
+            
         } else {
+          
             message(sprintf(">>  %s does not exist ... skipping", 
                             constraint.import.files[[i]][1]))
+          
         }
+      
     }
+  
 } else { message('>>  no constraint import files defined ... skipping')}
 
 
