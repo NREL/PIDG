@@ -17,8 +17,27 @@ if (exists("objects.list")) {
             cur.dt <- fread(file.path(inputfiles.dir, fname), sep = ",")
             
             # do some cleaning/checking
-            check_for_dupes(cur.dt, names(cur.dt)[1])
             check_colname_cap(cur.dt)
+            
+            if ("notes" %in% names(cur.dt)) cur.dt[, notes := NULL]
+            
+            # if any memberships, add those (there may be dupes in objects or
+            # properties here)
+            memb.cols <- names(cur.dt)
+            memb.cols <- c(memb.cols[1], memb.cols[grepl("_", memb.cols)])
+            
+            if (length(memb.cols) > 1) {
+                
+                # check_for_dupes(cur.dt, memb.cols)
+                
+                import_memberships(cur.dt[,memb.cols, with = FALSE])
+            }
+            
+            # make sure there are no duplicates in the non-membership columns
+            if (length(memb.cols) > 1) cur.dt[, (memb.cols[-1]) := NULL]
+            
+            cur.dt <- unique(cur.dt) # this could be an efficiency thing
+            # check_for_dupes(cur.dt, names(cur.dt[1]))
             
             # add objects
             import_objects(cur.dt)
