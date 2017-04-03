@@ -542,7 +542,7 @@ add_to_properties_sheet <- function(input.table,
     if (is.na(collection.name)) collection.name <- paste0(object.class, "s")    
      
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
-                       date_from.col,band.col, memo.col)
+                       date_from.col,band.col, memo.col, "scenario")
     
     # check to make sure all given columns exist
     given.cols <- na.omit(c(names.col, parent.col, pattern.col,
@@ -635,6 +635,26 @@ add_to_properties_sheet <- function(input.table,
         # add scenario name if specified
         if (!is.na(scenario.name)) {
             props.tab[,scenario := paste0("{Object}", scenario.name)] }
+        
+        # add scenario column if specified
+        if ("scenario" %in% names(input.table)) {
+            
+            if (!is.na(scenario.name)) {
+                message(paste0("scenario.name given but there is also a ",
+                               "scenario column. whereever there is data in ",
+                               "the scenario column, it will overwrite ",
+                               "scenario.name"))
+            }
+            
+            props.tab[,scenario.temp := input.table[,scenario]]
+            props.tab[!is.na(scenario.temp), scenario := paste0("{Object}", 
+                                                                scenario.temp)]
+            props.tab[,scenario.temp := NULL]
+            
+            # add scenarios to objects
+            add_scenarios(input.table[,unique(scenario)], 
+                          category = "Object properties")
+        }
         
         # add memo column if specified
         if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
