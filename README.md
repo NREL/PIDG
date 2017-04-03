@@ -15,6 +15,8 @@ Load required variables into environment. Basic required variables are:
 * path to directory containing all input files  (input parameters file should refer to input files relative to this directory), defined as variable `inputfiles.dir`
 * path to directory where output excel file should be saved (will be created if does not exist), defined as variable `outputfiles.dir`
 * name of output excel file, defined as variable `output.wb.name`
+* `export.wb` (optional): if `TRUE`, will write out Excel workbook. If `FALSE`, will skip writing out the workbook with a message. If not set, will default to `TRUE`. Setting this to `FALSE` may be useful for testing.
+* `data.check.plots` (optional): if `TRUE`, pdf plots will be written out during the data checking process (regional capacity, line and transformer properties) and a summary of the database will pop up at the end of the process. If `FALSE`, plots will not be written out and the database summary won't pop up, although the database summary will be written and data checks will still run. In either case, if `PSSE2PLEXOS`, notices something wrong with the data, it will write this out and file(s) called `fatal.warnings.txt` and/or `warnings.txt` (depending on the severity of the issue) will pop up at the end of the process to notify the user. 
 
 Then, run **create\_plexos\_db\_from\_raw\_master\_script.R**. This will sequentially run the scripts in the directory *SourceScripts* and write the output into an excel file.
 

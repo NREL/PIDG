@@ -54,6 +54,8 @@ if(!exists("choose.input")){
   }
 }
 
+if (!exists("export.wb")) export.wb <- TRUE
+
 runAllFiles <- function () {
     
     # only parse psse if need to
@@ -94,9 +96,15 @@ runAllFiles <- function () {
                      "e_summarize_and_check_compiled_database.R"))
     
     # export tables
-    message("exporting tables...")
-    source(file.path(master.script.dir, "SourceScripts",
-                     "f_export_to_excel.R"))
+    
+    if (export.wb) {
+        message("exporting tables...")
+        source(file.path(master.script.dir, "SourceScripts",
+                         "f_export_to_excel.R"))
+    } else {
+        message("export.wb set to false. skipping export.")
+    }
+        
 }
 
 
