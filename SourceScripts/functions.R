@@ -20,6 +20,13 @@ check_colname_cap <- function(dt) {
     if (length(note.name) > 0 && note.name != "notes") {
         setnames(dt, note.name, "notes")
     }
+    
+    # check scenario
+    note.name <- names(dt)[tolower(names(dt)) == "scenario"]
+    
+    if (length(note.name) > 0 && note.name != "scenario") {
+        setnames(dt, note.name, "scenario")
+    }
 }
 
 ### check_for_dupes
@@ -98,6 +105,26 @@ merge_sheet_w_table <- function(sheet.table, table.to.merge) {
     return(sheet.table)
 }
 
+### add_scenario
+# add scenarios to object properties if they don't already exist in category
+add_scenarios <- function(scenarios, category) {
+    
+    to.add <- scenarios[!(scenarios %in% 
+                              Objects.sheet[class == "Scenario", name])]
+    
+    if (length(to.add) > 0) {
+        
+        cur.scen.to.objects <- initialize_table(Objects.sheet, 
+                                                length(to.add), 
+                                                list(name = to.add, 
+                                                     category = category,
+                                                     class = 'Scenario'))
+        
+        Objects.sheet <<- merge_sheet_w_table(Objects.sheet, 
+                                              cur.scen.to.objects)
+    }
+    
+} 
 
 #------------------------------------------------------------------------------|
 # Functions to standardize and generalize data import ----

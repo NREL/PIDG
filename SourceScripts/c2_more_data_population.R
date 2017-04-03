@@ -691,30 +691,18 @@ if (exists("object.property.list")) {
         
             cur.args$input.table <- cur.table
             
-            # add to properties sheet using input arguments and new table
+            # clean, add to properties sheet using input arguments and new table
+            check_colname_cap(cur.table)
+            
             do.call(add_to_properties_sheet, cur.args)
             
-            # for now, just add any scenario here that doesn't already exist
+            # add any scenario here that doesn't already exist
             # need to deal with categories later
             if ('scenario.name' %in% names(cur.args)) { 
                 
-                cur.scen <- cur.args['scenario.name']
-                if (!(cur.scen %in% Objects.sheet[,name])) {
-                    
-                    cur.scen.to.objects <- initialize_table(Objects.sheet, 1, 
-                                                            list(name = cur.scen, 
-                                                                 category = 'Object properties',
-                                                                 class = 'Scenario'))
-                    
-                    Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-                                                         cur.scen.to.objects)
-                    
-                    # clean up
-                    rm(cur.scen.to.objects)
-                }
+                add_scenarios(cur.args['scenario.name'], 
+                              category = "Object properties")
                 
-                # clean up
-                rm(cur.scen)
             }
             
             # clean up
@@ -725,6 +713,7 @@ if (exists("object.property.list")) {
                             object.property.list[[elem]][1]))
         }
     }
+    
 } else {
     message(">>  object.property.list does not exist ... skipping")
 }
@@ -781,15 +770,10 @@ if (exists('turn.off.except.in.scen.list')) {
                                     scenario.name = cur.scen)
             
             # add scenario as an object
-            cur.scen.to.obj <- 
-                initialize_table(Objects.sheet, 1,list(class= 'Scenario', 
-                                                       name = cur.scen, 
-                                                       category = 'Generator status'))
-            
-            Objects.sheet <- merge_sheet_w_table(Objects.sheet, cur.scen.to.obj)
+            add_scenarios(cur.scen, category = "Generator status")
             
             # clean up
-            rm(elem, cur.names, cur.class, cur.coll, cur.scen, cur.scen.to.obj)
+            rm(elem, cur.names, cur.class, cur.coll, cur.scen)
             
         } else {
             message(sprintf(">>  %s does not exist ... skipping", 
@@ -934,18 +918,10 @@ if(exists('reserve.files')) {
                                     collection.name = 'Reserves')
             
             # add reserve scenarios to objects.sheet
-            reserve.scenario.to.objects <- initialize_table(Objects.sheet, 
-                                                            length(reserve.scenarios),
-                                                            list(class = "Scenario",
-                                                                 category = "Reserves"))
-            
-            reserve.scenario.to.objects[, name := reserve.scenarios]
-            
-            Objects.sheet <- merge_sheet_w_table(Objects.sheet,reserve.scenario.to.objects)
+            add_scenarios(reserve.scenarios, category = "Reserves")
             
             # clean up
-            rm(reserve.scenarios, reserve.enabled, reserve.scenario.off, 
-               reserve.scenario.to.objects)
+            rm(reserve.scenarios, reserve.enabled, reserve.scenario.off)
             
         } else if ("Is Enabled" %in% names(reserves)) {
             
