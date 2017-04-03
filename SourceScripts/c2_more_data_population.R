@@ -6,40 +6,53 @@
 #------------------------------------------------------------------------------|
 
 if (exists("objects.list")) {
-    
-    for (fname in objects.list) {
+  
+    for (elem in seq_along(objects.list)) {
+      
+        if (file.exists(file.path(inputfiles.dir,objects.list[[elem]][1]))) {
         
-        if (file.exists(file.path(inputfiles.dir, fname))) {
-            
-            message(sprintf("... Adding objects/properties from %s", fname))
-            
-            # need to specify "sep" here so fread can handle single-column files
-            cur.dt <- fread(file.path(inputfiles.dir, fname), sep = ",")
+            message(sprintf("... Adding objects/properties from %s",
+                            objects.list[[elem]][1]))
+          
+            # read table, add "sep" here so fread can handle single-column files 
+            cur.dt <- fread(file.path(inputfiles.dir,
+                                      objects.list[[elem]][1]), sep = ",")
             
             # do some cleaning/checking
             check_for_dupes(cur.dt, names(cur.dt)[1])
             check_colname_cap(cur.dt)
             
-            # add objects
+            # add objects from cur.dt
             import_objects(cur.dt)
             
-            # add properties
+            # add properties (and args)
             excluded.cols <- c("notes", "category")
             
             excluded.cols <- excluded.cols[excluded.cols %in% names(cur.dt)]
             cur.dt.props <- cur.dt[,!excluded.cols, with = FALSE]
             
-            add_to_properties_sheet(cur.dt.props)
+            # read in args
+            if (length(objects.list[[elem]]) > 1) {
+                
+                cur.args <- objects.list[[elem]][[2]]
+              
+            } else {
+              
+                cur.args <- list()
+                
+            }
             
-        } else {
+            cur.args$input.table <- cur.dt.props
             
-            message(sprintf(">>  %s does not exist ... skipping", fname))
+            # add to properties sheet using input arguments
+            do.call(add_to_properties_sheet, cur.args)
+            
         }
         
     }
     
     # clean up
-    rm(cur.dt, cur.dt.props, excluded.cols, fname)
+    rm(cur.dt, cur.dt.props, excluded.cols, cur.args, elem)
     
 } else {
     
