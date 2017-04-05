@@ -145,7 +145,7 @@ generator.map <- merge(generator.map,
                        Properties.sheet[child_class == "Generator" &
                                           property == "Max Capacity",
                                         .(Generator = child_object,
-                                          Capacity = value)], 
+                                          `Max Capacity` = value)], 
                        by = "Generator", all.x = T)
 
 # pull generator fuels
@@ -195,10 +195,10 @@ generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
 
 # flag generators with missing missing nodes, regions, fuels, capacity, units
 
-gens.missing.units <- generator.map[is.na(Units), .(Generator, Units)]
-gens.missing.capacity <- generator.map[is.na(Capacity), .(Generator, Capacity)]
-gens.missing.fuel <- generator.map[is.na(Fuel), .(Generator, Fuel)]
-gens.missing.node <- generator.map[is.na(Node), .(Generator, Node)]
+gens.missing.units <- unique(generator.map[is.na(Units), .(Generator, Units, `Generator category`)])
+gens.missing.capacity <- unique(generator.map[is.na(`Max Capacity`), .(Generator, `Max Capacity`, `Generator category`)])
+gens.missing.fuel <- unique(generator.map[is.na(Fuel), .(Generator, Fuel, `Generator category`)])
+gens.missing.node <- unique(generator.map[is.na(Node), .(Generator, Node)])
 
 # add to missing items list
 missing.items.list <- c(missing.items.list, "gens.missing.units", 
@@ -212,18 +212,18 @@ generator.map <- generator.map[, lapply(.SD, function(x) {
 })]
 
 # if don't have max capacity, sub in 0 so next lines don't break
-if (all(is.na(generator.map$Capacity))) {
-    generator.map[, Capacity := NULL] # is a char column
-    generator.map[, Capacity := 0]
+if (all(is.na(generator.map$`Max Capacity`))) {
+    generator.map[, `Max Capacity` := NULL] # is a char column
+    generator.map[, `Max Capacity` := 0]
 }
 
 # summarize generator properties by fuel and save to OutputFiles
-generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
-                                           avg.capacity = mean(Capacity),
-                                           total.capacity = sum(Capacity),
-                                           min.capacity = min(Capacity),
-                                           max.capacity = max(Capacity),
-                                           sd.capacity = sd(Capacity),
+generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(`Max Capacity`*Units),
+                                           avg.capacity = mean(`Max Capacity`),
+                                           total.capacity = sum(`Max Capacity`),
+                                           min.capacity = min(`Max Capacity`),
+                                           max.capacity = max(`Max Capacity`),
+                                           sd.capacity = sd(`Max Capacity`),
                                            avg.units = mean(Units),
                                            total.units = sum(Units),
                                            min.units = min(Units),
@@ -231,12 +231,12 @@ generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(Capacity*Unit
                                            sd.units = sd(Units)),
                                         by = .(`Generator category`, Fuel, `Start Fuel`,  Region, scenario)]
 
-generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(Capacity*Units),
-                                            avg.capacity = mean(Capacity),
-                                            total.capacity = sum(Capacity),
-                                            min.capacity = min(Capacity),
-                                            max.capacity = max(Capacity),
-                                            sd.capacity = sd(Capacity),
+generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(`Max Capacity`*Units),
+                                            avg.capacity = mean(`Max Capacity`),
+                                            total.capacity = sum(`Max Capacity`),
+                                            min.capacity = min(`Max Capacity`),
+                                            max.capacity = max(`Max Capacity`),
+                                            sd.capacity = sd(`Max Capacity`),
                                             avg.units = mean(Units),
                                             total.units = sum(Units),
                                             min.units = min(Units),
@@ -277,13 +277,13 @@ if(data.check.plots){
 
   for(i in region.names){
     plot.data <- generator.map[Region == i, ]
-    plot.data <- plot.data[which(Capacity*Units > 0), ]
+    plot.data <- plot.data[which(`Max Capacity`*Units > 0), ]
     plot.data <- arrange(plot.data, scenario)
     plot <- ggplot(data = plot.data) +
-      geom_bar(aes(x = Fuel, y = Capacity*Units, fill = scenario), stat = "identity") +
+      geom_bar(aes(x = Fuel, y = `Max Capacity`*Units, fill = scenario), stat = "identity") +
       ggtitle(paste0(i," Generation Capacity by Fuel")) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-      ylab("Capacity (MW)")
+      ylab("Max Capacity (MW)")
       
       suppressWarnings(
         plot(plot)
@@ -385,6 +385,14 @@ components.table[,node.in.scenario :=
                             nodes[!is.na(scenario),Node], 1, 0)]
 
 island.nodes <- components.table[csize != max(csize), .(Node.Name = Node.Name)]
+island.nodes <- merge(island.nodes, 
+                      Memberships.sheet[parent_class == "Node" & 
+                                      child_class == "Region", 
+                                  .(Node.Name = parent_object, 
+                                    Region = child_object)], 
+                      by = "Node.Name", 
+                      all.x = TRUE)
+
 island.nodes[,`In scenario?` := 
                 ifelse(Node.Name %in% 
                          components.table[node.in.scenario != 0, Node.Name], "Yes", "No")]
@@ -808,7 +816,7 @@ for(item in missing.items.list){
     cat("\n\n")
     cat(sprintf("WARNING: At least one %s ", object.name))
     cat(sprintf("is missing %s.\n", missing.data))
-    cat(sprintf("See file DataCheck/%s.csv", item))
+    cat(sprintf("See file %s/%s.csv", data.check.dir, item))
     sink()
   }
 }
