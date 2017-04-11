@@ -3,29 +3,14 @@
 #------------------------------------------------------------------------------|
 
 # process args
-
 master.script.dir <- args[1]
 input.params.location <- args[2]
 inputfiles.dir <- args[3]
 outputfiles.dir <- args[4]
 
-
-#------------------------------------------------------------------------------|
-# fill in and check inputs ----
-#------------------------------------------------------------------------------|
-
-# set default choose.input to 'raw.psse' if not set
-if(!exists("choose.input")){
-    choose.input <- "raw.psse"
-}else{
-    if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
-        
-        stop(paste("Please set 'choose.input' in input_params",
-                   "to 'raw.psse' or 'pre.parsed'"))
-    }
-}
-
+# export workbook?
 if (!exists("export.wb")) export.wb <- TRUE
+
 
 #------------------------------------------------------------------------------|
 # get needed packages and functions ----
@@ -52,9 +37,41 @@ if (!("openxlsx" %in% installed.packages()[, "Package"]) & export.wb == TRUE) {
                 " (check the 'edit path' box during installation)"))
 }
 
-pacman::p_load(cowplot, ggplot2, data.table, igraph, openxlsx) 
+pacman::p_load(cowplot, ggplot2, data.table, igraph, openxlsx, RPostgreSQL) 
 
 source(file.path(master.script.dir, "SourceScripts/functions.R"))
+
+
+#------------------------------------------------------------------------------|
+# fill in and check inputs ----
+#------------------------------------------------------------------------------|
+
+# set default choose.input to 'pre.parsed' if not set
+if (!exists("choose.input")){
+    choose.input <- "pre.parsed"
+} else {
+    if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
+        
+        stop(paste("Please set 'choose.input' in input_params",
+                   "to 'raw.psse' or 'pre.parsed'"))
+    }
+}
+
+# make sure inputfiles.dir exists
+if (exists("inputfiles.dir")) {
+    if (!dir.exists(inputfiles.dir)) {
+        stop(sprintf("inputfiles.dir set to %s, which does not exist"))
+    }
+}
+
+# open connection to db
+if (exists("inputfiles.db")) {
+    conn = dbConnect(drv = inputfiles.db$drv, 
+                     host = inputfiles.db$host, 
+                     dbname = inputfiles.db$dbname, 
+                     user = inputfiles.db$user, 
+                     password = inputfiles.db$password)
+}
 
 
 #------------------------------------------------------------------------------|
@@ -127,3 +144,12 @@ runAllFiles <- function () {
 #------------------------------------------------------------------------------|
 
 runAllFiles()
+
+
+#------------------------------------------------------------------------------|
+# close up ----
+#------------------------------------------------------------------------------|
+
+if (exists("inputfiles.db")) {
+    dbDisconnect(conn)
+}

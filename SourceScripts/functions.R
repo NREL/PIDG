@@ -48,6 +48,85 @@ check_for_dupes <- function(dt, cols) {
     }
 }
 
+### fix_db_colnames
+# helper function for fixing capitalization in db queries
+fix_db_colnames <- function(x) {
+    
+    # one underscore means space, two means underscore (change to -), 
+    # cap words after space
+    x <- gsub("\\_{2}", "-", x)
+    x <- gsub("\\_", " ", x)
+    
+    s <- strsplit(x, " ")[[1]]
+    x <- paste(toupper(substring(s, 1, 1)), substring(s, 2),
+               sep = "", collapse = " ")
+    
+    # replace the placeholder - with _ and capitalize word after _
+    x <- gsub("-", "_", x)
+    
+    s <- strsplit(x, "_")[[1]]
+    x <- paste(toupper(substring(s, 1, 1)), substring(s, 2),
+               sep = "", collapse = "_")
+    
+    # hard cord exceptions
+    if (x == "Voll") x <- "VoLL"
+    if (x == "Vors") x <- "VoRS"
+    
+    return(x)
+}
+
+
+### read_data
+# read in data. if argument is csv, will use fread. if not, will send as a query
+# to database. Internally, will run checks to pull data. If checks succeed, 
+# function will return data. If not, will return NA.
+read_data <- function(to_data, dir = inputfiles.dir, con = conn, ...) {
+    
+    if (endsWith(to_data, ".csv")) {
+        
+        # pull data from csv if the csv exists
+        if (file.exists(file.path(dir, to_data))) {
+            to.return <- fread(file.path(dir, to_data), ...)
+            
+        } else {
+            message(sprintf(">>  %s does not exist ... skipping", to_data))
+            to.return <- NA
+        }
+        
+    } else if (startsWith(tolower(to_data), "select")) {
+        
+        # pull data from a db if a connection exists
+        if (exists("conn")) {
+            
+            # pull data from database and process colnames
+            to.return <- dbGetQuery(con, to_data) 
+            
+            setDT(to.return)
+            
+            setnames(to.return, 
+                     names(to.return), 
+                     sapply(names(to.return), fix_db_colnames))
+            
+        } else {
+            
+            message(sprintf(">>  %s is a sql query, but no db connection exists ... skipping", 
+                            to_data))
+            to.return <- NA
+        }
+        
+    } else {
+        
+        # this isn't a csv or a db query, so skip
+        message(sprintf(">>  couldn't identify %s as a csv or sql query ... skipping", 
+                        to_data))
+        to.return <- NA
+        
+    }
+    
+    return(to.return)
+
+}
+
 #------------------------------------------------------------------------------|
 # Functions for creating and merging tables for data population ----
 #------------------------------------------------------------------------------|
