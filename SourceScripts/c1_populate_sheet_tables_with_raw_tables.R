@@ -131,7 +131,7 @@ if (exists("node.data.table") && is.data.table(node.data.table)) {
     
     nodes.to.properties <- node.data.table[,!excluded.cols, with = FALSE]
     
-    add_to_properties_sheet(nodes.to.properties, names.col = "Node")
+    import_properties(nodes.to.properties, names.col = "Node")
     
     # clean up
     rm(nodes.to.properties, excluded.cols)
@@ -285,7 +285,7 @@ if (exists("line.data.table") && is.data.table(line.data.table)) {
     
     lines.to.properties <- line.data.table[,!excluded.cols, with = FALSE]
     
-    add_to_properties_sheet(lines.to.properties, names.col = "Line")
+    import_properties(lines.to.properties, names.col = "Line")
     
     # clean up
     rm(excluded.cols, lines.to.properties)
@@ -389,7 +389,7 @@ if (exists("generator.data.table") && is.data.table(generator.data.table)) {
         gen.nodes.props <- generator.data.table[,.(Node, Generator,
                                                    `Generation Participation Factor`)]
             
-        add_to_properties_sheet(gen.nodes.props, parent.col = "Generator")
+        import_properties(gen.nodes.props, parent.col = "Generator")
         
         # get rid of dupes so can add other properties if they exist
         gen.props <- generator.data.table[,!c("Node", 
@@ -448,7 +448,7 @@ if (exists("generator.data.table") && is.data.table(generator.data.table)) {
     
     gens.to.properties <- gen.props[,!excluded.cols, with = FALSE]
     
-    add_to_properties_sheet(gens.to.properties, names.col = "Generator")
+    import_properties(gens.to.properties, names.col = "Generator")
     
     # clean up
     rm(gen.object, gens.to.properties, excluded.cols, gen.props, fuel.cols)
@@ -529,7 +529,7 @@ if (exists("transformer.data.table") && is.data.table(transformer.data.table)) {
     transf.to.properties <- transformer.data.table[,!excluded.cols, 
                                                    with = FALSE]
     
-    add_to_properties_sheet(transf.to.properties, names.col = "Transformer")
+    import_properties(transf.to.properties, names.col = "Transformer")
     
     # clean up
     rm(transf.to.properties)

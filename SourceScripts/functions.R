@@ -586,7 +586,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 }
 
 
-##add_to_properties_sheet
+##import_properties
 # Shortcut for creating addition to Properties.Sheet table, given inputs of a 
 # certain form.
 # 
@@ -596,7 +596,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 # 
 # overwrite.cols can be any column in Properties sheet except value. That column
 # will also be overwritten
-add_to_properties_sheet <- function(input.table, 
+import_properties <- function(input.table, 
                                     object.class = NA, 
                                     names.col = NA, 
                                     collection.name = NA, 
@@ -1101,7 +1101,7 @@ make_interleave_pointers <- function(parent.model, child.model,
         pointers = melt(pointers, measure.vars = colnames(pointers), 
                         variable.name = "Data File", value.name = "filename")
      
-        add_to_properties_sheet(pointers, 
+        import_properties(pointers, 
                                 datafile.col = "filename",
                                 scenario.name = filepointer.scenario)
          
@@ -1116,7 +1116,7 @@ make_interleave_pointers <- function(parent.model, child.model,
                 paste0("{Object}", j))        
         }
         
-        # set names back to just properies so can pass to add_to_properties_sheet
+        # set names back to just properies so can pass to import_properties
         nmes <- gsub("Pass ", "", copy(names(template.fuel.copy)))
         nmes <- tstrsplit(nmes, ": ")[[1]]
         names(nmes) <- copy(names(template.fuel.copy))
@@ -1167,7 +1167,7 @@ make_interleave_pointers <- function(parent.model, child.model,
         prop.cols <- names(cur.mapped.tab)
         prop.cols <- prop.cols[prop.cols != "Generator"]
         
-        add_to_properties_sheet(cur.mapped.tab, 
+        import_properties(cur.mapped.tab, 
                                 datafile.col = prop.cols,
                                 overwrite = TRUE, 
                                 overwrite.cols = "filename",
@@ -1210,7 +1210,7 @@ make_interleave_pointers <- function(parent.model, child.model,
                             variable.name = "DataFileObj", 
                             value.name = "filename")
             
-            add_to_properties_sheet(pointers, 
+            import_properties(pointers, 
                                     object.class = "Data File", 
                                     names.col = "DataFileObj", 
                                     collection.name = "Data Files", 
@@ -1227,7 +1227,7 @@ make_interleave_pointers <- function(parent.model, child.model,
                     which(!is.na(template.object.copy[[j]])), j, 
                     paste("{Object}Pass", j)) 
             
-            add_to_properties_sheet(template.object.copy, 
+            import_properties(template.object.copy, 
                                     object.class = object.class.col,
                                     names.col = object.class.col, 
                                     collection.name = paste0(object.class.col, "s"), 

@@ -592,11 +592,11 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             isolated.nodes.to.remove[,Units:="0"]
             
             if(!is.na(cur.scenario)){
-                add_to_properties_sheet(isolated.nodes.to.remove, names.col = "Node.Name", 
+                import_properties(isolated.nodes.to.remove, names.col = "Node.Name", 
                                         object.class = "Node", collection.name =  "Nodes",
                                         scenario.name = cur.scenario)
             } else {
-                add_to_properties_sheet(isolated.nodes.to.remove, names.col = "Node.Name", 
+                import_properties(isolated.nodes.to.remove, names.col = "Node.Name", 
                                         object.class = "Node", collection.name =  "Nodes",
                                         overwrite = TRUE)
             }
@@ -625,11 +625,11 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             redo.lpfs.to.properties[, c("value", "Region") := NULL]
             
             if(!is.na(cur.scenario)){
-                add_to_properties_sheet(redo.lpfs.to.properties, names.col = "Node", 
+                import_properties(redo.lpfs.to.properties, names.col = "Node", 
                                         object.class = "Node", collection.name =  "Nodes",
                                         scenario.name = cur.scenario)
             } else {
-                add_to_properties_sheet(redo.lpfs.to.properties, names.col = "Node", 
+                import_properties(redo.lpfs.to.properties, names.col = "Node", 
                                         object.class = "Node", collection.name =  "Nodes",
                                         overwrite = TRUE)
             }

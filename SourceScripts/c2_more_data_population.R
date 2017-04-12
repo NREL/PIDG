@@ -68,7 +68,7 @@ if (exists("objects.list")) {
             cur.args$input.table <- cur.data
             
             # add to properties sheet using input arguments
-            do.call(add_to_properties_sheet, cur.args)
+            do.call(import_properties, cur.args)
             
         } # end if (is.data.table(cur.data))
         
@@ -185,7 +185,7 @@ if (exists("map.region.to.load.file")) {
         load.to.region.props <- load.to.region.map[, .(Region, 
                                                        Load = paste0("{Object}", DataFile))]
         
-        add_to_properties_sheet(load.to.region.props, datafile.col = "Load")
+        import_properties(load.to.region.props, datafile.col = "Load")
         
         # load to properties (attach filepath to object based on scenario)
         # uses load.to.region.map
@@ -195,12 +195,12 @@ if (exists("map.region.to.load.file")) {
         load.scens <- load.scens[!(load.scens %in% c('Region', 'DataFile'))]
         
         for (name in load.scens) {
-            # create small table to pass to add_to_properties_sheet
+            # create small table to pass to import_properties
             cur.tab <- load.to.region.map[,.SD, .SDcols = c('DataFile', name)]
             
             setnames(cur.tab, name, "filename")
             
-            add_to_properties_sheet(cur.tab, names.col = 'DataFile', 
+            import_properties(cur.tab, names.col = 'DataFile', 
                                     object.class = 'Data File', 
                                     collection.name = 'Data Files', 
                                     datafile.col = "filename", 
@@ -278,7 +278,7 @@ if (exists("load.data.table")) {
     lpf.to.node.properties <- 
         load.part.fact.table[,.(Node, `Load Participation Factor` = LPF)]
     
-    add_to_properties_sheet(lpf.to.node.properties, object.class = 'Node', 
+    import_properties(lpf.to.node.properties, object.class = 'Node', 
                             names.col = 'Node', collection.name = 'Nodes')
     
     # clean up
@@ -362,7 +362,7 @@ if (exists("RE.gen.file.list") && add.RE.gens){
                                                             Voltage = Node.kV, 
                                                             Units = 1)]
                 
-                add_to_properties_sheet(RE.nodes.to.properties, 
+                import_properties(RE.nodes.to.properties, 
                                         names.col = 'Node', 
                                         collection.name = 'Nodes', 
                                         object.class = 'Node')
@@ -416,7 +416,7 @@ if (exists("RE.gen.file.list") && add.RE.gens){
                     RE.line.table[,.(Line, Units = 1, `Max Flow` = 10^30, 
                                      `Min Flow` = -10^30)]
                 
-                add_to_properties_sheet(RE.lines.to.properties, names.col = 'Line', 
+                import_properties(RE.lines.to.properties, names.col = 'Line', 
                                         collection.name = 'Lines', object.class = 'Line')
                 
                 #  add RE Node To/Node From lines to memberships
@@ -481,7 +481,7 @@ if (exists("RE.gen.file.list") && add.RE.gens){
                                                 Units = Num.Units,
                                                 `Max Capacity` = Max.Capacity)]
             
-            add_to_properties_sheet(RE.gens.to.properties, 
+            import_properties(RE.gens.to.properties, 
                                     object.class = 'Generator', 
                                     names.col = 'Generator', 
                                     collection.name = 'Generators')
@@ -491,7 +491,7 @@ if (exists("RE.gen.file.list") && add.RE.gens){
                 RE.gens.to.properties <- RE.gens[,.(Generator = Generator.Name, 
                                                     Units = Num.Units.Scn)] 
                 
-                add_to_properties_sheet(RE.gens.to.properties, 
+                import_properties(RE.gens.to.properties, 
                                         object.class = 'Generator', 
                                         names.col = 'Generator', 
                                         collection.name = 'Generators',
@@ -508,7 +508,7 @@ if (exists("RE.gen.file.list") && add.RE.gens){
                 RE.gens.to.properties.rating <- RE.gens[,.(Generator = Generator.Name, 
                                                            Rating)]
                 
-                add_to_properties_sheet(RE.gens.to.properties.rating, 
+                import_properties(RE.gens.to.properties.rating, 
                                         object.class = 'Generator', 
                                         names.col = 'Generator', 
                                         collection.name = 'Generators', 
@@ -600,13 +600,13 @@ if (exists("generator.property.by.fuel.list")) {
             # and their properties in all other columns
             mapped.by.fuel <- do.call(merge_property_by_fuel, cur.map.fuel.args)
             
-            # set up args for add_to_properties_sheet, using output of merge by fuel  
+            # set up args for import_properties, using output of merge by fuel  
             cur.prop.sheet.args <- generator.property.by.fuel.list[[elem]][[3]]
             cur.prop.sheet.args$input.table <- mapped.by.fuel
             cur.prop.sheet.args$names.col <- 'Generator'
             
             # add to properties sheet using input arguments and new table
-            do.call(add_to_properties_sheet, cur.prop.sheet.args)
+            do.call(import_properties, cur.prop.sheet.args)
             
             if ('scenario.name' %in% names(cur.prop.sheet.args)) {
                 # for now, just add any scenario here that doesn't already exist
@@ -654,7 +654,7 @@ if (exists("object.property.list")) {
             # clean, add to properties sheet using input arguments and new table
             check_colname_cap(cur.data)
             
-            do.call(add_to_properties_sheet, cur.args)
+            do.call(import_properties, cur.args)
             
             # add any scenario here that doesn't already exist
             # need to deal with categories later
@@ -701,7 +701,7 @@ if (exists('turn.off.except.in.scen.list')) {
             # turn off Units in bae
             cur.data[,Units := 0]
             
-            add_to_properties_sheet(cur.data, 
+            import_properties(cur.data, 
                                     names.col = cur.names, 
                                     object.class = cur.class,
                                     collection.name = cur.coll, 
@@ -718,7 +718,7 @@ if (exists('turn.off.except.in.scen.list')) {
                 
             } else cur.data[,Units := 1]
             
-            add_to_properties_sheet(cur.data, 
+            import_properties(cur.data, 
                                     names.col = cur.names, 
                                     object.class = cur.class, 
                                     collection.name = cur.coll, 
@@ -767,11 +767,11 @@ if(exists('interfaces.files.list')) {
                 
             # Add interface properties - changed to data.file. need to genericize, 
             # change to data file object so can put in 2014 and 2022 data files, etc 
-            # add_to_properties_sheet(interface.properties, object.class = "Interface", 
+            # import_properties(interface.properties, object.class = "Interface", 
             #   collection.name = "Interfaces", names.col = "Interface.Name")
             
             # add min and max flow datafile pointers 
-            add_to_properties_sheet(interface.properties, object.class = "Interface", 
+            import_properties(interface.properties, object.class = "Interface", 
                                     names.col = "Interface.Name", 
                                     collection.name = "Interfaces", 
                                     datafile.col = c("Min Flow", "Max Flow"))
@@ -789,7 +789,7 @@ if(exists('interfaces.files.list')) {
                                            Interface = Interface.Name, 
                                            `Flow Coefficient`)]
             
-            add_to_properties_sheet(interface.coefficients.to.props, 
+            import_properties(interface.coefficients.to.props, 
                                     parent.col = "Interface")
             
         } else {
@@ -831,7 +831,7 @@ if(exists('reserve.files')) {
                 
                 reserve.enabled <- reserves[scenario == i,.(Reserve,`Is Enabled`)]
                 
-                add_to_properties_sheet(reserve.enabled, object.class = 'Reserve', 
+                import_properties(reserve.enabled, object.class = 'Reserve', 
                                         names.col = 'Reserve', 
                                         collection.name = 'Reserves',
                                         scenario.name = i)
@@ -840,7 +840,7 @@ if(exists('reserve.files')) {
             # turn off reserve when scenario not selected
             reserve.scenario.off <- reserves[,.(Reserve,`Is Enabled` = 0)]
             
-            add_to_properties_sheet(reserve.scenario.off, 
+            import_properties(reserve.scenario.off, 
                                     object.class = 'Reserve',
                                     names.col = 'Reserve',
                                     collection.name = 'Reserves')
@@ -854,7 +854,7 @@ if(exists('reserve.files')) {
         } else if ("Is Enabled" %in% names(reserves)) {
             
             # add `Is Enabled` property without a scenario
-            add_to_properties_sheet(reserves[,.(Reserve, `Is Enabled`)])
+            import_properties(reserves[,.(Reserve, `Is Enabled`)])
             
         } else {
             
@@ -869,7 +869,7 @@ if(exists('reserve.files')) {
         
         reserve.properties <- reserves[,!excluded.cols, with = F]
         
-        add_to_properties_sheet(reserve.properties, object.class = 'Reserve', 
+        import_properties(reserve.properties, object.class = 'Reserve', 
                                 names.col = 'Reserve', 
                                 collection.name = 'Reserves')
         
@@ -903,7 +903,7 @@ if(exists('reserve.files')) {
                 reserve.generators[,notes := NULL]
             }
             
-            add_to_properties_sheet(reserve.generators, 
+            import_properties(reserve.generators, 
                                     names.col = "Generator",
                                     parent.col = "Reserve")
         }
@@ -936,7 +936,7 @@ if(exists('reserve.files')) {
         import_memberships(reserve.to.regs.to.membs)
         
         # add reserve.region properties to properties .sheet
-        add_to_properties_sheet(reserve.regions, object.class = 'Region',
+        import_properties(reserve.regions, object.class = 'Region',
                                 parent.col = 'Reserve',
                                 names.col = 'Region', 
                                 collection.name = 'Regions')
