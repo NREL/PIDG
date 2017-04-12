@@ -489,7 +489,7 @@ if (exists("make.dcline.scenario") && make.dcline.scenario == TRUE) {
     # scenario to properties
     # uses line.data.table
     # create table of only AC lines to use
-    ac.lines <- line.data.table[Type == 'AC']
+    ac.lines <- line.data.table[grepl("\\_AC$|^AC\\_", category)]
     scenario.dc.lines.to.properties <- initialize_table(Properties.sheet, 
                                                         nrow(ac.lines), 
                                                         list(parent_class = "System", 
@@ -692,7 +692,7 @@ if (exists('constraint.import.files')) {
 if (exists("interleave.models.list")) {
     # go through all files in this list
     for (item in interleave.models.list) {
-        cur.fname = item[1]
+        cur.fname = item[[1]]
         cur.template.fuel.name = item[["template.fuel"]]
         cur.template.object.name = item[["template.object"]]
         cur.interleave = item[["interleave"]]

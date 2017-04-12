@@ -922,24 +922,17 @@ if(exists('reserve.files')) {
         
         Objects.sheet <- merge_sheet_w_table(Objects.sheet, reserve.to.objects)
         
-        # add reserve properties to properties .sheet
-        excluded.cols <- c("Is Enabled","Scenario")
-        excluded.cols <- excluded.cols[excluded.cols %in% names(reserves)]
-        
-        reserve.properties <- reserves[,!excluded.cols, with = F]
-        
-        add_to_properties_sheet(reserve.properties, object.class = 'Reserve', 
-                                names.col = 'Reserve', 
-                                collection.name = 'Reserves')
+        # fix scenario name so is always lowercase
+        check_colname_cap(reserves)
         
         # add scenario on 'Is Enabled' property
         if ("scenario" %in% names(reserves)) {
             
-            reserve.scenarios <- unique(reserves[,Scenario])
+            reserve.scenarios <- unique(reserves[,scenario])
             
             for(i in reserve.scenarios){
                 
-                reserve.enabled <- reserves[Scenario == i,.(Reserve,`Is Enabled`)]
+                reserve.enabled <- reserves[scenario == i,.(Reserve,`Is Enabled`)]
                 
                 add_to_properties_sheet(reserve.enabled, object.class = 'Reserve', 
                                         names.col = 'Reserve', 
@@ -971,6 +964,16 @@ if(exists('reserve.files')) {
             message(sprintf("'Is Enabled' property not given in %s ... setting to 1",
                             reserve.files$reserves))
         }
+        
+        # add reserve properties to properties .sheet
+        excluded.cols <- c("Is Enabled","scenario")
+        excluded.cols <- excluded.cols[excluded.cols %in% names(reserves)]
+        
+        reserve.properties <- reserves[,!excluded.cols, with = F]
+        
+        add_to_properties_sheet(reserve.properties, object.class = 'Reserve', 
+                                names.col = 'Reserve', 
+                                collection.name = 'Reserves')
         
         # clean up
         rm(excluded.cols, reserve.properties, reserves, reserve.to.objects)

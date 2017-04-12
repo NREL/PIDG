@@ -348,6 +348,41 @@ if (exists("generator.data.table")) {
     
     
     #--------------------------------------------------------------------------|
+    # temp until decide what to do with this: adjust max cap ----
+    #--------------------------------------------------------------------------|
+    
+    # adjust gen cap if needed
+    # if (choose.input == "raw.psse") {
+    # temporary!! adjust max capacity needed
+    if (exists("adjust.max.cap")) {
+        if(file.exists(file.path(inputfiles.dir, adjust.max.cap))) {
+            
+            message(sprintf("... adjusting max capacity of generators in %s", 
+                            adjust.max.cap))
+            
+            new.cap <- fread(file.path(inputfiles.dir, adjust.max.cap))
+            
+            generator.data.table <- merge(generator.data.table, 
+                                          new.cap,
+                                          by = "Generator", 
+                                          all.x = TRUE)
+            
+            generator.data.table[!is.na(new.capacity), 
+                                 `Max Capacity` := new.capacity]
+            generator.data.table[, new.capacity := NULL]
+            
+            rm(new.cap)
+            
+        } else {
+            message(sprintf(">>  %s does not exist ... skipping", 
+                            adjust.max.cap))
+        }
+        
+    }
+    # }
+    
+    
+    #--------------------------------------------------------------------------|
     # Add generators to .sheet tables ----
     #--------------------------------------------------------------------------|
     

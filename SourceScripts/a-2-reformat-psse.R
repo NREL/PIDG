@@ -43,68 +43,11 @@
 # add owner later
 # 
 # line flow is ratingB or, if that is zero, the max of ratings A and B
-#  
-
-#------------------------------------------------------------------------------|
-# fake user inputs ----
-#------------------------------------------------------------------------------|
-# 
-# root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update/outputs_a-1_raw_psse"
-# 
-# # required data
-# node.file <- file.path(root.dir, "Bus.table.csv")
-# line.file <- file.path(root.dir, "Branch.table.csv")
-# generator.file <- file.path(root.dir, "Generator.table.csv")
-# 
-# # optional data
-# line.dc.file <- file.path(root.dir, "DC.line.table.csv")
-# transformer.file <- file.path(root.dir, "Transformer.Table.csv")
-#     
-# # optional extras
-# zone.file <- file.path(root.dir, "Zone.table.csv")
-# region.file <- file.path(root.dir, "Area.interchange.table.csv")
-# owner.file <- file.path(root.dir, "Owner.table.csv")
-# load.file <- file.path(root.dir, "Load.table.csv")
-# 
-# output.dir <- file.path(root.dir, "../outputs_a-2_reformatted_psse")
 
 
 #------------------------------------------------------------------------------|
 # setup ----
 #------------------------------------------------------------------------------|
-
-# load packages
-# pacman::p_load(data.table)
-# 
-# # make sure output.dir exists
-# if (!dir.exists(output.dir)) {
-#     dir.create(output.dir, recursive = TRUE)
-# }
-# 
-# # read in files
-# node.data <- fread(node.file, colClasses = "character")
-# line.data <- fread(line.file, colClasses = "character")
-# generator.data <- fread(generator.file, colClasses = "character")
-# 
-# if (exists("line.dc.file")) line.dc.data <- fread(line.dc.file, 
-#                                                   colClasses = "character")
-# if (exists("transformer.file")) transformer.data <- fread(transformer.file, 
-#                                                           colClasses = "character")
-# 
-# if (exists("zone.file")) zone.data <- fread(zone.file, colClasses = "character")
-# if (exists("region.file")) region.data <- fread(region.file, colClasses = "character")
-# if (exists("owner.file")) owner.data <- fread(owner.file, colClasses = "character")
-# if (exists("load.file")) load.data <- fread(load.file, colClasses = "character")    
-# 
-# # clean up
-# rm(node.file, line.file, generator.file)
-# if (exists("line.dc.file")) rm(line.dc.file)
-# if (exists("transformer.file")) rm(transformer.file)
-# if (exists("zone.file")) rm(zone.file)
-# if (exists("region.file")) rm(region.file)
-# if (exists("owner.file")) rm(owner.file)
-# if (exists("load.file")) rm(load.file)
-
 
 # clean environment of skipped and empty tables, rename tables to use
 
