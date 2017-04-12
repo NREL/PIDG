@@ -53,10 +53,12 @@ if (exists("make.aggtx.scenario") && make.aggtx.scenario == TRUE) {
     # if there is an external file and this option is turned on, grab it and 
     # note and regions that aren't included
     if (exists('remap.reference.nodes')) {
+        
         if (remap.reference.nodes == TRUE) {
-            if (file.exists(file.path(inputfiles.dir, map.ref.node.file))) {
-                
-                external.refnode <- fread(file.path(inputfiles.dir, map.ref.node.file))
+            
+            external.refnode <- read_data(map.ref.node.file)
+            
+            if (is.data.table(external.refnode)) {
                 
                 # keep track of what regions aren't in this file to assign ref node to them
                 other.regions <- node.data.table[,unique(Region)]
@@ -69,7 +71,7 @@ if (exists("make.aggtx.scenario") && make.aggtx.scenario == TRUE) {
                 other.regions <- node.data.table[,unique(Region)]
             }
     } else {
-        message(paste('... remap.reference.nodes or doesn\'t exist.',
+        message(paste('... remap.reference.nodes doesn\'t exist.',
                       'Assigning first node in each region as reference node'))
         other.regions <- node.data.table[,unique(Region)]
     }
@@ -388,14 +390,6 @@ if (choose.input == "raw.psse") {
 all.sheets <- c("Objects", "Categories", "Memberships", "Attributes", 
                 "Properties", "Reports")
 
-#create temporary function definitions for better readability of double 
-#lapply below
-read_tab <- function(file.name) {
-    data.table(suppressWarnings(read.csv(file.path(inputfiles.dir, file.name), 
-                                         stringsAsFactors = FALSE, fill = TRUE, header=FALSE, col.names = 
-                                             paste0("V",seq_len(20)), strip.white = TRUE)))
-}
-
 import_and_merge <- function(imported.tab, sheet.name) {
     
     cur.tab <- import_table_generic(imported.tab, sheet.name)
@@ -410,6 +404,7 @@ import_and_merge <- function(imported.tab, sheet.name) {
 
 #import and merge all generic import files
 if (exists('generic.import.files')) {
+    
     invisible(lapply(generic.import.files, function (x) {
         
         if (file.exists(file.path(inputfiles.dir,x))) {
@@ -417,7 +412,10 @@ if (exists('generic.import.files')) {
             message(sprintf("... importing from %s", x))
             
             # read in data, change blanks to NA, and import into .sheet tables
-            imported.file <- read_tab(x)
+            imported.file <- read_data(x, 
+                                        fill = TRUE, 
+                                        header = FALSE, 
+                                        strip.white = TRUE)
             
             for (j in seq_len(ncol(imported.file)))
                 set(imported.file, which(imported.file[[j]] == ""), j, NA)
@@ -433,7 +431,7 @@ if (exists('generic.import.files')) {
     }))
 } else { message('>>  no generic import files defined ... skipping') }
 
-rm(import_and_merge, read_tab, all.sheets)
+rm(import_and_merge, all.sheets)
 
 
 #------------------------------------------------------------------------------|
@@ -443,28 +441,25 @@ rm(import_and_merge, read_tab, all.sheets)
 # loop through compact generic input files and read in tables
 
 if (exists('compact.generic.import.files')) {
+    
     for (i in seq_along(compact.generic.import.files)) {
-        if (file.exists(file.path(inputfiles.dir,
-                                  compact.generic.import.files[[i]][1]))) {
+        
+        cur.data <- read_data(compact.generic.import.files[[i]][[1]])
+        
+        if (is.data.table(cur.data)) {
             message(sprintf("... importing from %s", 
                             compact.generic.import.files[[i]][1]))
-            
-            cur.tab <- fread(file.path(inputfiles.dir, 
-                                       compact.generic.import.files[[i]][1]))
             
             cur.obj.type <- compact.generic.import.files[[i]][2]
             
             # read in file, add appropriate sections to object, attib, memb .sheet tables
-            import_table_compact(cur.tab, cur.obj.type)
+            import_table_compact(cur.data, cur.obj.type)
             
-        } else {
-            message(sprintf(">>  %s does not exist ... skipping", 
-                            compact.generic.import.files[[i]][1]))
-        }
+        } # end if (is.data.table(cur.data))
     }
     
     # clean up
-    if (exists("cur.tab")) rm(cur.tab)
+    if (exists("cur.data")) rm(cur.data)
     if (exists("cur.obj.type")) rm(cur.obj.type)
     
 } else { message('>>  no compact generic import files defined ... skipping')}
@@ -511,8 +506,11 @@ if (exists("make.dcline.scenario") && make.dcline.scenario == TRUE) {
 # [[Scenario archive for other configs]] Lines to enforce for natnl study ----
 # -----------------------------------------------------------------------------|
 if (exists('enforced.interstate.lines.file')) {
-    if (file.exists(file.path(inputfiles.dir,
-                              enforced.interstate.lines.file))) {
+    
+    interstate.to.enf <- read_data(enforced.interstate.lines.file)
+    
+    if (is.data.table(interstate.to.enf)) {
+        
         message(sprintf("... enforcing lines from  %s", 
                         enforced.interstate.lines.file))
         
@@ -527,9 +525,6 @@ if (exists('enforced.interstate.lines.file')) {
         
         # scenario to properties
         # uses line.data.table
-        interstate.to.enf <- fread(file.path(inputfiles.dir,
-                                             enforced.interstate.lines.file))
-        
         scenario.enf.interstate.lines.to.propterties <- 
             initialize_table(Properties.sheet, nrow(interstate.to.enf), 
                              list(parent_class = "System", child_class = "Line", 
@@ -545,10 +540,8 @@ if (exists('enforced.interstate.lines.file')) {
         Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
                                                 scenario.enf.interstate.lines.to.propterties)
         
-    } else {
-        message(sprintf(">>  %s does not exist ... skipping", 
-                        enforced.interstate.lines.file))
-    }
+    } # end if (is.data.table(interstate.to.enf))
+    
 } else {
     message(">>  enforced.interstate.lines.file does not exist ... skipping")
 }
@@ -566,8 +559,10 @@ if (exists('isolated.nodes.to.remove.args.list')) {
         cur.scenario = isolated.nodes.to.remove.args["scenario"]
         cur.category = isolated.nodes.to.remove.args["category"]
         
-        if (file.exists(file.path(inputfiles.dir,
-                                  isolated.nodes.to.remove.file))) {
+        isolated.nodes.to.remove <- read_data(isolated.nodes.to.remove.file)
+        
+        if (is.data.table(isolated.nodes.to.remove)) {
+            
             if (is.null(cur.scenario))
                 cur.scenario = NA
             
@@ -594,8 +589,6 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             # scenario to properties
             # uses isolated.nodes.to.remove.file
             # read in isolated nodes to remove file and change it to a veector
-            isolated.nodes.to.remove = fread(file.path(inputfiles.dir,
-                                                       isolated.nodes.to.remove.file))
             isolated.nodes.to.remove[,Units:="0"]
             
             if(!is.na(cur.scenario)){
@@ -641,18 +634,17 @@ if (exists('isolated.nodes.to.remove.args.list')) {
                                         overwrite = TRUE)
             }
             
-        } else {
-            message(sprintf(">>  %s does not exist ... skipping", 
-                            isolated.nodes.to.remove.file))
-            
-            # clean up
-            rm(cur.category, cur.scenario, redo.lpfs.to.properties, 
-               isolated.nodes.to.remove.args, isolated.nodes.to.remove, 
-               scenario.remove.isolated)
-            
-        }}} else {
-            message(">>  isolated.nodes.to.remove.file does not exist ... skipping")
-        }
+        } # end if (is.data.table(isolated.nodes.to.remove))
+        
+        # clean up
+        rm(cur.category, cur.scenario, redo.lpfs.to.properties, 
+           isolated.nodes.to.remove.args, isolated.nodes.to.remove, 
+           scenario.remove.isolated)
+        
+    }
+} else {
+    message(">>  isolated.nodes.to.remove.file does not exist ... skipping")
+}
 
 
 
@@ -664,14 +656,14 @@ if (exists('constraint.import.files')) {
   
     for (i in seq_along(constraint.import.files)) {
       
-        if (file.exists(file.path(inputfiles.dir,
-                                  constraint.import.files[[i]][1]))) {
+        cur.data <- read_data(constraint.import.files[[i]][[1]])
+        
+        if (is.data.table(cur.data)) {
           
             message(sprintf("... importing constraint from  %s", 
                             constraint.import.files[[i]][1]))
           
-            import_constraint(fread(file.path(inputfiles.dir, 
-                                              constraint.import.files[[i]][1])))
+            import_constraint(cur.data)
             
         } else {
           
@@ -721,14 +713,14 @@ if (exists("interleave.models.list")) {
             
             # do actual work  
             # parse this file
-            cur.tab = fread(file.path(inputfiles.dir, cur.fname))
-            cur.template.fuel = fread(file.path(inputfiles.dir, cur.template.fuel.name))
+            cur.tab = read_data(cur.fname)
+            cur.template.fuel = read_data(cur.template.fuel.name)
             
             # if cur.template.object exists, grab it, handling as a list since
             # could be any number of templates
             if (!is.null(cur.template.object.name[1])) (
                 cur.template.object = lapply(cur.template.object.name, 
-                                             function(x) fread(file.path(inputfiles.dir, x)))
+                                             function(x) read_data(x))
             )
             
             # need to make a datafile object for each property to be passed down

@@ -21,59 +21,39 @@ if (choose.input == "pre.parsed") {
     message("reading in pre-parsed network data")
     
     if (exists("node.file")) {
-        if (file.exists(file.path(inputfiles.dir, node.file))) {
-            node.data.table <- fread(file.path(inputfiles.dir, node.file))
-        } else {
-            stop(sprintf("!!  %s does not exist", node.file))
-        }
+        node.data.table <- read_data(node.file)
     } else {
         message(sprintf(">>  node.file does not exist ... skipping"))
     }
-        
+    
     if (exists("line.file")) {
-        if (file.exists(file.path(inputfiles.dir, line.file))) {
-            line.data.table <- fread(file.path(inputfiles.dir, line.file))
-        } else {
-            stop(sprintf(" !!  %s does not exist", line.file))
-        }
+        line.data.table <- read_data(line.file)
     } else {
         message(sprintf(">>  line.file does not exist ... skipping"))
     }
     
     if (exists("generator.file")) {
-        if (file.exists(file.path(inputfiles.dir, generator.file))) {
-            generator.data.table <- fread(file.path(inputfiles.dir, generator.file))
-        } else {
-            stop(sprintf("!!  %s does not exist", generator.file))
-        }
+        generator.data.table <- read_data(generator.file)
     } else {
         message(sprintf(">>  generator.file does not exist ... skipping"))
     }
     
     if (exists("transformer.file")) {
-        if (file.exists(file.path(inputfiles.dir, transformer.file))) {
-            transformer.data.table <- fread(file.path(inputfiles.dir, transformer.file))
-        } else {
-            stop(sprintf("!!  %s does not exist", transformer.file))
-        }
+        transformer.data.table <- read_data(transformer.file)
     } else {
         message(sprintf(">>  transformer.file does not exist ... skipping"))
     }
     
     if (exists("load.file")) {
-        if (file.exists(file.path(inputfiles.dir, load.file))) {
-            load.data.table <- suppressWarnings(fread(file.path(inputfiles.dir, load.file))) 
-            # for bumping load type col to character type in posoco
-        } else {
-            stop(sprintf("!!  %s does not exist", load.file))
-        }
+        load.data.table <- suppressWarnings(read_data(load.file)) 
+        # for bumping load type col to character type in posoco
     } else {
         message(sprintf(">>  load.file does not exist ... skipping"))
     }
     
 }
 
-if (exists("node.data.table")) {
+if (exists("node.data.table") && is.data.table(node.data.table)) {
     
     #--------------------------------------------------------------------------|
     # nodes ----
@@ -90,22 +70,26 @@ if (exists("node.data.table")) {
         # if there are input files to remap the nodes' regions and zones, remap
         if (rename.regions) { 
           
-          map.newregions <- fread(file.path(inputfiles.dir, map.newregion.file))
+          map.newregions <- read_data(map.newregion.file)
           
-          node.data.table <- merge(node.data.table[,Region := NULL], 
+          if (is.data.table(map.newrgions)) {
+              node.data.table <- merge(node.data.table[,Region := NULL], 
                                    map.newregions[,.(Node, Region)], 
                                    by = "Node", 
                                    all.x = TRUE)
+          }
         }
         
         if (rename.zones) {
         
-          map.newzones <- fread(file.path(inputfiles.dir, map.newzone.file))
+          map.newzones <- read_data(map.newzone.file)
           
-          node.data.table <- merge(node.data.table[,Zone := NULL], 
+          if (is.data.table(map.newzones)) {
+              node.data.table <- merge(node.data.table[,Zone := NULL], 
                                    map.newzones[,.(Node, Zone)], 
                                    by = "Node", 
                                    all.x = TRUE)
+          }
         }
     }
     
@@ -203,10 +187,10 @@ if (exists("node.data.table")) {
     }
     
 }
-# if (exists("node.data.table")) 
+# if (exists("node.data.table") && is.data.table(node.data.table)) 
     
 
-if (exists("line.data.table")) {
+if (exists("line.data.table") && is.data.table(line.data.table)) {
     
     #--------------------------------------------------------------------------|
     # lines ----
@@ -306,9 +290,9 @@ if (exists("line.data.table")) {
     # clean up
     rm(excluded.cols, lines.to.properties)
 
-} # end if (exists("line.data.table"))
+} # end if (exists("line.data.table")  && is.data.table(line.data.table))
 
-if (exists("generator.data.table")) {
+if (exists("generator.data.table") && is.data.table(generator.data.table)) {
 
     #--------------------------------------------------------------------------|
     # generators ----
@@ -469,10 +453,10 @@ if (exists("generator.data.table")) {
     # clean up
     rm(gen.object, gens.to.properties, excluded.cols, gen.props, fuel.cols)
 
-} # end if (exists("generator.data.table"))
+} # end if (exists("generator.data.table") && is.data.table(generator.data.table))
 
 
-if (exists("transformer.data.table")) {
+if (exists("transformer.data.table") && is.data.table(transformer.data.table)) {
     #--------------------------------------------------------------------------|
     # transformers ----
     #--------------------------------------------------------------------------|
@@ -550,5 +534,5 @@ if (exists("transformer.data.table")) {
     # clean up
     rm(transf.to.properties)
 
-} # end if (exists("transformer.data.table"))
+} # end if (exists("transformer.data.table") && is.data.table(transformer.data.table))
 

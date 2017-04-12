@@ -8,52 +8,51 @@
 if (exists("objects.list")) {
   
     for (elem in seq_along(objects.list)) {
-      
-        if (file.exists(file.path(inputfiles.dir,objects.list[[elem]][1]))) {
         
-            message(sprintf("... Adding objects/properties from %s",
-                            objects.list[[elem]][1]))
+        data.path <- objects.list[[elem]][1]
+        
+        cur.data <- read_data(data.path, sep = ",")
+        
+        if (is.data.table(cur.data)) {
+        
+            message(sprintf("... Adding objects/properties from %s", data.path))
           
-            # read table, add "sep" here so fread can handle single-column files 
-            cur.dt <- fread(file.path(inputfiles.dir,
-                                      objects.list[[elem]][1]), sep = ",")
-            
             # do some cleaning/checking
-            check_colname_cap(cur.dt)
+            check_colname_cap(cur.data)
             
-            if ("notes" %in% names(cur.dt)) cur.dt[, notes := NULL]
+            if ("notes" %in% names(cur.data)) cur.data[, notes := NULL]
             
             # if any memberships, add those (there may be dupes in objects or
             # properties here)
-            memb.cols <- names(cur.dt)
+            memb.cols <- names(cur.data)
             memb.cols <- c(memb.cols[1], memb.cols[grepl("_", memb.cols)])
             
             if (length(memb.cols) > 1) {
                 
-                # check_for_dupes(cur.dt, memb.cols)
+                # check_for_dupes(cur.data, memb.cols)
                 
-                import_memberships(cur.dt[,memb.cols, with = FALSE])
+                import_memberships(cur.data[,memb.cols, with = FALSE])
             }
             
             # make sure there are no duplicates in the non-membership columns
-            if (length(memb.cols) > 1) cur.dt[, (memb.cols[-1]) := NULL]
+            if (length(memb.cols) > 1) cur.data[, (memb.cols[-1]) := NULL]
             
-            cur.dt <- unique(cur.dt) # this could be an efficiency thing
-            # check_for_dupes(cur.dt, names(cur.dt[1]))
+            cur.data <- unique(cur.data) # this could be an efficiency thing
+            # check_for_dupes(cur.data, names(cur.data[1]))
             
             # add objects
-            obj.cols <- c(names(cur.dt)[1], 
-                          if ("category" %in% names(cur.dt)) "category")
+            obj.cols <- c(names(cur.data)[1], 
+                          if ("category" %in% names(cur.data)) "category")
             
-            import_objects(unique(cur.dt[,obj.cols, with = FALSE]))
+            import_objects(unique(cur.data[,obj.cols, with = FALSE]))
             
             # add properties (and args)
             excluded.cols <- c("notes", "category")
             
-            excluded.cols <- excluded.cols[excluded.cols %in% names(cur.dt)]
+            excluded.cols <- excluded.cols[excluded.cols %in% names(cur.data)]
             
             if (length(excluded.cols) > 0) {
-                cur.dt <- cur.dt[,!excluded.cols, with = FALSE]
+                cur.data <- cur.data[,!excluded.cols, with = FALSE]
             }
             
             # read in args if given
@@ -66,17 +65,17 @@ if (exists("objects.list")) {
                 cur.args <- list()
             }
             
-            cur.args$input.table <- cur.dt
+            cur.args$input.table <- cur.data
             
             # add to properties sheet using input arguments
             do.call(add_to_properties_sheet, cur.args)
             
-        }
+        } # end if (is.data.table(cur.data))
         
     }
     
     # clean up
-    rm(cur.dt, excluded.cols, memb.cols, cur.args, elem)
+    rm(data.path, cur.data, excluded.cols, memb.cols, cur.args, elem)
 
 } else {
     
@@ -92,11 +91,11 @@ if (exists("memberships.list")) {
     
     for (fname in memberships.list) {
         
-        if (file.exists(file.path(inputfiles.dir, fname))) {
+        cur.dt <- read_data(fname)
+        
+        if (is.data.table(cur.dt)) {
             
             message(sprintf("... Adding memberships from %s", fname))
-            
-            cur.dt <- fread(file.path(inputfiles.dir, fname))
             
             # do some cleaning/checking
             check_for_dupes(cur.dt, names(cur.dt))
@@ -105,9 +104,6 @@ if (exists("memberships.list")) {
             # add memberships
             import_memberships(cur.dt)
             
-        } else {
-            
-            message(sprintf(">>  %s does not exist ... skipping", fname))
         }
     }
     
@@ -125,52 +121,59 @@ if (exists("memberships.list")) {
 #------------------------------------------------------------------------------|
 
 if (exists("map.gen.to.fuel.file")) {
-    fuel.table <- fread(file.path(inputfiles.dir, map.gen.to.fuel.file))
     
-    # add fuels to generator.data.table
-    generator.data.table <- 
-        merge(generator.data.table, fuel.table[, .(Generator, Fuel)], 
-              by = "Generator", all.x = TRUE)
+    fuel.table <- read_data(map.gen.to.fuel.file)
     
-    # add fuels to objects .sheet
-    all.fuels <- unique(fuel.table[, Fuel])
-    
-    fuels.to.objects <- initialize_table(Objects.sheet, length(all.fuels), 
-                                         list(class = "Fuel"))
-    fuels.to.objects[, name := all.fuels]
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, fuels.to.objects)
-    
-    # add generator-fuels membership to memberships
-    fuels.to.gens.to.memberships <- 
-        initialize_table(Memberships.sheet, nrow(generator.data.table), 
-                         list(parent_class = "Generator", child_class = "Fuel", 
-                              collection = "Fuels"))
-    
-    fuels.to.gens.to.memberships[,parent_object := 
-                                     generator.data.table[,Generator]]
-    fuels.to.gens.to.memberships[,child_object := generator.data.table[,Fuel]]
-    
-    if (any(is.na(fuels.to.gens.to.memberships$child_object))) {
-        warning (paste0('There are generators without fuel definitions, ",
+    if (is.data.table(fuel.table)) {
+        
+        # add fuels to generator.data.table
+        generator.data.table <- 
+            merge(generator.data.table, fuel.table[, .(Generator, Fuel)], 
+                  by = "Generator", all.x = TRUE)
+        
+        # add fuels to objects .sheet
+        all.fuels <- unique(fuel.table[, Fuel])
+        
+        fuels.to.objects <- initialize_table(Objects.sheet, length(all.fuels), 
+                                             list(class = "Fuel"))
+        fuels.to.objects[, name := all.fuels]
+        
+        Objects.sheet <- merge_sheet_w_table(Objects.sheet, fuels.to.objects)
+        
+        # add generator-fuels membership to memberships
+        fuels.to.gens.to.memberships <- 
+            initialize_table(Memberships.sheet, nrow(generator.data.table), 
+                             list(parent_class = "Generator", 
+                                  child_class = "Fuel", 
+                                  collection = "Fuels"))
+        
+        fuels.to.gens.to.memberships[,parent_object := 
+                                         generator.data.table[,Generator]]
+        fuels.to.gens.to.memberships[,child_object := generator.data.table$Fuel]
+        
+        if (any(is.na(fuels.to.gens.to.memberships$child_object))) {
+            warning (paste0('There are generators without fuel definitions, ",
                         "deleting generatror-fuel membership entries'))
-        fuels.to.gens.to.memberships=fuels.to.gens.to.memberships[!is.na(child_object),]
-    }
+            fuels.to.gens.to.memberships=fuels.to.gens.to.memberships[!is.na(child_object),]
+        }
+        
+        Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
+                                                 fuels.to.gens.to.memberships)
+        
+        # edit generators to categorize by fuel instead of region
+        Objects.sheet <- 
+            merge(Objects.sheet, 
+                  generator.data.table[, .(Generator, Fuel, class = 'Generator')], 
+                  by.x = c('class', 'name'), by.y = c('class', 'Generator'), 
+                  all.x = T)
+        Objects.sheet[!is.na(Fuel),category := Fuel]
+        Objects.sheet[,Fuel := NULL]
+        
+        # clean up
+        rm(fuel.table, all.fuels, fuels.to.objects, fuels.to.gens.to.memberships)
+        
+    } # end if (is.data.table(fuel.table))
     
-    Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                             fuels.to.gens.to.memberships)
-    
-    # edit generators to categorize by fuel instead of region
-    Objects.sheet <- 
-        merge(Objects.sheet, 
-              generator.data.table[, .(Generator, Fuel, class = 'Generator')], 
-              by.x = c('class', 'name'), by.y = c('class', 'Generator'), 
-              all.x = T)
-    Objects.sheet[!is.na(Fuel),category := Fuel]
-    Objects.sheet[,Fuel := NULL]
-    
-    # clean up
-    rm(fuel.table, all.fuels, fuels.to.objects, fuels.to.gens.to.memberships)
 } else {
     
     message(">>  map.gen.to.fuel.file does not exist ... skipping")
@@ -182,72 +185,74 @@ if (exists("map.gen.to.fuel.file")) {
 
 if (exists("map.region.to.load.file")) {
     
-    load.to.region.map <- 
-        fread(file.path(inputfiles.dir, map.region.to.load.file))
+    load.to.region.map <- read_data(map.region.to.load.file)
     
-    # create data file object name column
-    load.to.region.map[,DataFile := paste0(load.to.region.map[,Region], 
-                                           " Load File Object")]
-    
-    # add load data file objects to objects .sheet 
-    # uses load.to.region.map
-    load.file.to.object <- 
-        initialize_table(Objects.sheet, nrow(load.to.region.map), 
-                         list(class = "Data File", category = "Regional Load"))
-    load.file.to.object[, name := load.to.region.map[,DataFile]]
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.file.to.object)
-    
-    # load file object to as regional load
-    # uses load.to.region.map
-    load.to.region.properties <- 
-        initialize_table(Properties.sheet, nrow(load.to.region.map), 
-                         list(parent_class = "System", child_class = "Region", 
-                              collection = "Regions", parent_object = "System", 
-                              band_id = 1, property = "Load", value = 0))
-    load.to.region.properties[,child_object := load.to.region.map[,Region]]
-    load.to.region.properties[, filename := 
-                                  paste0("{Object}",load.to.region.map[,DataFile])]
-    
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            load.to.region.properties)
-    
-    
-    # load to properties (attach filepath to object based on scenario)
-    # uses load.to.region.map
-    
-    # loop through each column and add columns
-    load.scens <- colnames(load.to.region.map)
-    load.scens <- load.scens[!(load.scens %in% c('Region', 'DataFile'))]
-    
-    for (name in load.scens) {
-        # create small table to pass to add_to_properties_sheet
-        cur.tab <- load.to.region.map[,.SD, .SDcols = c('DataFile', name)]
+    if (is.data.table(load.to.region.map)) {
+        # create data file object name column
+        load.to.region.map[,DataFile := paste0(load.to.region.map[,Region], 
+                                               " Load File Object")]
         
-        setnames(cur.tab, name, "filename")
+        # add load data file objects to objects .sheet 
+        # uses load.to.region.map
+        load.file.to.object <- 
+            initialize_table(Objects.sheet, nrow(load.to.region.map), 
+                             list(class = "Data File", category = "Regional Load"))
+        load.file.to.object[, name := load.to.region.map[,DataFile]]
         
-        add_to_properties_sheet(cur.tab, names.col = 'DataFile', 
-                                object.class = 'Data File', 
-                                collection.name = 'Data Files', 
-                                datafile.col = "filename", 
-                                scenario.name = ifelse(tolower(name) == 'base', 
-                                                       NA, name))
-    }
-    
-    setnames(cur.tab, "filename_datafile", name) #hacky. fix this later
-    
-    # add any scenarios associated with load as objects
-    load.scens <- load.scens[tolower(load.scens) != 'base']
-    load.scens.to.objects <- 
-        initialize_table(Objects.sheet, length(load.scens), 
-                         list(name = load.scens, class = "Scenario",
-                              category = "Load scenarios"))
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.scens.to.objects)
-    
-    # clean up
-    rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
-       load.scens, cur.tab, load.scens.to.objects)
+        Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.file.to.object)
+        
+        # load file object to as regional load
+        # uses load.to.region.map
+        load.to.region.properties <- 
+            initialize_table(Properties.sheet, nrow(load.to.region.map), 
+                             list(parent_class = "System", child_class = "Region", 
+                                  collection = "Regions", parent_object = "System", 
+                                  band_id = 1, property = "Load", value = 0))
+        load.to.region.properties[,child_object := load.to.region.map[,Region]]
+        load.to.region.properties[, filename := 
+                                      paste0("{Object}",load.to.region.map[,DataFile])]
+        
+        Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
+                                                load.to.region.properties)
+        
+        
+        # load to properties (attach filepath to object based on scenario)
+        # uses load.to.region.map
+        
+        # loop through each column and add columns
+        load.scens <- colnames(load.to.region.map)
+        load.scens <- load.scens[!(load.scens %in% c('Region', 'DataFile'))]
+        
+        for (name in load.scens) {
+            # create small table to pass to add_to_properties_sheet
+            cur.tab <- load.to.region.map[,.SD, .SDcols = c('DataFile', name)]
+            
+            setnames(cur.tab, name, "filename")
+            
+            add_to_properties_sheet(cur.tab, names.col = 'DataFile', 
+                                    object.class = 'Data File', 
+                                    collection.name = 'Data Files', 
+                                    datafile.col = "filename", 
+                                    scenario.name = ifelse(tolower(name) == 'base', 
+                                                           NA, name))
+        }
+        
+        setnames(cur.tab, "filename_datafile", name) #hacky. fix this later
+        
+        # add any scenarios associated with load as objects
+        load.scens <- load.scens[tolower(load.scens) != 'base']
+        load.scens.to.objects <- 
+            initialize_table(Objects.sheet, length(load.scens), 
+                             list(name = load.scens, class = "Scenario",
+                                  category = "Load scenarios"))
+        
+        Objects.sheet <- merge_sheet_w_table(Objects.sheet, load.scens.to.objects)
+        
+        # clean up
+        rm(load.to.region.map, load.file.to.object, load.to.region.properties, 
+           load.scens, cur.tab, load.scens.to.objects)
+        
+    } # end if (is.data.table(load.to.region.map))
     
 } else {
     message(">>  map.region.to.load.file does not exist ... skipping")
@@ -326,14 +331,13 @@ if (exists("RE.gen.file.list") && add.RE.gens){
         scenname = item["scenario"]
         make.new.nodes = item["make.new.nodes"]
         
-        if (file.exists(file.path(inputfiles.dir, fname))) {
+        RE.gens <- read_data(fname, colClasses = 'numeric')
+        
+        if (is.data.table(RE.gens)) {
             
             # read in information about RE gens
             message(sprintf("... Adding properties for RE gens from %s", fname))
-            
-            RE.gens <- 
-                fread(file.path(inputfiles.dir, fname), colClasses = 'numeric')
-            
+
             # run a data check and save results to OutputFiles
             # check for missing Fuel, Number of Units, Max Capacity
             check.RE.fuel <- RE.gens[is.na(Fuel) | Fuel == "",]
@@ -625,9 +629,8 @@ if (exists("RE.gen.file.list") && add.RE.gens){
                    RE.gens.to.objects, RE.gens.to.properties,
                    new.RE.nodes.data, new.RE.lines.data,
                    new.RE.gens.data, node.info, existing.fuels, missing.fuels)})
-        } else {
-            message(sprintf(">>  %s does not exist ... skipping", fname))
-        }
+            
+        } # end if (is.data.table(RE.gens))
     }
     
 } else {
@@ -643,17 +646,17 @@ if (exists("RE.gen.file.list") && add.RE.gens){
 if (exists("generator.property.by.fuel.list")) {
     
     for (elem in seq_along(generator.property.by.fuel.list)) {
-        if (file.exists(file.path(inputfiles.dir,
-                                  generator.property.by.fuel.list[[elem]][1]))) {
+        
+        cur.data <- read_data(generator.property.by.fuel.list[[elem]][[1]])
+        
+        if (is.data.table(cur.data)) {
+            
             message(sprintf("... Adding properties from %s", 
                             generator.property.by.fuel.list[[elem]][1]))
-            # read in table
-            cur.table <- fread(file.path(inputfiles.dir,
-                                         generator.property.by.fuel.list[[elem]][1]))
-            
+
             # set up arguments for merge_property_by_fuel
             cur.map.fuel.args <- generator.property.by.fuel.list[[elem]][[2]]
-            cur.map.fuel.args$input.table <- cur.table
+            cur.map.fuel.args$input.table <- cur.data
             
             # merge properties fuel, produces table with list of generators in rows
             # and their properties in all other columns
@@ -690,14 +693,11 @@ if (exists("generator.property.by.fuel.list")) {
                 rm(cur.scen)
             }
             
-        } else {
-            message(sprintf(">>  %s does not exist ... skipping", 
-                            generator.property.by.fuel.list[[elem]][1]))
-        }
+        } # end if (is.data.table(cur.data))
     }
     
     # clean up
-    rm(cur.table, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
+    rm(cur.data, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
 }
 
 #----------------------------------------------------------------------------|
@@ -709,13 +709,12 @@ if (exists("object.property.list")) {
     
     for (elem in seq_along(object.property.list)) {
         
-        if (file.exists(file.path(inputfiles.dir,object.property.list[[elem]][1]))) {
+        cur.data <- read_data(object.property.list[[elem]][[1]])
+        
+        if (is.data.table(cur.data)) {
+            
             message(sprintf("... Adding properties from %s", 
                             object.property.list[[elem]][1]))
-            
-            # read in table
-            cur.table <- fread(file.path(inputfiles.dir, 
-                                         object.property.list[[elem]][1]))
             
             # read in args
             if (length(object.property.list[[elem]]) > 1) {
@@ -726,10 +725,10 @@ if (exists("object.property.list")) {
                 cur.args <- list()
             }
         
-            cur.args$input.table <- cur.table
+            cur.args$input.table <- cur.data
             
             # clean, add to properties sheet using input arguments and new table
-            check_colname_cap(cur.table)
+            check_colname_cap(cur.data)
             
             do.call(add_to_properties_sheet, cur.args)
             
@@ -743,12 +742,9 @@ if (exists("object.property.list")) {
             }
             
             # clean up
-            rm(cur.table)
+            rm(cur.data)
             
-        } else {
-            message(sprintf(">>  %s does not exist ... skipping", 
-                            object.property.list[[elem]][1]))
-        }
+        } # end if (is.data.table(cur.data))
     }
     
 } else {
@@ -763,16 +759,14 @@ if (exists('turn.off.except.in.scen.list')) {
     
     for (elem in seq_along(turn.off.except.in.scen.list)) {
         
-        if (file.exists(file.path(inputfiles.dir,
-                                  turn.off.except.in.scen.list[[elem]][1]))) {
+        cur.data <- read_data(turn.off.except.in.scen.list[[elem]][[1]])
+        
+        if (is.data.table(cur.data)) {
+            
             message(sprintf(paste0("... Adding turning off objects from %s except",
                                    " for in scenario '%s'"), 
                             turn.off.except.in.scen.list[[elem]][1],
                             turn.off.except.in.scen.list[[elem]][['scenario.name']]))
-            
-            # read in table
-            cur.table <- fread(file.path(inputfiles.dir, 
-                                         turn.off.except.in.scen.list[[elem]][1]))
             
             # turn off Units property of these objects
             cur.names <- turn.off.except.in.scen.list[[elem]][['names.col']]
@@ -781,9 +775,9 @@ if (exists('turn.off.except.in.scen.list')) {
             cur.scen <- turn.off.except.in.scen.list[[elem]][['scenario.name']]
             
             # turn off Units in bae
-            cur.table[,Units := 0]
+            cur.data[,Units := 0]
             
-            add_to_properties_sheet(cur.table, 
+            add_to_properties_sheet(cur.data, 
                                     names.col = cur.names, 
                                     object.class = cur.class,
                                     collection.name = cur.coll, 
@@ -795,12 +789,12 @@ if (exists('turn.off.except.in.scen.list')) {
             if (cur.class == 'Generator') {
                 
                 genunits <- generator.data.table[, .(Generator, Units)]
-                cur.table <- merge(cur.table[,Units := NULL], genunits, 
+                cur.data <- merge(cur.data[,Units := NULL], genunits, 
                                    by.x = cur.names, by.y = 'Generator')
                 
-            } else cur.table[,Units := 1]
+            } else cur.data[,Units := 1]
             
-            add_to_properties_sheet(cur.table, 
+            add_to_properties_sheet(cur.data, 
                                     names.col = cur.names, 
                                     object.class = cur.class, 
                                     collection.name = cur.coll, 
@@ -828,19 +822,20 @@ if (exists('turn.off.except.in.scen.list')) {
 
 # uses interfaces.files.list
 if(exists('interfaces.files.list')) {
+    
     for (i in seq(interfaces.files.list)) {
+        
+        
         if (file.exists(file.path(inputfiles.dir, interfaces.files.list[[i]][1]))) {
+            
             message(
                 sprintf("... Adding interfaces from %s", interfaces.files.list[[i]][1]))
+            
             # read in files from interface files in this iteration
-            interface.names <- fread(
-                file.path(inputfiles.dir, interfaces.files.list[[i]]['names']))
-            interface.properties <- fread(
-                file.path(inputfiles.dir, interfaces.files.list[[i]]['properties']))
-            interface.memberships <- fread(
-                file.path(inputfiles.dir, interfaces.files.list[[i]]['memberships']))
-            interface.coefficients <- fread(
-                file.path(inputfiles.dir, interfaces.files.list[[i]]['flowcoefs']))
+            interface.names <- read_data(interfaces.files.list[[i]]['names'])
+            interface.properties <- read_data(interfaces.files.list[[i]]['properties'])
+            interface.memberships <- read_data(interfaces.files.list[[i]]['memberships'])
+            interface.coefficients <- read_data(interfaces.files.list[[i]]['flowcoefs'])
             
             # Add interfaces to objects sheet
             interfaces.to.objects <- initialize_table(
@@ -908,11 +903,12 @@ if(exists('interfaces.files.list')) {
 
 if(exists('reserve.files')) {
     
-    if(file.exists(file.path(inputfiles.dir, reserve.files$reserves))){
+    reserves <- read_data(reserve.files$reserves)
+    
+    if (is.data.table(reserves)) {
         
         # read reserves file
         message(sprintf("... Adding reserves from %s", reserve.files$reserves))
-        reserves <- fread(file.path(inputfiles.dir, reserve.files$reserves))
         
         # add reserves to objects sheet
         reserve.to.objects <- initialize_table(Objects.sheet, nrow(reserves), 
@@ -943,7 +939,8 @@ if(exists('reserve.files')) {
             # turn off reserve when scenario not selected
             reserve.scenario.off <- reserves[,.(Reserve,`Is Enabled` = 0)]
             
-            add_to_properties_sheet(reserve.scenario.off, object.class = 'Reserve',
+            add_to_properties_sheet(reserve.scenario.off, 
+                                    object.class = 'Reserve',
                                     names.col = 'Reserve',
                                     collection.name = 'Reserves')
             
@@ -978,20 +975,17 @@ if(exists('reserve.files')) {
         # clean up
         rm(excluded.cols, reserve.properties, reserves, reserve.to.objects)
         
-    } else {
-        message(sprintf('>>  file %s not found ... skipping', 
-                        reserve.files$reserves))
-    }
+    } # end if (is.data.table(reserves))
     
     # add reserve generators 
     if (length(reserve.files$reserve.generators) > 0 &&
-       file.exists(file.path(inputfiles.dir,reserve.files$reserve.generators))){
+        file.exists(file.path(inputfiles.dir, reserve.files$reserve.generators))){
         
         # read reserve generators file
-        message(sprintf("... Adding reserves from %s", reserve.files$reserve.generators))
+        message(sprintf("... Adding reserves from %s", 
+                        reserve.files$reserve.generators))
         
-        reserve.generators <- fread(file.path(inputfiles.dir,
-                                              reserve.files$reserve.generators))
+        reserve.generators <- read_data(reserve.files$reserve.generators)
         
         # add reserve-generator memberships to memberships.sheet
         reserve.to.gens.to.memberships <- 
@@ -1036,17 +1030,19 @@ if(exists('reserve.files')) {
     
     # add reserve regions
     if (length(reserve.files$reserve.regions) > 0 &&
-       file.exists(file.path(inputfiles.dir,reserve.files$reserve.regions))){
+        file.exists(file.path(inputfiles.dir, reserve.files$reserve.regions))){
         
         # read reserve regions file
-        message(sprintf("... Adding reserves from %s", reserve.files$reserve.regions))
-        reserve.regions <- fread(file.path(inputfiles.dir,
-                                           reserve.files$reserve.regions))
+        message(sprintf("... Adding reserves from %s", 
+                        reserve.files$reserve.regions))
+        
+        reserve.regions <- read_data(reserve.files$reserve.regions)
         
         # add reserve-region memberships to memberships.sheet
         reserve.to.regs.to.memberships <- 
             initialize_table(Memberships.sheet, nrow(reserve.regions), 
-                             list(parent_class = "Reserve", child_class = "Region", 
+                             list(parent_class = "Reserve", 
+                                  child_class = "Region", 
                                   collection = "Regions"))
         
         reserve.to.regs.to.memberships[,parent_object := 

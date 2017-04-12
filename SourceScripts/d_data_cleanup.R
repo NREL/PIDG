@@ -13,20 +13,22 @@
 # check for this)
 if (exists('units.to.delete.files')) {
   for (fname in units.to.delete.files) {
-      if (file.exists(file.path(inputfiles.dir,fname))) {
+      
+      to.delete <- read_data(fname)
+      
+      if (is.data.table(to.delete)) {
+          
         message(sprintf("... deleting units in  %s", fname))
         
-        to.delete <- fread(file.path(inputfiles.dir, fname))
         Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Object.Name])]
         Properties.sheet <- Properties.sheet[!(child_object %in% to.delete[,Object.Name]) &
                                              !(parent_object %in% to.delete[,Object.Name])]
         Memberships.sheet <- 
           Memberships.sheet[!(child_object %in% to.delete[,Object.Name]) & 
                               !(parent_object %in% to.delete[,Object.Name])]
-      } else {
-        message(sprintf(">>  %s does not exist ... skipping", fname))
-      } 
+      }
   }
+    
 } else {
    message(">>  units.to.delete.file does not exist ... skipping")
 }
