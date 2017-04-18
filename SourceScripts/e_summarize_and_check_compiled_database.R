@@ -634,6 +634,21 @@ if (any(problem.row.mask)) {
   sink()
 }
 
+# ** make sure there are no blanks in Objects.sheet ----
+problem.row.mask = !complete.cases(Objects.sheet[,.(class, name)])
+
+if (any(problem.row.mask)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat("WARNING: the following objects sheet value(s) are missing.\n ",
+        "This will not import.\n")
+    print(Objects.sheet[problem.row.mask], 
+          row.names = F, 
+          n = nrow(Objects.sheet[problem.row.mask]),
+          width = p.width)
+    sink()
+}
+
 # ** make sure no region has no nodes ----
 all.regions <- Objects.sheet[class == "Region",name]
 regions.w.nodes <- Memberships.sheet[parent_class == "Node" & collection == 
