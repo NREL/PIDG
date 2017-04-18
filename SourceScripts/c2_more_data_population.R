@@ -818,7 +818,7 @@ if(exists('reserve.files')) {
         
         # add reserves to objects sheet
         import_objects(reserves[, .(Reserve)])
-
+        
         # fix scenario name so is always lowercase
         check_colname_cap(reserves)
         
@@ -832,18 +832,18 @@ if(exists('reserve.files')) {
                 reserve.enabled <- reserves[scenario == i,.(Reserve,`Is Enabled`)]
                 
                 import_properties(reserve.enabled, object.class = 'Reserve', 
-                                        names.col = 'Reserve', 
-                                        collection.name = 'Reserves',
-                                        scenario.name = i)
+                                  names.col = 'Reserve', 
+                                  collection.name = 'Reserves',
+                                  scenario.name = i)
             }
             
             # turn off reserve when scenario not selected
             reserve.scenario.off <- reserves[,.(Reserve,`Is Enabled` = 0)]
             
             import_properties(reserve.scenario.off, 
-                                    object.class = 'Reserve',
-                                    names.col = 'Reserve',
-                                    collection.name = 'Reserves')
+                              object.class = 'Reserve',
+                              names.col = 'Reserve',
+                              collection.name = 'Reserves')
             
             # add reserve scenarios to objects.sheet
             add_scenarios(reserve.scenarios, category = "Reserves")
@@ -870,8 +870,8 @@ if(exists('reserve.files')) {
         reserve.properties <- reserves[,!excluded.cols, with = F]
         
         import_properties(reserve.properties, object.class = 'Reserve', 
-                                names.col = 'Reserve', 
-                                collection.name = 'Reserves')
+                          names.col = 'Reserve', 
+                          collection.name = 'Reserves')
         
         # clean up
         rm(excluded.cols, reserve.properties, reserves)
@@ -879,81 +879,77 @@ if(exists('reserve.files')) {
     } # end if (is.data.table(reserves))
     
     # add reserve generators 
-    if (length(reserve.files$reserve.generators) > 0 &&
-        file.exists(file.path(inputfiles.dir, reserve.files$reserve.generators))){
-        
-        # read reserve generators file
-        message(sprintf("... Adding reserves from %s", 
-                        reserve.files$reserve.generators))
+    if (length(reserve.files$reserve.generators) > 0){
         
         reserve.generators <- read_data(reserve.files$reserve.generators)
         
-        # add reserve-generator memberships to memberships.sheet
-        reserve.to.gens.to.membs <- reserve.generators[,.(Reserve, 
-                                                          Generators_Generator = Generator)]
-
-        import_memberships(reserve.to.gens.to.membs)
-        
-        # add reserve-generator properties to properties.sheet
-        cnames <- colnames(reserve.generators)
-        
-        if (length(cnames[!(cnames %in% c("Reserve", "Generator", "notes"))]) > 0) {
+        if (is.data.table(reserve.generators)) {
             
-            if ("notes" %in% cnames) {
-                reserve.generators[,notes := NULL]
+            # read reserve generators file
+            message(sprintf("... Adding reserves from %s", 
+                            reserve.files$reserve.generators))
+            
+            
+            # add reserve-generator memberships to memberships.sheet
+            reserve.to.gens.to.membs <- reserve.generators[,.(Reserve, 
+                                                              Generators_Generator = Generator)]
+            
+            import_memberships(reserve.to.gens.to.membs)
+            
+            # add reserve-generator properties to properties.sheet
+            cnames <- colnames(reserve.generators)
+            
+            if (length(cnames[!(cnames %in% c("Reserve", "Generator", "notes"))]) > 0) {
+                
+                if ("notes" %in% cnames) {
+                    reserve.generators[,notes := NULL]
+                }
+                
+                import_properties(reserve.generators, 
+                                  names.col = "Generator",
+                                  parent.col = "Reserve")
             }
             
-            import_properties(reserve.generators, 
-                                    names.col = "Generator",
-                                    parent.col = "Reserve")
+            # clean up
+            rm(reserve.generators, reserve.to.gens.to.membs, cnames)
         }
         
-        # clean up
-        rm(reserve.generators, reserve.to.gens.to.membs, cnames)
-        
-    } else {
-        
-        if (length(reserve.files$reserve.regions) > 0) {
-            message(sprintf('>> file %s not found ... skipping',
-                            reserve.files$reserve.generators))
-        }
     }
     
     # add reserve regions
-    if (length(reserve.files$reserve.regions) > 0 &&
-        file.exists(file.path(inputfiles.dir, reserve.files$reserve.regions))){
-        
-        # read reserve regions file
-        message(sprintf("... Adding reserves from %s", 
-                        reserve.files$reserve.regions))
+    if (length(reserve.files$reserve.regions) > 0){
         
         reserve.regions <- read_data(reserve.files$reserve.regions)
         
-        # add reserve-region memberships to memberships.sheet
-        reserve.to.regs.to.membs <- reserve.regions[,.(Reserve, 
-                                                       Regions_Region = Region)]
-        
-        import_memberships(reserve.to.regs.to.membs)
-        
-        # add reserve.region properties to properties .sheet
-        import_properties(reserve.regions, object.class = 'Region',
-                                parent.col = 'Reserve',
-                                names.col = 'Region', 
-                                collection.name = 'Regions')
+        if (is.data.table(reserve.regions)) {
+            
+            # read reserve regions file
+            message(sprintf("... Adding reserves from %s", 
+                            reserve.files$reserve.regions))
+            
+            
+            # add reserve-region memberships to memberships.sheet
+            reserve.to.regs.to.membs <- reserve.regions[,.(Reserve, 
+                                                           Regions_Region = Region)]
+            
+            import_memberships(reserve.to.regs.to.membs)
+            
+            # add reserve.region properties to properties .sheet
+            import_properties(reserve.regions, object.class = 'Region',
+                              parent.col = 'Reserve',
+                              names.col = 'Region', 
+                              collection.name = 'Regions')
+            
+            # clean up
+            rm(reserve.regions, reserve.to.regs.to.membs)
+            
+        } 
         
         # clean up
-        rm(reserve.regions, reserve.to.regs.to.membs)
-        
-    } else {
-        if (length(reserve.files$reserve.regions) > 0) {
-            message(sprintf('>> file %s not found ... skipping',
-                            reserve.files$reserve.regions))
-        }
+        rm(reserve.files)
     }
     
-    # clean up
-    rm(reserve.files)
+} else {
     
-}else {
     message('>>  no reserves files defined ... skipping')
 }
