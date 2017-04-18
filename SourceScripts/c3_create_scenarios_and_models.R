@@ -407,27 +407,48 @@ if (exists('generic.import.files')) {
     
     invisible(lapply(generic.import.files, function (x) {
         
-        if (file.exists(file.path(inputfiles.dir,x))) {
+        # read in data, change blanks to NA, and import into .sheet tables
+        imported.file <- read_data(x[[1]],
+                                   fill = TRUE, 
+                                   header = FALSE, 
+                                   strip.white = TRUE, 
+                                   fix.db.colnames = FALSE)
+        
+        if (is.data.table(imported.file)) {
             
-            message(sprintf("... importing from %s", x))
+            message(sprintf("... importing from %s", x[[1]]))
             
-            # read in data, change blanks to NA, and import into .sheet tables
-            imported.file <- read_data(x, 
-                                        fill = TRUE, 
-                                        header = FALSE, 
-                                        strip.white = TRUE)
+            # hacky: if a table type is given, assume that table needs 
+            # formatting (put header as first col, add begin and end tags) 
+            if (length(x) > 1) {
+                
+                type <- x[[2]]
+                
+                # add headers as first row
+                imported.file <- rbind(as.list(names(imported.file)), 
+                                       imported.file)
+                
+                # change names to V1:Vn
+                setnames(imported.file, 
+                         names(imported.file), 
+                         paste0("V", 1:length(imported.file)))
+                
+                # add / BEGIN and / END tags
+                imported.file <- rbindlist(list(list(V1 = "/ BEGIN", 
+                                                     V2 = type), 
+                                                imported.file, 
+                                                list(V1 = "/ END", 
+                                                     V2 = type)), 
+                                           fill = TRUE)
+                
+            }
             
             for (j in seq_len(ncol(imported.file)))
                 set(imported.file, which(imported.file[[j]] == ""), j, NA)
             
             lapply(all.sheets, function(y) import_and_merge(imported.file, y))
             
-        } else {
-            
-            # warn about file not existing
-            message(sprintf(">>  %s does not exist ... skipping", x))
-            
-        }
+        } # end if (is.data.table(imported.file)) 
     }))
 } else { message('>>  no generic import files defined ... skipping') }
 
