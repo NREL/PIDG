@@ -9,7 +9,7 @@ if (exists("objects.list")) {
   
     for (elem in seq_along(objects.list)) {
         
-        data.path <- objects.list[[elem]][1]
+        data.path <- objects.list[[elem]][[1]]
         
         cur.data <- read_data(data.path, sep = ",")
         
@@ -58,14 +58,17 @@ if (exists("objects.list")) {
             # read in args if given
             if (length(objects.list[[elem]]) > 1) {
                 
-                cur.args <- objects.list[[elem]][[2]]
+                # get all args but the first (a little gynmastics to account 
+                # for the args being in a separate list or not)
+                cur.args <- unlist(objects.list[[elem]][-1]) 
                 
             } else {
                 
                 cur.args <- list()
             }
             
-            cur.args$input.table <- cur.data
+            # add another element and coerce to a list
+            suppressWarnings(cur.args$input.table <- cur.data)
             
             # add to properties sheet using input arguments
             do.call(import_properties, cur.args)
@@ -100,6 +103,8 @@ if (exists("memberships.list")) {
             # do some cleaning/checking
             check_for_dupes(cur.dt, names(cur.dt))
             check_colname_cap(cur.dt)
+            
+            # add here to only pull first col and then any _ col
             
             # add memberships
             import_memberships(cur.dt)
@@ -634,22 +639,26 @@ if (exists("object.property.list")) {
     for (elem in seq_along(object.property.list)) {
         
         cur.data <- read_data(object.property.list[[elem]][[1]])
-        
+      
         if (is.data.table(cur.data)) {
             
             message(sprintf("... Adding properties from %s", 
                             object.property.list[[elem]][1]))
             
-            # read in args
+            # read in args if given
             if (length(object.property.list[[elem]]) > 1) {
                 
-                cur.args <- object.property.list[[elem]][[2]]  
+                # get all args but the first (a little gynmastics to account 
+                # for the args being in a separate list or not)
+                cur.args <- unlist(object.property.list[[elem]][-1]) 
+                
             } else {
                 
                 cur.args <- list()
             }
-        
-            cur.args$input.table <- cur.data
+            
+            # add another element and coerce to a list
+            suppressWarnings(cur.args$input.table <- cur.data)
             
             # clean, add to properties sheet using input arguments and new table
             check_colname_cap(cur.data)
