@@ -191,6 +191,8 @@ merge_sheet_w_table <- function(sheet.table, table.to.merge) {
 # add scenarios to object properties if they don't already exist in category
 add_scenarios <- function(scenarios, category) {
     
+    scenarios <- scenarios[!is.na(scenarios)]
+    
     to.add <- scenarios[!(scenarios %in% 
                               Objects.sheet[class == "Scenario", name])]
     
