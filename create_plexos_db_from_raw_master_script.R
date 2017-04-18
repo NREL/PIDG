@@ -46,17 +46,6 @@ source(file.path(master.script.dir, "SourceScripts/functions.R"))
 # fill in and check inputs ----
 #------------------------------------------------------------------------------|
 
-# set default choose.input to 'pre.parsed' if not set
-if (!exists("choose.input")){
-    choose.input <- "pre.parsed"
-} else {
-    if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
-        
-        stop(paste("Please set 'choose.input' in input_params",
-                   "to 'raw.psse' or 'pre.parsed'"))
-    }
-}
-
 # make sure inputfiles.dir exists
 if (exists("inputfiles.dir")) {
     if (!dir.exists(inputfiles.dir)) {
@@ -81,6 +70,29 @@ if (exists("inputfiles.db")) {
 # grab input parameters from parameter file passed in by user
 
 source(input.params.location)
+
+
+#------------------------------------------------------------------------------|
+# fill in and check more inputs ----
+#------------------------------------------------------------------------------|
+# these could be defined in the input parameters file
+
+# set default choose.input to 'pre.parsed' if not set
+if (!exists("choose.input")){
+    choose.input <- "pre.parsed"
+} else {
+    if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
+        
+        stop(paste("Please set 'choose.input' in input_params",
+                   "to 'raw.psse' or 'pre.parsed'"))
+    }
+}
+
+# set plexos.version to 7 if not provided
+if (!exists("plexos.version")) {
+    message("plexos.version not provided. setting to 7.")
+    plexos.version <- 7
+}
 
 
 #------------------------------------------------------------------------------|
