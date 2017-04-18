@@ -80,7 +80,8 @@ fix_db_colnames <- function(x) {
 # read in data. if argument is csv, will use fread. if not, will send as a query
 # to database. Internally, will run checks to pull data. If checks succeed, 
 # function will return data. If not, will return NA.
-read_data <- function(to_data, dir = inputfiles.dir, con = conn, ...) {
+read_data <- function(to_data, dir = inputfiles.dir, con = conn, 
+                      fix.db.colnames = TRUE, ...) {
     
     if (endsWith(to_data, ".csv")) {
         
@@ -103,9 +104,11 @@ read_data <- function(to_data, dir = inputfiles.dir, con = conn, ...) {
             
             setDT(to.return)
             
-            setnames(to.return, 
-                     names(to.return), 
-                     sapply(names(to.return), fix_db_colnames))
+            if (fix.db.colnames) {
+                setnames(to.return, 
+                         names(to.return), 
+                         sapply(names(to.return), fix_db_colnames))
+            }
             
         } else {
             
