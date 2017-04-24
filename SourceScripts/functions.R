@@ -336,6 +336,8 @@ import_table_compact <- function(input.table, object.type) {
     # grab category information and put these all together in objects.sheet
     objcat <- input.table[names == 'category', .SD, .SDcols = all.objects]
     
+    objcat[objcat == "" | objcat == " "] <- NA
+    
     # transpose to be in long form so can be put into initialize_table
     objcat <- melt(objcat, 
                    measure.vars = all.objects, 
