@@ -769,7 +769,26 @@ if (any(dupes)) {
 
 rm(dupes)
 
-# ** check to see if an attribute is defined twice for one object ----
+# ** check for duplicated Memberships.sheet definitions ----
+dupes = duplicated(Memberships.sheet, 
+                   by = c("parent_object", "child_object", "collection", 
+                          "parent_object", "child_object"))
+
+if (any(dupes)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following memberships are defined twice for ", 
+               "the same objects. This may import but may not run.\n"))
+    print(Memberships.sheet[dupes], 
+          row.names = F, 
+          n = nrow(Memberships.sheet[dupes]),
+          width = p.width)
+    sink()
+}
+
+rm(dupes)
+
+# ** check for duplicated Attributes.sheet definitions ----
 dupes = duplicated(Attributes.sheet, 
                    by = c("name", "class", "attribute"))
 
@@ -828,7 +847,49 @@ if (length(object.list) > 0) {
 
 rm(object.list)
 
-# ** check to make sure that all objects in attributes.sheet exist as objects ----
+# ** check to make sure that all parent objects in Properties.sheet exist as objects ----
+object.list = Properties.sheet[,unique(parent_object)]
+
+object.list = object.list[!(object.list %in% Objects.sheet[,name]) &
+                              object.list != "System"]
+
+if (length(object.list) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following parents object(s) are in Properties.sheet but ",
+               "are not defined in Objects.sheet. This may not import or run.\n"))
+    print(Properties.sheet[parent_object %in% object.list,], 
+          row.names = F, 
+          n = nrow(Properties.sheet[parent_object %in% object.list,]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.list)
+
+# ** check to make sure that all objects in Memberships.sheet exist as objects ----
+object.list = unique(c(Memberships.sheet[,child_object], 
+                       Memberships.sheet[,parent_object]))
+
+object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+
+if (length(object.list) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following object(s) have defined memberships but ",
+               "are not defined in Objects.sheet. This may not import or run.\n"))
+    print(Memberships.sheet[child_object %in% object.list |
+                                parent_object %in% object.list,], 
+          row.names = F, 
+          n = nrow(Memberships.sheet[child_object %in% object.list |
+                                         parent_object %in% object.list,]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.list)
+
+# ** check to make sure that all objects in Attributes.sheet exist as objects ----
 object.list = Attributes.sheet[,unique(name)]
 
 object.list = object.list[!(object.list %in% Objects.sheet[,name])]
