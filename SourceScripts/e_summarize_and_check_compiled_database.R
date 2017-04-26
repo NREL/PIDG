@@ -769,6 +769,45 @@ if (any(dupes)) {
 
 rm(dupes)
 
+# ** check to see if an attribute is defined twice for one object ----
+dupes = duplicated(Attributes.sheet, 
+                   by = c("name", "class", "attribute"))
+
+if (any(dupes)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following properties are defined twice for ", 
+               "the same object in the same scenario. This may import but ",
+               "may not run.\n"))
+    print(Attributes.sheet[dupes], 
+          row.names = F, 
+          n = nrow(Attributes.sheet[dupes]),
+          width = p.width)
+    sink()
+}
+
+rm(dupes)
+
+# ** check to see if a report property is defined twice for one object ----
+dupes = duplicated(Reports.sheet, 
+                   by = c("object", "parent_class", "child_class",
+                          "collection", "property", "phase_id"))
+
+if (any(dupes)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following report properties are defined twice for ", 
+               "the same report object for the same phase_id. This may import but ",
+               "may not run.\n"))
+    print(Reports.sheet[dupes], 
+          row.names = F, 
+          n = nrow(Reports.sheet[dupes]),
+          width = p.width)
+    sink()
+}
+
+rm(dupes)
+
 # ** check to make sure that all objects in properties.sheet exist as objects ----
 object.list = Properties.sheet[,unique(child_object)]
 
