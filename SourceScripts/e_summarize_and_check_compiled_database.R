@@ -759,6 +759,45 @@ if (length(object.list) > 0) {
 
 rm(object.list)
 
+# ** check to make sure that all objects in attributes.sheet exist as objects ----
+object.list = Attributes.sheet[,unique(name)]
+
+object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+
+if (length(object.list) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following object(s) have defined attributes but ",
+               "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
+               "these attributes to other object. This may not run.\n"))
+    print(Attributes.sheet[child_object %in% object.list,], 
+          row.names = F, 
+          n = nrow(Attributes.sheet[child_object %in% object.list,]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.list)
+
+# ** check to make sure that all objects in reportss.sheet exist as objects ----
+object.list = Reports.sheet[,unique(object)]
+
+object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+
+if (length(object.list) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following report object(s) are present in Reports.sheet but ",
+               "are not defined in Objects.sheet. This may not run.\n"))
+    print(Reports.sheet[child_object %in% object.list,], 
+          row.names = F, 
+          n = nrow(Reports.sheet[child_object %in% object.list,]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.list)
+
 # ** check to make sure all scenarios have {Object} in front of them ----
 non.object.scens = Properties.sheet[,
                                     !(grepl("^\\{Object\\}", scenario) | is.na(scenario) | scenario == "")]
