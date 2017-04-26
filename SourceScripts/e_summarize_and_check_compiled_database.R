@@ -600,7 +600,7 @@ if(data.check.plots){
 # check for fatal import/run errors ----
 #------------------------------------------------------------------------------#
 
-# ** make sure there are no required values missing in properties.sheet ----
+# ** make sure there are no blanks in required values in Properties.sheet ----
 problem.row.mask = Properties.sheet[, 
                                     !complete.cases(list(parent_object, child_object, parent_class, 
                                                          child_class, collection, property, value, band_id))]
@@ -749,7 +749,7 @@ if (nrow(unknown.issues) > 0) {
 
 rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
 
-# ** check to see if a property is defined twice for on object in one scenario ----
+# ** check for duplicated Properties.sheet definitions (by scenario) ----
 dupes = duplicated(Properties.sheet, 
                    by = c("parent_object", "child_object", "property", "scenario", 
                           "band_id", "pattern"))
@@ -788,7 +788,7 @@ if (any(dupes)) {
 
 rm(dupes)
 
-# ** check to see if a report property is defined twice for one object ----
+# ** check for duplicated Reports.sheet definitions ----
 dupes = duplicated(Reports.sheet, 
                    by = c("object", "parent_class", "child_class",
                           "collection", "property", "phase_id"))
@@ -808,7 +808,7 @@ if (any(dupes)) {
 
 rm(dupes)
 
-# ** check to make sure that all objects in properties.sheet exist as objects ----
+# ** check to make sure that all objects in Properties.sheet exist as objects ----
 object.list = Properties.sheet[,unique(child_object)]
 
 object.list = object.list[!(object.list %in% Objects.sheet[,name])]
@@ -848,7 +848,7 @@ if (length(object.list) > 0) {
 
 rm(object.list)
 
-# ** check to make sure that all objects in reportss.sheet exist as objects ----
+# ** check to make sure that all objects in Reports.sheet exist as objects ----
 object.list = Reports.sheet[,unique(object)]
 
 object.list = object.list[!(object.list %in% Objects.sheet[,name])]
