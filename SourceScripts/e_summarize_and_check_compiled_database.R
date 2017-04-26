@@ -650,7 +650,7 @@ if (any(problem.row.mask)) {
 }
 
 # ** make sure there are no blanks in Attributes.sheet ----
-problem.row.mask = !complete.cases(Attributes.sheet[,.(class, name)])
+problem.row.mask = !complete.cases(Attributes.sheet)
 
 if (any(problem.row.mask)) {
     sink(fatal.warnings, append = T) 
@@ -665,7 +665,7 @@ if (any(problem.row.mask)) {
 }
 
 # ** make sure there are no blanks in Reports.sheet ----
-problem.row.mask = !complete.cases(Reports.sheet[,.(class, name)])
+problem.row.mask = !complete.cases(Reports.sheet)
 
 if (any(problem.row.mask)) {
     sink(fatal.warnings, append = T) 
