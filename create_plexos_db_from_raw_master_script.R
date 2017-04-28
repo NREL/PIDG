@@ -49,7 +49,8 @@ source(file.path(master.script.dir, "SourceScripts/functions.R"))
 # make sure inputfiles.dir exists
 if (exists("inputfiles.dir")) {
     if (!dir.exists(inputfiles.dir)) {
-        stop(sprintf("inputfiles.dir set to %s, which does not exist"))
+        stop(sprintf("inputfiles.dir set to %s, which does not exist", 
+                     inputfiles.dir))
     }
 }
 
