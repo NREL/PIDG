@@ -424,14 +424,16 @@ if (exists('generic.import.files')) {
                 
                 type <- x[[2]]
                 
-                # add headers as first row
-                imported.file <- rbind(as.list(names(imported.file)), 
-                                       imported.file)
-                
-                # change names to V1:Vn
-                setnames(imported.file, 
-                         names(imported.file), 
-                         paste0("V", 1:length(imported.file)))
+                # add headers as first row (useful for reading from db)
+                if (names(imported.file)[1] != "V1") {
+                    imported.file <- rbind(as.list(names(imported.file)), 
+                                           imported.file)
+                    
+                    # change names to V1:Vn
+                    setnames(imported.file, 
+                             names(imported.file), 
+                             paste0("V", 1:length(imported.file)))
+                }
                 
                 # add / BEGIN and / END tags
                 imported.file <- rbindlist(list(list(V1 = "/ BEGIN", 
