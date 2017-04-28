@@ -446,7 +446,7 @@ sink()
 node.lpf <- Properties.sheet[child_class == "Node" & 
                                property == "Load Participation Factor",
                              .(Node = child_object, LPF = as.numeric(value),
-                               scenario = scenario)]
+                               scenario, pattern)]
 
 node.lpf <- merge(node.lpf, 
                   Memberships.sheet[parent_class == "Node" & 
@@ -455,7 +455,9 @@ node.lpf <- merge(node.lpf,
                   by = "Node", all.x = T)
 
 # sum LPF by region *** ignoring scenarios ***
-region.lpf <- node.lpf[is.na(scenario), .(region.lpf = sum(LPF)), by = "Region"]
+region.lpf <- node.lpf[is.na(scenario), 
+                       .(region.lpf = sum(LPF)), 
+                       by = .(Region, scenario, pattern)]
 
 # generate warning if LPF does not sum to 1 in all regions
 lpf.sum.to.one <- round(sum(region.lpf$region.lpf), 13) == nrow(region.lpf)
@@ -466,7 +468,9 @@ if(lpf.sum.to.one == F){
   cat(paste0("WARNING: LPF does not sum to one (1) in at least one region."))
   cat("\n\n")
   print(region.lpf[region.lpf != 1, .(Region, 
-                                      region.lpf = sprintf("%.10f", region.lpf))], 
+                                      region.lpf = sprintf("%.10f", region.lpf), 
+                                      scenario, 
+                                      pattern)], 
         row.names = F,
         n = nrow(region.lpf), 
         width = p.width)
