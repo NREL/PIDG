@@ -211,10 +211,15 @@ generator.map <- generator.map[, lapply(.SD, function(x) {
     suppressWarnings(as.numeric(x))} else x
 })]
 
-# if don't have max capacity, sub in 0 so next lines don't break
+# if don't have max capacity or units, sub in 0 so next lines don't break
 if (all(is.na(generator.map$`Max Capacity`))) {
     generator.map[, `Max Capacity` := NULL] # is a char column
     generator.map[, `Max Capacity` := 0]
+}
+
+if (all(is.na(generator.map$Units))) {
+    generator.map[, Units := NULL] # is a char column
+    generator.map[, Units := 0]
 }
 
 # summarize generator properties by fuel and save to OutputFiles
