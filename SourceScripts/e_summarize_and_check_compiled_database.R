@@ -127,6 +127,7 @@ if(nrow(missing.memberships.objects) > 0){
   cat("WARNING: The following objects in Memberships.sheet are not found in ",
       "Objects.sheet\n\n")
   print(missing.memberships.objects, 
+        n = nrow(missing.memberships.objects),
         row.names = FALSE, 
         quote = FALSE, 
         width = p.width)
@@ -221,6 +222,15 @@ if (all(is.na(generator.map$Units))) {
     generator.map[, Units := NULL] # is a char column
     generator.map[, Units := 0]
 }
+
+if (!is.numeric(generator.map$`Max Capacity`)) {
+    generator.map[, `Max Capacity` := as.numeric(`Max Capacity`)] # is a char column
+}
+
+if (!is.numeric(generator.map$Units)) {
+    generator.map[, Units := as.numeric(Units)] # is a char column
+}
+
 
 # summarize generator properties by fuel and save to OutputFiles
 generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(`Max Capacity`*Units),
@@ -757,7 +767,7 @@ rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
 # ** check for duplicated Properties.sheet definitions (by scenario) ----
 dupes = duplicated(Properties.sheet, 
                    by = c("parent_object", "child_object", "property", "scenario", 
-                          "band_id", "pattern"))
+                          "band_id", "pattern", "date_from", "date_to"))
 
 if (any(dupes)) {
   sink(fatal.warnings, append = T) 
@@ -905,9 +915,9 @@ if (length(object.list) > 0) {
     cat(paste0("WARNING: the following object(s) have defined attributes but ",
                "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
                "these attributes to other object. This may not run.\n"))
-    print(Attributes.sheet[child_object %in% object.list,], 
+    print(Attributes.sheet[name %in% object.list,], 
           row.names = F, 
-          n = nrow(Attributes.sheet[child_object %in% object.list,]), 
+          n = nrow(Attributes.sheet[name %in% object.list,]), 
           width = p.width)
     sink()
 }
@@ -924,9 +934,9 @@ if (length(object.list) > 0) {
     cat("\n\n")
     cat(paste0("WARNING: the following report object(s) are present in Reports.sheet but ",
                "are not defined in Objects.sheet. This may not run.\n"))
-    print(Reports.sheet[child_object %in% object.list,], 
+    print(Reports.sheet[object %in% object.list,], 
           row.names = F, 
-          n = nrow(Reports.sheet[child_object %in% object.list,]), 
+          n = nrow(Reports.sheet[object %in% object.list,]), 
           width = p.width)
     sink()
 }
