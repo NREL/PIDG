@@ -313,13 +313,7 @@ if (exists("RE.gen.file.list") && add.RE.gens){
             message(sprintf("... Adding properties for RE gens from %s", fname))
 
             # run a data check and save results to OutputFiles
-            # check for missing Fuel, Number of Units, Max Capacity
-            check.RE.fuel <- RE.gens[is.na(Fuel) | Fuel == "",]
-            if(nrow(check.RE.fuel) > 0){ 
-                warning(sprintf("At least one generator in %s is missing 'Fuel'",
-                                fname))
-            }
-            
+            # check for Number of Units, Max Capacity
             check.RE.units <- RE.gens[is.na(Num.Units) | Num.Units == "",]
             if(nrow(check.RE.units) > 0){ 
                 warning(sprintf("At least one generator in %s is missing 'Units'", 
@@ -335,7 +329,7 @@ if (exists("RE.gen.file.list") && add.RE.gens){
             }
             
             # clean up
-            rm(check.RE.fuel, check.RE.units, check.RE.capacity)
+            rm(check.RE.capacity)
             
             # create scenario if input file scenario in input_params*.R
             if(!is.na(scenname)){
@@ -522,20 +516,6 @@ if (exists("RE.gen.file.list") && add.RE.gens){
                 rm(RE.gens.to.properties.rating)
             }
             
-            # if fuel objects don't exist, add them
-            missing.fuels = RE.gens[,unique(Fuel)]
-            existing.fuels = generator.data.table[,unique(Fuel)]
-            
-            missing.fuels = missing.fuels[!(missing.fuels %in% existing.fuels)]
-            
-            if (length(missing.fuels) > 0) {
-                
-                missing.fuels <- data.table(Fuel = missing.fuels)
-                
-                import_objects(missing.fuels) 
-                    
-            }
-            
             # add RE gen-fuel to memberships (connecting gens to fuel and nodes)
             RE.gens.to.membs <- RE.gens[, .(Generator = Generator.Name, 
                                             Nodes_Node = Node.To.Connect, 
@@ -571,7 +551,7 @@ if (exists("RE.gen.file.list") && add.RE.gens){
                    RE.lines.to.memberships.from, rating.data.files.to.properties, 
                    RE.gens.to.objects, RE.gens.to.properties,
                    new.RE.nodes.data, new.RE.lines.data,
-                   new.RE.gens.data, node.info, existing.fuels, missing.fuels)})
+                   new.RE.gens.data, node.info)})
             
         } # end if (is.data.table(RE.gens))
     }

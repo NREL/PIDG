@@ -198,12 +198,11 @@ generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
 
 gens.missing.units <- unique(generator.map[is.na(Units), .(Generator, Units, `Generator category`)])
 gens.missing.capacity <- unique(generator.map[is.na(`Max Capacity`), .(Generator, `Max Capacity`, `Generator category`)])
-gens.missing.fuel <- unique(generator.map[is.na(Fuel), .(Generator, Fuel, `Generator category`)])
 gens.missing.node <- unique(generator.map[is.na(Node), .(Generator, Node)])
 
 # add to missing items list
 missing.items.list <- c(missing.items.list, "gens.missing.units", 
-                        "gens.missing.capacity", "gens.missing.fuel",
+                        "gens.missing.capacity",
                         "gens.missing.node")
 
 # change colums that can be numeric to numeric
