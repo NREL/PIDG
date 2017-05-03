@@ -495,7 +495,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
         # if band.col exists, include it in the merge and allow.cartesian, b/c
         # merged table will probably be big enough to throw an error
         generator.data.table <- merge(generator.data.table[,.(Generator, 
-                                                              Fuel, 
+                                                              Fuel = category, 
                                                               `Max Capacity`, 
                                                               Units)],
                                       input.table[,.SD,
@@ -515,7 +515,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
         # create vectors of breaks for each fuel type (with min == 0 and 
         # max == max capacity in generator.data.table)
         maxes <- generator.data.table[,.(maxcap = max(`Max Capacity`)), 
-                                      by = 'Fuel']
+                                      by = .(Fuel = category)]
         all.fuels <- input.table[,unique(Fuel)]
         
         fuel.breaks <- list()
@@ -549,14 +549,14 @@ merge_property_by_fuel <- function(input.table, prop.cols,
           input.table[Fuel == fuel, breaks.col := cut(get(cap.band.col), 
                                                       breaks = fuel.breaks[[fuel]])]
           
-          generator.data.table[Fuel == fuel, breaks.col := cut(`Max Capacity`,
+          generator.data.table[category == fuel, breaks.col := cut(`Max Capacity`,
                                                                breaks = fuel.breaks[[fuel]])]
         }
         
         # finally, merge input.table with generator.data.table
         # similarly, if there is a band col, include it and allow.cartesian
         generator.data.table <- merge(generator.data.table[,.(Generator, 
-                                                              Fuel, 
+                                                              Fuel = category, 
                                                               `Max Capacity`, 
                                                               Units,
                                                               breaks.col)], 
