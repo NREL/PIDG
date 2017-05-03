@@ -877,6 +877,39 @@ if (exists('constraint.import.files')) {
 } else { message('>>  no constraint import files defined ... skipping')}
 
 #------------------------------------------------------------------------------|
+# Create generator.data.table ----
+#------------------------------------------------------------------------------|
+
+if (!exists("generator.data.table")) {
+    
+    generator.data.table <- unique(Objects.sheet[class == "Generator",
+                                                 .(Generator = name, category)])
+    
+    generator.data.table <- merge(generator.data.table, 
+                                  Memberships.sheet[parent_class == "Generator" &
+                                                        child_class == "Fuel" &
+                                                        collection == "Fuels",
+                                                    .(Generator = parent_object,
+                                                      Fuel = child_object)],
+                                  all.x = TRUE)
+    
+    generator.data.table <- merge(generator.data.table,
+                                  Properties.sheet[property == "Units" & 
+                                                       child_class == "Generator",
+                                                   .(Generator = child_object,
+                                                     Units = as.numeric(value))],
+                                  all.x = TRUE)
+    
+    generator.data.table <- merge(generator.data.table,
+                                  Properties.sheet[property == "Max Capacity" & 
+                                                       child_class == "Generator",
+                                                   .(Generator = child_object,
+                                                     `Max Capacity` = as.numeric(value))],
+                                  all.x = TRUE)
+    
+}
+
+#------------------------------------------------------------------------------|
 # ADD PROPERTIES AND MEMBERSHIPS ----
 #------------------------------------------------------------------------------|
 
