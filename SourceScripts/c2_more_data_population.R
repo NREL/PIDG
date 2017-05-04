@@ -61,7 +61,11 @@ if (exists("objects.list")) {
                 
                 # get all args but the first (a little gynmastics to account 
                 # for the args being in a separate list or not)
-                cur.args <- unlist(objects.list[[elem]][-1]) 
+                cur.args <- objects.list[[elem]][-1]
+                
+                if (is.list(cur.args) & all(is.null(names(cur.args)))) {
+                    cur.args <- cur.args[[1]]
+                }
                 
             } else {
                 
@@ -1016,7 +1020,11 @@ if (exists("object.property.list")) {
                 
                 # get all args but the first (a little gynmastics to account 
                 # for the args being in a separate list or not)
-                cur.args <- unlist(object.property.list[[elem]][-1]) 
+                cur.args <- object.property.list[[elem]][-1]
+                
+                if (is.list(cur.args) & all(is.null(names(cur.args)))) {
+                    cur.args <- cur.args[[1]]
+                }
                 
             } else {
                 
