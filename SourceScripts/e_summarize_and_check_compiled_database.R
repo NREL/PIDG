@@ -770,7 +770,8 @@ rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
 
 # ** check for duplicated Properties.sheet definitions (by scenario) ----
 dupes = duplicated(Properties.sheet, 
-                   by = c("parent_object", "child_object", "property", "scenario", 
+                   by = c("parent_object", "child_object", "parent_class",
+                          "child_class", "property", "scenario", 
                           "band_id", "pattern", "date_from", "date_to"))
 
 if (any(dupes)) {
