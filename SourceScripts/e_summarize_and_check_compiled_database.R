@@ -985,6 +985,71 @@ if (any(non.object.dfs)) {
 
 rm(non.object.dfs)
 
+# ** make sure scenario objects in Properties.sheet exist as objects ----
+object.scens <- Properties.sheet[, unique(scenario)]
+object.scens <- object.scens[grepl("^\\{Object\\}", object.scens)]
+object.scens <- gsub("\\{Object\\}", "", object.scens)
+
+object.scens <- object.scens[!(object.scens %in% Objects.sheet[,name])]
+
+if (length(object.scens) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following scenarios(s) are tagged in  properties but ",
+               "are not defined in Objects.sheet. This may not import.\n"))
+    print(Properties.sheet[scenario %in% paste0("{Object}", object.scens)], 
+          row.names = F, 
+          n = nrow(Properties.sheet[scenario %in% paste0("{Object}", object.scens),]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.scens)
+
+# ** make sure datafile objects in Properties.sheet exist as objects ----
+object.dfs <- Properties.sheet[, unique(filename)]
+object.dfs <- object.dfs[grepl("^\\{Object\\}", object.dfs)]
+object.dfs <- gsub("\\{Object\\}", "", object.dfs)
+
+object.dfs <- object.dfs[!(object.dfs %in% Objects.sheet[,name])]
+
+if (length(object.dfs) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following datafile object(s) are tagged in  properties but ",
+               "are not defined in Objects.sheet. This may not import.\n"))
+    print(Properties.sheet[filename %in% paste0("{Object}", object.dfs)], 
+          row.names = F, 
+          n = nrow(Properties.sheet[filename %in% paste0("{Object}", object.dfs),]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.dfs)
+
+# ** make sure variable objects in Properties.sheet exist as objects ----
+colname <- ifelse(plexos.version == 7, "variable", "escalator")
+
+object.vars <- Properties.sheet[, unique(get(colname))]
+object.vars <- object.vars[grepl("^\\{Object\\}", object.vars)]
+object.vars <- gsub("\\{Object\\}", "", object.vars)
+
+object.vars <- object.vars[!(object.vars %in% Objects.sheet[,name])]
+
+if (length(object.vars) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following ", colname, "(s) are tagged in  properties ",
+               "but are not defined in Objects.sheet. This may not import.\n"))
+    print(Properties.sheet[get(colname) %in% paste0("{Object}", object.vars)], 
+          row.names = F, 
+          n = nrow(Properties.sheet[get(colname) %in% paste0("{Object}", object.vars)]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.vars, colname)
+
 # ** check to make sure no value is non-numeric ----
 nonnum.value = suppressWarnings(Properties.sheet[,is.na(as.numeric(value))])
 
