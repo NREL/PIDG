@@ -375,69 +375,72 @@ edges <- rbind(lines, tfmrs)[,.(from,to)]
 # create graph object
 network <- graph.data.frame(edges, directed = F, vertices = nodes)
 
-# retrieve list of isolated nodes
-components <- components(network)
-
-names(components$csize) <- 1:length(components$csize)
-
-components.table <- data.table(Node.Name = names(components$membership),
-                               component.id = components$membership)
-
-components.table[,csize := 
-                   components$csize[which(names(components$csize) == component.id)],
-                 by = "component.id"]
-
-# grab scenarios on nodes
-nodes <- merge(nodes,
-               Properties.sheet[child_class == "Node" & property == "Units",
-                                .(child_object, scenario)], 
-               by.x = "Node", by.y = "child_object", all = T)
-
-components.table[,node.in.scenario := 
-                   ifelse(Node.Name %in% 
-                            nodes[!is.na(scenario),Node], 1, 0)]
-
-island.nodes <- components.table[csize != max(csize), .(Node.Name = Node.Name)]
-island.nodes <- merge(island.nodes, 
-                      Memberships.sheet[parent_class == "Node" & 
-                                      child_class == "Region", 
-                                  .(Node.Name = parent_object, 
-                                    Region = child_object)], 
-                      by = "Node.Name", 
-                      all.x = TRUE)
-
-island.nodes[,`In scenario?` := 
-                ifelse(Node.Name %in% 
-                         components.table[node.in.scenario != 0, Node.Name], "Yes", "No")]
-
-write.csv(island.nodes,  
-          file = file.path(data.check.dir,"isolated.nodes.csv"),
-          quote = F, row.names = F)
-
-# Export a report table
-
-components.table <- components.table[,.(`Component size` = max(csize), 
-             `Nodes in 'Remove Isolated Nodes' scenario` = sum(node.in.scenario)),
-              by = "component.id"]
-
-components.table[,component.id := NULL]
-
-# components.report.dir <- file.path(data.check.dir,"isolated.nodes.report.txt")
-
-sink(db.summary, append = TRUE) 
-cat(sprintf("Summary of connected components in network of %s database.", ifelse(exists("choose.db"), choose.db, "the")))
-cat(paste0("\n","------------","\n\n"))
-cat("This analysis is done on the base network - scenarios on Lines/Transformers are ignored.")
-cat("\n")
-cat(sprintf("List of nodes that belong to islands saved in %s/isolated.nodes.csv", data.check.dir))
-cat("\n")
-cat("Islands are any groups of nodes not connected to the largest connected component.")
-cat("\n\n")
-print(setorder(components.table, -`Component size`, `Nodes in 'Remove Isolated Nodes' scenario`),
-      row.names = F, 
-      n = nrow(components.table))
-cat("\n\n")
-sink()
+if (nrow(edges) > 0 & nrow(nodes) > 0) {
+  
+  # retrieve list of isolated nodes
+  components <- components(network)
+  
+  names(components$csize) <- 1:length(components$csize)
+  
+  components.table <- data.table(Node.Name = names(components$membership),
+                                 component.id = components$membership)
+  
+  components.table[,csize := 
+                     components$csize[which(names(components$csize) == component.id)],
+                   by = "component.id"]
+  
+  # grab scenarios on nodes
+  nodes <- merge(nodes,
+                 Properties.sheet[child_class == "Node" & property == "Units",
+                                  .(child_object, scenario)], 
+                 by.x = "Node", by.y = "child_object", all = T)
+  
+  components.table[,node.in.scenario := 
+                     ifelse(Node.Name %in% 
+                              nodes[!is.na(scenario),Node], 1, 0)]
+  
+  island.nodes <- components.table[csize != max(csize), .(Node.Name = Node.Name)]
+  island.nodes <- merge(island.nodes, 
+                        Memberships.sheet[parent_class == "Node" & 
+                                        child_class == "Region", 
+                                    .(Node.Name = parent_object, 
+                                      Region = child_object)], 
+                        by = "Node.Name", 
+                        all.x = TRUE)
+  
+  island.nodes[,`In scenario?` := 
+                  ifelse(Node.Name %in% 
+                           components.table[node.in.scenario != 0, Node.Name], "Yes", "No")]
+  
+  write.csv(island.nodes,  
+            file = file.path(data.check.dir,"isolated.nodes.csv"),
+            quote = F, row.names = F)
+  
+  # Export a report table
+  
+  components.table <- components.table[,.(`Component size` = max(csize), 
+               `Nodes in 'Remove Isolated Nodes' scenario` = sum(node.in.scenario)),
+                by = "component.id"]
+  
+  components.table[,component.id := NULL]
+  
+  # components.report.dir <- file.path(data.check.dir,"isolated.nodes.report.txt")
+  
+  sink(db.summary, append = TRUE) 
+  cat(sprintf("Summary of connected components in network of %s database.", ifelse(exists("choose.db"), choose.db, "the")))
+  cat(paste0("\n","------------","\n\n"))
+  cat("This analysis is done on the base network - scenarios on Lines/Transformers are ignored.")
+  cat("\n")
+  cat(sprintf("List of nodes that belong to islands saved in %s/isolated.nodes.csv", data.check.dir))
+  cat("\n")
+  cat("Islands are any groups of nodes not connected to the largest connected component.")
+  cat("\n\n")
+  print(setorder(components.table, -`Component size`, `Nodes in 'Remove Isolated Nodes' scenario`),
+        row.names = F, 
+        n = nrow(components.table))
+  cat("\n\n")
+  sink()
+}
 
 # check that LPFs sum to 1 for each region 
 node.lpf <- Properties.sheet[child_class == "Node" & 
