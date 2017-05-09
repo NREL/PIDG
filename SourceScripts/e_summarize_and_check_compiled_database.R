@@ -135,6 +135,40 @@ if(nrow(missing.memberships.objects) > 0){
 }
 
 #------------------------------------------------------------------------------#
+# Add gen-fuel memberships to db summary ----
+#------------------------------------------------------------------------------#
+
+gen.fuel <- Memberships.sheet[parent_class == "Generator" & 
+                                  collection %in% c("Fuels", "Start Fuels"),
+                              .(Generator = parent_object, 
+                                collection, 
+                                fuel = child_object)]
+
+# add collection
+gen.fuel <- merge(gen.fuel, 
+                  Objects.sheet[class == "Generator", .(Generator = name, category)], 
+                  by = "Generator",
+                  all = TRUE)
+
+gen.fuel <- gen.fuel[,.N, by = .(category, collection, fuel)]
+
+# prep for export
+setorder(gen.fuel, category)
+
+# export
+sink(db.summary, append = TRUE)
+cat("Summary of generator/fuel memberships")
+cat("\n------------\n\n")
+print(gen.fuel,
+      row.names = F, 
+      n = nrow(gen.fuel))
+cat("\n\n")
+sink()
+
+# clean up
+rm(gen.fuel)
+
+#------------------------------------------------------------------------------#
 # Check generator properties ----
 #------------------------------------------------------------------------------#
 
