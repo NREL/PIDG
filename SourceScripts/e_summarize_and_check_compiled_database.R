@@ -268,8 +268,7 @@ cat("\n------------\n\n")
 cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n\n", data.check.dir))
 print(generator.fuels.summary,
 				  row.names = F, 
-				  n = nrow(generator.fuels.summary), 
-				  width = p.width)
+				  n = nrow(generator.fuels.summary))
 cat("\n\n")
 sink()
 
@@ -436,8 +435,7 @@ cat("Islands are any groups of nodes not connected to the largest connected comp
 cat("\n\n")
 print(setorder(components.table, -`Component size`, `Nodes in 'Remove Isolated Nodes' scenario`),
       row.names = F, 
-      n = nrow(components.table), 
-      width = p.width)
+      n = nrow(components.table))
 cat("\n\n")
 sink()
 
