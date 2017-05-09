@@ -605,15 +605,17 @@ merge_property_by_fuel <- function(input.table, prop.cols,
 # overwrite.cols can be any column in Properties sheet except value. That column
 # will also be overwritten
 import_properties <- function(input.table, 
-                                    object.class = NA, 
-                                    names.col = NA, 
-                                    collection.name = NA, 
-                                    parent.col = NA,
-                                    scenario.name = NA, pattern.col = NA, 
-                                    period.id = NA, datafile.col = NA, 
-                                    date_from.col = NA, overwrite = FALSE, 
-                                    overwrite.cols = NA, band.col = NA, 
-                                    memo.col = NA) {
+                              object.class = NA, 
+                              names.col = NA, 
+                              collection.name = NA, 
+                              parent.col = NA,
+                              scenario.name = NA,
+                              scenario.cat = NA,
+                              pattern.col = NA,
+                              period.id = NA, datafile.col = NA, 
+                              date_from.col = NA, overwrite = FALSE, 
+                              overwrite.cols = NA, band.col = NA, 
+                              memo.col = NA) {
     
     # get all property column names (everything but object names column and 
     # pattern column, if applicable)
@@ -740,7 +742,7 @@ import_properties <- function(input.table,
             
             # add scenarios to objects
             add_scenarios(input.table[,unique(scenario)], 
-                          category = "Object properties")
+                          category = scenario.cat)
         }
         
         # add memo column if specified

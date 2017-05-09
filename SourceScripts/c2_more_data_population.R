@@ -988,7 +988,9 @@ if (exists("generator.property.by.fuel.list")) {
                 # need to deal with categories later
                 
                 add_scenarios(cur.prop.sheet.args[['scenario.name']], 
-                              category = "Object properties")
+                              category = ifelse('scenario.cat' %in% names(cur.prop.sheet.args), 
+                                                cur.prop.sheet.args[['scenario.cat']], 
+                                                NA))
                 
             }
             
@@ -1044,7 +1046,9 @@ if (exists("object.property.list")) {
             if ('scenario.name' %in% names(cur.args)) { 
                 
                 add_scenarios(cur.args['scenario.name'], 
-                              category = "Object properties")
+                              category = ifelse('scenario.cat' %in% names(cur.args), 
+                                                cur.args['scenario.cat'], 
+                                                NA))
                 
             }
             
