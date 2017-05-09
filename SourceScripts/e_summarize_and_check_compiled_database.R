@@ -198,12 +198,11 @@ generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
 
 gens.missing.units <- unique(generator.map[is.na(Units), .(Generator, Units, `Generator category`)])
 gens.missing.capacity <- unique(generator.map[is.na(`Max Capacity`), .(Generator, `Max Capacity`, `Generator category`)])
-gens.missing.fuel <- unique(generator.map[is.na(Fuel), .(Generator, Fuel, `Generator category`)])
 gens.missing.node <- unique(generator.map[is.na(Node), .(Generator, Node)])
 
 # add to missing items list
 missing.items.list <- c(missing.items.list, "gens.missing.units", 
-                        "gens.missing.capacity", "gens.missing.fuel",
+                        "gens.missing.capacity",
                         "gens.missing.node")
 
 # change colums that can be numeric to numeric
@@ -774,7 +773,8 @@ rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
 
 # ** check for duplicated Properties.sheet definitions (by scenario) ----
 dupes = duplicated(Properties.sheet, 
-                   by = c("parent_object", "child_object", "property", "scenario", 
+                   by = c("parent_object", "child_object", "parent_class",
+                          "child_class", "property", "scenario", 
                           "band_id", "pattern", "date_from", "date_to"))
 
 if (any(dupes)) {
@@ -988,6 +988,71 @@ if (any(non.object.dfs)) {
 }
 
 rm(non.object.dfs)
+
+# ** make sure scenario objects in Properties.sheet exist as objects ----
+object.scens <- Properties.sheet[, unique(scenario)]
+object.scens <- object.scens[grepl("^\\{Object\\}", object.scens)]
+object.scens <- gsub("\\{Object\\}", "", object.scens)
+
+object.scens <- object.scens[!(object.scens %in% Objects.sheet[,name])]
+
+if (length(object.scens) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following scenarios(s) are tagged in  properties but ",
+               "are not defined in Objects.sheet. This may not import.\n"))
+    print(Properties.sheet[scenario %in% paste0("{Object}", object.scens)], 
+          row.names = F, 
+          n = nrow(Properties.sheet[scenario %in% paste0("{Object}", object.scens),]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.scens)
+
+# ** make sure datafile objects in Properties.sheet exist as objects ----
+object.dfs <- Properties.sheet[, unique(filename)]
+object.dfs <- object.dfs[grepl("^\\{Object\\}", object.dfs)]
+object.dfs <- gsub("\\{Object\\}", "", object.dfs)
+
+object.dfs <- object.dfs[!(object.dfs %in% Objects.sheet[,name])]
+
+if (length(object.dfs) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following datafile object(s) are tagged in  properties but ",
+               "are not defined in Objects.sheet. This may not import.\n"))
+    print(Properties.sheet[filename %in% paste0("{Object}", object.dfs)], 
+          row.names = F, 
+          n = nrow(Properties.sheet[filename %in% paste0("{Object}", object.dfs),]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.dfs)
+
+# ** make sure variable objects in Properties.sheet exist as objects ----
+colname <- ifelse(plexos.version == 7, "variable", "escalator")
+
+object.vars <- Properties.sheet[, unique(get(colname))]
+object.vars <- object.vars[grepl("^\\{Object\\}", object.vars)]
+object.vars <- gsub("\\{Object\\}", "", object.vars)
+
+object.vars <- object.vars[!(object.vars %in% Objects.sheet[,name])]
+
+if (length(object.vars) > 0) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following ", colname, "(s) are tagged in  properties ",
+               "but are not defined in Objects.sheet. This may not import.\n"))
+    print(Properties.sheet[get(colname) %in% paste0("{Object}", object.vars)], 
+          row.names = F, 
+          n = nrow(Properties.sheet[get(colname) %in% paste0("{Object}", object.vars)]), 
+          width = p.width)
+    sink()
+}
+
+rm(object.vars, colname)
 
 # ** check to make sure no value is non-numeric ----
 nonnum.value = suppressWarnings(Properties.sheet[,is.na(as.numeric(value))])

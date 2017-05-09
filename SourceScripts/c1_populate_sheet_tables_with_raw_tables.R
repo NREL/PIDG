@@ -45,8 +45,7 @@ if (choose.input == "pre.parsed") {
     }
     
     if (exists("load.file")) {
-        load.data.table <- suppressWarnings(read_data(load.file)) 
-        # for bumping load type col to character type in posoco
+        load.data.table <- read_data(load.file) 
     } else {
         message(sprintf(">>  load.file does not exist ... skipping"))
     }
