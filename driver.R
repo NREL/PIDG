@@ -127,8 +127,6 @@ if (!exists("data.check.plots")) {
 
 source(file.path(pidg.dir, "SourceScripts/functions.R"))
 
-source(input.params)
-
 # open connection to database if needed
 if (exists("inputfiles.db")) {
     conn = dbConnect(drv = inputfiles.db$drv, 
@@ -137,6 +135,8 @@ if (exists("inputfiles.db")) {
                      user = inputfiles.db$user, 
                      password = inputfiles.db$password)
 }
+
+source(input.params)
 
 
 #------------------------------------------------------------------------------|
