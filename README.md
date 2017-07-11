@@ -1,36 +1,61 @@
+## PLEXOS Input Data Generator (PIDG)
+
+### Introduction
+
+PLEXOS can read in any Excel file that has the following structure: one workbook with 6 worksheets named Objects, Categories, Memberships, Attributes, Properties, and Reports, each containing specific columns. These worksheets can hold almost all the information needed to construct and personalize a working model in PLEXOS. The PLEXOS Input Data Generator (PIDG) can take data stored in csv files or a postgreSQL database and compile it into an appropriately-formatted Excel workbook. This allows the input data to be scripted, reproducible, and version-controlled.
+
+Soon, there may be a command line interface that would enable the automated import of a PIDG-produced Excel file into PLEXOS. For now, this step requires human intervention through PLEXOS's import wizard. When working with a large database, it is often useful to uncheck the "Check Data" box in the second step of the import wizard to cut down import time. Finally, there are two types of data that cannot be imported using PLEXOS's import wizard: anything in the "Settings" menu (unit changes) and toggles for writing specific flat files (it is possible to import the option to write all or no flat files, but not to select which to write out separately from selecting what properties will be reported).
+
+This README describes how to run PIDG, all options for types of data to import, and required data formats.
+
+### How to run PIDG
+
+PIDG is run by **PIDG/driver.R** and all pointers to data and options for reading data are set in a separate input parameters file. To run PIDG, set up in the input parameters file (all options for this defined below) and run **PIDG/driver.R** (required arguments defined below). **PIDG/driver.R** will read in data referred to in the input parameter file and run PIDG's core scripts to process, compile, check, and output that data.
+
+### PIDG/driver.R
+
+**PIDG/driver.R** can be run either through the command line with the following arguments (in argname=argvalue form) or by running another R script which includes defining the following variables and then sourcing **PIDG/driver.R**.
+
+* `pidg.dir`: required. path to directory of the PIDG repo. like any of the following path inputs, this can be an absolute path or, if calling from another script that sets the working directory, a path relative to the working directory
+* `input.params`: required. path to input parameter file. 
+* `inputfiles.dir`: optional (required if input parameters file contains pointers to csv files). directory in which all input csv files are stored. paths in the input parameter file will be interpreted as relative to `inputfiles.dir`
+* `inputfiles.db`: optional (required if input parameter file contains SQL queries). list with the following named elements: `drv`, `host`, `dbname`, `user`, `password`, all arguments of RPostgreSQL's function `dbConnect()`. this is used to open a connection to a postgreSQL database 
+* `outputfiles.dir`: optional. directory where the output workbook and data check outputs will be saved. if does not exist, will be set to directory where `input.params` lives
+* `output.wb.name`: optional. name (including ".xlsx") of workbook to be saved. if not set, workbook will automatically be saved as "pidg\_export\_[*current\_datetime*].xlsx"
+* `export.db`: optional. logical, setting whether Excel workbook will be saved. setting this to `FALSE` can be useful for testing if the stage of writing the Excel file takes a while. if not set, will be set to `TRUE`
+* `data.check.plots`: optional. logical, setting whether, when PIDG is performing its final data checking, pdf plots should be exported. setting this to `FALSE` can be useful if writing the pdf plot takes a while. if not set, will be set to `TRUE`
+
+### Input parameter file options
+
+[[lots of text here]]
+
+order does not matter
+
+[[lots of text here]]
+
+[[lots of text here]]
+
+[[lots of text here]]
+
+### Basic PIDG code structure and troubleshooting
+
+Once all variables are read in and checked as described in the **"How to run PIDG"** and **"PIDG/driver.R"** sections, PIDG's core scripts are run. This is a basic description of the process PIDG uses, for help with troubleshooting if something goes wrong. 
+
+Basic information of PIDG is as follows:
+
+1. **prepare environment** (**PIDG/driver.R**): read in arguments and necessary functions and source `input.params`
+2. _**optional: parse specifically formatted input data** (**a-1**, **a-2**): if a PSS/E file has been given, parse it_
+3. **create blank \*.sheet tables** (**b**): as described in the introduction, the final Excel workbook will contain six sheets, Objects, Categories, Memberships, Attributes, Properties, and Reports. Create a blank data.table to correspond to each sheet, with correct column names (i.e. `Objects.sheet`, `Categories.sheet`, `Memberships.sheet`, `Attributes.sheet`, `Properties.sheet`, and `Reports.sheet`)
+4. **populate \*.sheet tables** (**c1**, **c2**, **c3**, **d**): the core of PIDG's functionality: go through each possible variable that could exist in `input.params`. if it does exist, read in data, process it, then add it to whichever of these table(s) is appropriate. the processing of each variable happens independently of the processing of each other variable
+5. **check data** (**e**): once all `input.params` input variables are dealt with, run checks on the data. export summaries of various parts of the database and flag potential issues. these issues are sorted into "fatal warnings" (known to cause failures in importing to PLEXOS or when running PLEXOS) and "warnings" (which may not cause failures but may be grounds for a second look at input data) 
+6. **export data** (**f**): if `export.wb == TRUE`, save the workbook
+
+Because of the modularity of step 4, if something goes wrong, it is usually helpful to use progress messages to identify what data PIDG is trying to process in when the error happens and which variable that data corresponds to. Then, find within the PIDG scripts where that variable is processed, add a `stop()` or `message()` or two and rerun.
+
+It is also important to heed "fatal warnings." Most of these are known to cause issues and PLEXOS's error messages related to some of these problems are somewhat enigmatic, meaning it is hard to track down what's going on if they are allowed persist.
+
 **********
-### OVERVIEW OF CODE STRUCTURE
 **********
-__Introduction__
-
-Plexos can read in any Excel file that has the following structure: one workbook with 6 worksheets named Objects, Categories, Memberships, Attributes, Properties, and Reports, each with specified columns. These worksheets can hold all the information needed to construct and personalize a working model in Plexos. This set of scripts reads in data describing a plexos network, either based off a PSSE file or a set of other csvs (format defined below) and creates 6 data.tables, each corresponding to one required worksheet (referred to as .sheet tables throughout these comments and the code). Once these tables are created, the scripts compile all input data, format the data to correspond with Plexos's excel input file format, and add the data chunks to the .sheet tables. Lastly, the fully populated .sheet tables are exported into one Excel workbook, which can be imported directly into Plexos. 
-
-
-__To run__
-
-Load required variables into environment. Basic required variables are: 
-
-* path to directory containing master PSSE2PLEXOS script (**create\_plexos\_db\_from\_raw\_master\_script.R**), defined as variable `master.script.dir`
-* path to input parameters file, defined as variable `input.params`
-* path to directory containing all input files  (input parameters file should refer to input files relative to this directory), defined as variable `inputfiles.dir`
-* path to directory where output excel file should be saved (will be created if does not exist), defined as variable `outputfiles.dir`
-* name of output excel file, defined as variable `output.wb.name`
-* `export.wb` (optional): if `TRUE`, will write out Excel workbook. If `FALSE`, will skip writing out the workbook with a message. If not set, will default to `TRUE`. Setting this to `FALSE` may be useful for testing.
-* `data.check.plots` (optional): if `TRUE`, pdf plots will be written out during the data checking process (regional capacity, line and transformer properties) and a summary of the database will pop up at the end of the process. If `FALSE`, plots will not be written out and the database summary won't pop up, although the database summary will be written and data checks will still run. In either case, if `PSSE2PLEXOS`, notices something wrong with the data, it will write this out and file(s) called `fatal.warnings.txt` and/or `warnings.txt` (depending on the severity of the issue) will pop up at the end of the process to notify the user. 
-
-Then, run **create\_plexos\_db\_from\_raw\_master\_script.R**. This will sequentially run the scripts in the directory *SourceScripts* and write the output into an excel file.
-
-
-#### Basic structure of *SourceScripts*
-
-* TODO: REDO THIS **a_import_raw.R:** reads in and parses the .raw file, based on expected PSSE version-specific table structure. Currently based on documentation for PSSE v31. If intending to use a .raw file from a different version of PSSE, this script should be modified to ensure that columns are named correctly. This is the only script that is dependent on the version of PSSE being used.
-* **b_create_sheet_tables.R:** This script creates empty .sheet tables (Objects.sheet, Categories.sheet, Memberships.sheet, Attributes.sheet, Properties.sheet, and Reports.sheet), as well as prototypes of these tables to be used in the initialize_table function (see below).
-* **c1_populate_sheet_tables_with_raw_tables.R:** populates .sheets tables using data from the .raw file created in script (a). It also creates node.data.table, generator.data.table, line.data.table, and transformer.data.table, which contain information about each type of object to be referenced later in the scripts when information is needed about these objects. 
-* **c2_more_data_population.R:** populates .sheet tables with information in other .csv input files. 
-* **c3_create_scenarios_and_models.R:** defines new scenarios and models.
-* **d_data_cleanup.R:** database cleaning and some data checks. Ideally the database-specific corrections will be moved to database-specific input files later.
-* **e_export_to_excel.R:** gathers fully-populated .sheet tables and exports them as separate sheets in output Excel workbook, which can be imported directly into Plexos.
-
 
 #### Guide to input parameter file
 
@@ -46,9 +71,6 @@ Note: all file pointers should be relative to whatever input files directory (`i
 		* `line.file`: character, path to csv that defines line data, required. **Format:** requires columns "Line" (should be first column), "Node From", and "Node To". A "category" column will be used to categorize lines (NA values or blanks will not be categorized); otherwise, lines will be categorized by their region or (if a reactance column exists) region and AC or DC (nonexistent reactace or--for now--Reactance == 0). A "notes" column will be ignored. If "Units" does not exist, all Lines will be created with Units == 1. Any other column will be treated as a property. Current exception is some unused columns which result from PSSE parsing, but this will be fixed soon (currently "Voltage.From", "Voltage.To", "ratingA", "ratingB", "ratingC", "rateA", "rateB", "rateC", "Status", "Length"). Blanks or values of `NA` in any column but "Line" will be ignored. Line names should not be repeated and columns.
 		* `generator.file`: character, path to csv that defines generator data, required. **Format:** requires columns "Generator" (should be first column) and "Node". A "category" column will be used to categorize generators (NA values or blanks are taken to mean no category); otherwise, generators will be categorized by region. If "Units" does not exist, all Generators will be created with Units == 1. A "notes" column will be ignored. Blanks or values of `NA` in any column but "Generator" will be ignored. Generator names should not be repeated. Exception: if the column "Generation Participation Factor" exists, it will be assumed that a generator might be connected to multiple nodes and that the values in that column should be added to Nodes via the Generator.Nodes collection. All other property columns will be treated as Generator properties. In that case, Generator-Node pairs should not be repeated. When a Generator is repeated, any property, category, or note data must be identical between entries. All other columns will be treated as properties. Current exception is some unused columns which result from PSSE parsing, but this will be fixed soon (currently "Status", "Owner[anything]").
 		* `transformer.file` (this is optional): character, path to csv that defines transformer data, required. **Format:** requires columns "Transformer" (should be first column), "Node From", and "Node To". A "category" column will be used to categorize transformers (NA values or blanks will not be categorized); otherwise, transformers will be categorized by their region(s). If "Units" does not exist, all Transformers will be created with Units == 1. A "notes" column will be ignored. Any other column will be treated as a property. Current exception is some unused columns which result from PSSE parsing, but this will be fixed soon (currently "Voltage.From", "Voltage.To", "Status"). Blanks or values of `NA` in any column but "Transformer" will be ignored. Transformer names should not be repeated.
-
-The database is built starting with a PSSE .raw file. Other input .csv are used to supplement and build off of the PSSE database. See "REQUIRED INPUT FILES" (documentation not complete as of 4/10/16) section for more detail.
-
 
 This needs to be filled in more, leaving sketches for now. See *functions.R* for more details on required arguments for these functions.
 
@@ -125,12 +147,6 @@ These all refer to variables in input_params
 ###REQUIRED INPUT FILES - everything below here needs to be updated
 **********
 
-__Directory Structure__
-The script _create_plexos_db_from_raw_master_script.R_ should be in a directory that also contains folders nsmed "SourceScripts", "InputFiles", and "OutputFiles". This "master" script requires that the scripts it class (function definitions and other sub-scripts) be stored in the "SourceScripts" directory and that all input .raw and .csv files be stored in "InputFiles". The excel workbook created by the scripts will be automatically written to the "OutputFiles" folder.
-
-__Code Structure__
-_create_plexos_db_from_raw_master_script.R_ is the only script that needs to be modified and run by the user, as it will call all other scripts to read in, process, and output data. Each script in SourceScripts can be run independently, but, as most depend on variables created earlier in the sequence, they must be run sequentially. The master file also contains variable definitions used to specify names of input and output files; see "REQUIRED INPUT FILES" for more detail. Before running, the working directory must be set to the directory of the master file. Below is a list of the purpose of each sub-script in the "SourceScripts" directory.
-
 * (a) _a_import_raw.R:_ This script reads in the .raw file and breaks it into tables based on the .raw delimiter "0 /". Columns of each of these tables are then manually renamed based on documentation for PSSE v31. If intending to use a .raw file from a different version of PSSE, this script should be modified to ensure that columns are named correctly. This is the only script that is dependent on the version of PSSE being used, although the names of the columns (but not their order) are used in later scripts. 
   * Note: Lines are given 3 ratings (A, B, and C) in the PSS/e .raw files. These scripts assume that RatingA is a technical limit (not useful for this application), Rating B is a thermal limit, and Rating C is the overload limit.
 * (b) _b_create_sheet_tables.R:_ This script creates empty .sheet tables (Objects.sheet, Categories.sheet, Memberships.sheet, Attributes.sheet, Properties.sheet, and Reports.sheet), as well as prototypes of these tables to be used in the initialize_table function (see below).
@@ -147,7 +163,7 @@ In every step of data population throughout the remainder of the scripts, a tabl
 
 
 **********
-###REQUIRED INPUT FILES
+### REQUIRED INPUT FILES
 **********
 
 ####Input parameters 
@@ -172,67 +188,25 @@ In every step of data population throughout the remainder of the scripts, a tabl
 * _generic.import.files:_ Character vector of any number of filepaths to any files of the form of _import.model.base.file_. For now, this is used to import objects, attributes, and memberships of any horizons or models that a user wants to define. However, these files could contain any data to be imported. equired format: must be made up of at least one of the following tables: Objects, Memberships, Attributes, Properties, Reports, Categories. Line immediately before the beginning of a table must start with (for example) '/ BEGIN', 'Objects' and line immediately after the end of a table must start with (for example) '/ END','OBJECTS'. It is not necessary to include all tables in this file, but if a table is present, it must have columns names as they are spelled and capitalized in .sheet tables.
 
 
-
-####Output parameters
-
-* _output.wb.name:_ Name of output excel file. Required format: character
-
-* _copy.workbook.elsewhere:_ Should a copy of the output excel file be made to another location on the computer? Required format: logical
-* Optional: _copy.destination:_ If copy.workbook.elsewhere is true, filepath to location where excel workbook should be copied to.
-
-
 **********
-###MISC NOTES AND QUESTIONS
-**********
+#### miscellany
 
-######PSSE qs
-- What is the actual difference between the different .raw files? Some have more lines than others?
+###### PSSE notes
 - does BusTypeCode matter at all? 
 - what do we care about phase angle at any point? this info is in the PSSE database, at least for the timeperiod in the power flow case
 - load table - using the "Active Power" column. Is that right?
-- 547 nodes have duplicates in PSSE load table, and the few that I looked at were a factor of 5-10 apart. For now, just using the first entry. 
 - 31 nodes in PSSE load table have negative load. Why? For now, correcting that to zero in the R scripts. None of them are duplicates. 
-- Only 3969 nodes are in the PSSE Load table at all (including the 31 negatives) (4480 including duplicates).  Why so many buses with no load? Is that intentional?
 - why do some generators have negative min stable levels? switching them to zero in the script so Plexos doesn't yell.
 - using max and min output columns for generator max cap and min stable level, but there are a lot of columns. Are any of the others useful?
-- Most min stable levels are zero, which is probably not right. Should we put in numbers from the SCADA data? Generic by-fuel numbers? (Coal == 55%?)
-- there are three ratings per line in the PSSE file. PLEXOS read them as max/min <- rating1, overload max/min <- rating2, and appeared to ignore rating3. So far, the scripts do the same thing. What should we actually do?
-- do we need to do anything with the area interchange in Area.interchange.table?
+- which line rating?
 - transformers have so many options! Should probably double check that we're using the right ones. 
 - same with DC lines
 - since transformers can have two or three windings in PSSE, there is code (which is currently commented out because it is slow) to separate the two to two different tables (this is because the .raw formatting is different between them). Will we ever have three-winding transformers? If no, we can delete this code. If yes, we need to keep it or think of a better way to separate transformer types.
 - some lines have max/min flows of 0 (even if the line is turned on). Why?
-
 - not doing anything with fixed or switched shunt. Should we be?
 - not doing anything with PSSE's Owner column at the moment (other than reading it in)
 
-######generic data cleaning qs/comments
-- need to finish cleaning up technology/fuel mapping: Ranjit's questions from spreadsheet
-- need to finish cleaning up technology/fuel mapping: some generators are duplicated in unclear ways in nodes_gens_all_india. R script currently deletes generators (BusNumber_ID) duplicates.
-- similarly, some about 10 node names are duplicated in the "Node - Region.Zone" tab of nodes_gens_all_india. Also, there are more nodes in that spreadsheet than in the PSSE database (6757 nodes in PSSE. Initially, it looks like there are 7102 unique nodes in the spreadsheet, but there are really only 6834 unique bus numbers and 6220 unique bus names. When R merges the PSSE node table with the "Node - Region.Zone" sheet, there are 7034 nodes. Removing duplicates brings the number back down to 6757. What's going on here? Same thing happens with zones.) R script currently deletes BusNumber duplicates. Glancing through spreadsheet, it looks like only one of these duplicated nodes is assigned to two different regions. This is node 522015, which is assigned to both Assam and Nagaland (both in NER). The R scripts assign this node to Assam, simply because it comes first.
-- swtiched from 2011 load files to 2014 load files. Two questions: 1) there is no region corresponding to Telangana in the nodes_gens_all_india (i.e. no Telangana region in Plexos), even though it is now a separate state. It looks like Telangana was part of Andhra Pradesh until 2014. What should we do? For now, I added a new .csv called DemandHourly2014-AndhraPradesh_Telangana_SUM.csv, which is the sum of the loads in the two separate files. This is currently assigned as the load of Andhra Pradesh. 2) There are no load files for out-of-country regions (BHUTAN, BHUTAN-NER, BANGLADESH, NEPAL), so I assigned a file with zero load to all of them.
-- final decision on unit status for gens, lines, and transformers?
+###### other notes
+
 - the following command (run from a bash terminal, like GitBash) will change the currency units from $ to PHP
  ```sed -ie 's/\$/PHP/' OutputFiles/ph_2014_V0_3.xml```
-
-######aesthetics q
-- Right now, the generators are named something similar to their PSSE names. This can be changed very easily by modifying what is assigned to the "name" column when creating the generator objects.
-- what should line names be? fullBusName_fullBusName is too long for plexos, so they are currently named BusNumber_busNumber_ID
-- only generators, nodes, and scenarios are currently categorized, but could categorize lines, etc.
-- Should nodes be categorized differently (i.e. by region or zone?)
-- question about error-correcting code cleanups (see OneNote AE 9/16)
-- how is the current process of creating scenarios/models/horizonz/etc?
-- should we personalize report, ST schedule, etc, more?
-
-######other
-- what kind of solvers will everyone have access to? these scripts specify the solver as Xpress-MP, but that can change
-- what units are we using?
-
-######other data
-- final decision on how to cost out generation? heat rate + fuel price + startup/shutdown + VOM? Only offer price? Should there be an offer price curve?
-- need to come up with better ramp constraints and min gen constraints
-- what exactly does MVA base do? is the resistance of each HVDC line calculated correctly?
-
-
-
-
