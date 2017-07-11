@@ -1,35 +1,16 @@
 #------------------------------------------------------------------------------|
-# setup ----
-#------------------------------------------------------------------------------|
-
-# process args
-master.script.dir <- args[1]
-input.params.location <- args[2]
-inputfiles.dir <- args[3]
-outputfiles.dir <- args[4]
-
-# export workbook?
-if (!exists("export.wb")) export.wb <- TRUE
-
-
-#------------------------------------------------------------------------------|
 # get needed packages and functions ----
 #------------------------------------------------------------------------------|
-
-#******************* CHECKING for India_GtG... 
-# TODO: remove stuff in PSSE2PLEXOS that is India specific
-# but for now, just skip it
-india.repo = any(strsplit(getwd(),split="/")[[1]]=='India_GtG')
-
 
 if (!("pacman" %in% installed.packages()[, "Package"])) {
     install.packages("pacman")
 }
 
 if (!("openxlsx" %in% installed.packages()[, "Package"]) & export.wb == TRUE) {
-    stop(paste0("export.wb is set to TRUE but openxlsx is not installed.", 
-                " either set export.wb to FALSE or, to export an excel file,", 
-                " please install openxlsx. follow",
+    stop(paste0("You are attempting to export an Excel workbook (export.wb is",
+                " set to TRUE) but openxlsx is not installed.", 
+                " Either set export.wb to FALSE or, to export an excel file,", 
+                " install openxlsx. Follow",
                 " instructions here: https://github.com/awalker89/openxlsx", 
                 " including installing Rtools from here:",  
                 " https://cran.r-project.org/bin/windows/Rtools/", 
@@ -37,24 +18,118 @@ if (!("openxlsx" %in% installed.packages()[, "Package"]) & export.wb == TRUE) {
                 " (check the 'edit path' box during installation)"))
 }
 
-pacman::p_load(plyr, cowplot, ggplot2, data.table, igraph, openxlsx, RPostgreSQL) 
-
-source(file.path(master.script.dir, "SourceScripts/functions.R"))
+pacman::p_load(cowplot, ggplot2, data.table, igraph, openxlsx, RPostgreSQL) 
 
 
 #------------------------------------------------------------------------------|
-# fill in and check inputs ----
+# get command line args, if any ----
 #------------------------------------------------------------------------------|
 
-# make sure inputfiles.dir exists
+# read in command line args if they exist
+cl.args <- commandArgs(trailingOnly = TRUE)
+
+if (length(cl.args) > 0) {
+    
+    # process cl args into a named vector and assign to variables
+    cl.args <- tstrsplit(cl.args, "=")
+    
+    cl.args.vec <- cl.args.raw[[2]] 
+    names(cl.args.vec) <- cl.args.raw[[1]]
+    
+    for (arg.name in names(cl.args.vec)) {
+        assign(arg.name, cl.args.vec[arg.name], .GlobalEnv)
+    }
+    
+    # clean up
+    rm(cl.args, cl.args.vec, arg.name)
+}
+
+
+#------------------------------------------------------------------------------|
+# check inputs and set defaults ----
+#------------------------------------------------------------------------------|
+
+# check for pidg.dir
+if (!exists("pidg.dir")) {
+    stop(paste("pidg.dir does not exist. please set",
+               "pidg.dir to the location of PIDG repo"))
+}
+
+if (!dir.exists(pidg.dir)) {
+    stop(sprintf("pidg.dir is set to %s, but that directory does not exist", 
+                 pidg.dir))
+}
+
+# check for input.params
+if (!exists("input.params")) {
+    stop(paste("input.params does not exist. please set input.params",
+               "to the location of the input parameters file"))
+}
+
+if (!file.exists(input.params)) {
+    stop(sprintf("input.params is set to %s, but that file does not exist",
+                 input.params))
+}
+
+# check for existence inputfiles.dir (optional)
 if (exists("inputfiles.dir")) {
     if (!dir.exists(inputfiles.dir)) {
-        stop(sprintf("inputfiles.dir set to %s, which does not exist", 
+        stop(sprintf("inputfiles.dir (%s) is defined but does not exist", 
                      inputfiles.dir))
     }
 }
 
-# open connection to db
+# check for existence of outputfiles.dir
+if (exists("outputfiles.dir")) {
+    
+    if (!dir.exists(outputfiles.dir)) {
+        dir.create(outputfiles.dir, recursive = TRUE)
+    }
+    
+} else {
+    
+    message(sprintf(paste("outputfiles.dir does not exist. setting",
+                          "outputfiles.dir to directory where input.params",
+                          "(%s) lives"), 
+                    input.params))
+    
+    outputfiles.dir <- dirname(input.params)
+}
+
+# check for output.wb.name
+if (!exists("output.wb.name")) {
+    
+    output.wb.name <- paste0("pidg_export_", gsub(" ","_",Sys.time()), ".xlsx")
+    
+    message(sprintf(paste("output.wb.name does not exist. if a workbook is",
+                          "exported, it will be saved as %s"), 
+                    output.wb.name))
+}
+
+# check for export.wb
+if (!exists("export.wb")) {
+    
+    message("export.wb does not exist. setting to TRUE")
+    export.wb <- TRUE
+}
+
+# check for data.check.plots
+if (!exists("data.check.plots")) {
+    
+    message("data.check.plots does not exist. setting to TRUE")
+    data.check.plots <- TRUE
+}
+
+
+#------------------------------------------------------------------------------|
+# source functions and input parameters ----
+#------------------------------------------------------------------------------|
+
+source(file.path(pidg.dir, "SourceScripts/functions.R"))
+
+source(input.params)
+
+# open connection to database if needed
 if (exists("inputfiles.db")) {
     conn = dbConnect(drv = inputfiles.db$drv, 
                      host = inputfiles.db$host, 
@@ -65,23 +140,16 @@ if (exists("inputfiles.db")) {
 
 
 #------------------------------------------------------------------------------|
-# input file parameters ----
+# set defaults for required input parameter variables ----
 #------------------------------------------------------------------------------|
-
-# grab input parameters from parameter file passed in by user
-
-source(input.params.location)
-
-
-#------------------------------------------------------------------------------|
-# fill in and check more inputs ----
-#------------------------------------------------------------------------------|
-# these could be defined in the input parameters file
 
 # set default choose.input to 'pre.parsed' if not set
 if (!exists("choose.input")){
+    
     choose.input <- "pre.parsed"
+    
 } else {
+    
     if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
         
         stop(paste("Please set 'choose.input' in input_params",
@@ -91,6 +159,7 @@ if (!exists("choose.input")){
 
 # set plexos.version to 7 if not provided
 if (!exists("plexos.version")) {
+    
     message("plexos.version not provided. setting to 7.")
     plexos.version <- 7
 }
@@ -105,55 +174,46 @@ runAllFiles <- function () {
     # only parse psse if need to
     if (choose.input == 'raw.psse') {
         message("importing PSSE files...")
-        source(file.path(master.script.dir, "SourceScripts",
-                         "a-1-parse-psse.R"))
-        source(file.path(master.script.dir, "SourceScripts",
-                         "a-2-reformat-psse.R"))
+        source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
+        source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
     }
     
     # proceed with rest of data compilation
     message("creating tables...")
-    source(file.path(master.script.dir, "SourceScripts",
-                     "b_create_sheet_tables.R"))
+    source(file.path(pidg.dir, "SourceScripts", "b_create_sheet_tables.R"))
     
     message("populating tables...")
-    source(file.path(master.script.dir, "SourceScripts",
-                     "c1_populate_sheet_tables_with_raw_tables.R"))
-    source(file.path(master.script.dir, "SourceScripts",
-                     "c2_more_data_population.R"))
-    source(file.path(master.script.dir, "SourceScripts",
-                     "c3_create_scenarios_and_models.R"))
+    source(file.path(pidg.dir, "SourceScripts", "c1_populate_sheet_tables_with_raw_tables.R"))
+    source(file.path(pidg.dir, "SourceScripts", "c2_more_data_population.R"))
+    source(file.path(pidg.dir, "SourceScripts", "c3_create_scenarios_and_models.R"))
     
     message("cleaning tables...")
-    source(file.path(master.script.dir, "SourceScripts",
-                     "d_data_cleanup.R"))
+    source(file.path(pidg.dir, "SourceScripts", "d_data_cleanup.R"))
     
     # check data, create plots if need to
     # by default, generate the plots
-    if(!exists("data.check.plots")){data.check.plots <- TRUE}
     if(data.check.plots == TRUE){
         message("checking data and creating summary plots...")
     }else{
         message("checking data...")
     }
-    source(file.path(master.script.dir, "SourceScripts",
-                     "e_summarize_and_check_compiled_database.R"))
+    source(file.path(pidg.dir, "SourceScripts", "e_summarize_and_check_compiled_database.R"))
     
     # export tables
-    
     if (export.wb) {
         message("exporting tables...")
-        source(file.path(master.script.dir, "SourceScripts",
-                         "f_export_to_excel.R"))
+        source(file.path(pidg.dir, "SourceScripts", "f_export_to_excel.R"))
     } else {
         message("export.wb set to false. skipping export.")
     }
+    
+    message("done!")
     
 }
 
 
 #------------------------------------------------------------------------------|
-# run all scripts ----
+# run PIDG ----
 #------------------------------------------------------------------------------|
 
 runAllFiles()
