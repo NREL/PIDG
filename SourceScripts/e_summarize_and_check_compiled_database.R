@@ -1,7 +1,7 @@
 # Run to check data and summarize the compiled database 
 
 # define print width
-p.width = 10000
+p.width = 250
 
 # function to adjust width of output to txt file
 withOptions <- function(optlist, expr)
@@ -58,6 +58,8 @@ sink()
 # High-level database summary ----
 #------------------------------------------------------------------------------#
 
+message("summarizing database")
+
 obj.summary <- Objects.sheet[,.N, by = class]
 setnames(obj.summary, c("class", "N"), c("Object class", "# objects"))
 
@@ -88,7 +90,9 @@ sink()
 #------------------------------------------------------------------------------#
 # Check for missing objects in Objects sheet ----
 #------------------------------------------------------------------------------#
+
 message("... checking for missing objects")
+
 properties.objects <- rbind(Properties.sheet[,.(object = unique(parent_object))],
                             Properties.sheet[,.(object = unique(child_object))])
 
@@ -106,8 +110,7 @@ if(nrow(missing.properties.objects) > 0){
       "Objects.sheet\n\n")
   print(missing.properties.objects, 
         row.names = FALSE, 
-        quote = FALSE, 
-        width = p.width)
+        quote = FALSE)
   sink()
 }
 
@@ -129,8 +132,7 @@ if(nrow(missing.memberships.objects) > 0){
   print(missing.memberships.objects, 
         n = nrow(missing.memberships.objects),
         row.names = FALSE, 
-        quote = FALSE, 
-        width = p.width)
+        quote = FALSE)
   sink()
 }
 
@@ -172,21 +174,26 @@ rm(gen.fuel)
 # Check generator properties ----
 #------------------------------------------------------------------------------#
 
+message("checking generator properties")
+
 ### pull generator capacity by fuel and state
 generator.map <- Objects.sheet[class == "Generator", 
-                               .(Generator = name, `Generator category` = category)]
+                               .(Generator = name, 
+                                 `Generator category` = category, 
+                                 scenario = NA_character_)]
 
 generator.map <- merge(generator.map,
                        Properties.sheet[child_class == "Generator" &
                                           property == "Max Capacity",
                                         .(Generator = child_object,
-                                          `Max Capacity` = value)], 
-                       by = "Generator", all.x = T)
+                                          `Max Capacity` = value, 
+                                          scenario)], 
+                       by = c("Generator", "scenario"), all.x = T)
 
 # pull generator fuels
 generator.map <- merge(generator.map,
                        Memberships.sheet[parent_class == "Generator" &
-                                           child_class == "Fuel",
+                                             collection == "Fuel",
                                          .(Generator = parent_object,
                                            Fuel = child_object)],
                        by = "Generator", all = T)
@@ -194,7 +201,7 @@ generator.map <- merge(generator.map,
 # pull generator start fuels
 generator.map <- merge(generator.map,
                        Memberships.sheet[parent_class == "Generator" &
-                                           child_class == "Start Fuel",
+                                             collection == "Start Fuel",
                                          .(Generator = parent_object,
                                            `Start Fuel` = child_object)],
                        by = "Generator", all = T)
@@ -221,8 +228,8 @@ generator.map <- merge(generator.map,
                                           property == "Units",
                                         .(Generator = child_object,
                                           Units = value, 
-                                          scenario = scenario)], 
-                       by = "Generator", all.x = T)
+                                          scenario)], 
+                       by = c("Generator", "scenario"), all.x = T)
 
 # clean up scenario name
 generator.map[,scenario := gsub("{Object}", "",scenario, fixed = T)]
@@ -346,6 +353,8 @@ if(data.check.plots){
 # Identify islands and isolated nodes ----
 #------------------------------------------------------------------------------#
 
+message("checking isolated nodes")
+
 # check for nodes missing region and/or zone
 nodes = Objects.sheet[class == "Node",.(Node = name)]
 
@@ -375,7 +384,7 @@ if(nrow(duplicated.nodes) > 0){
   sink(fatal.warnings, append = T) 
   cat("WARNING: at least one node is assigned to more than one region and/or zone.")
   cat("\n Check these nodes: \n")
-  print(duplicated.nodes, quote = F, row.names = F, width = p.width)
+  print(duplicated.nodes, quote = F, row.names = F)
   sink()
 }
 
@@ -506,8 +515,7 @@ if(lpf.sum.to.one == F){
                                       scenario, 
                                       pattern)], 
         row.names = F,
-        n = nrow(region.lpf), 
-        width = p.width)
+        n = nrow(region.lpf))
   sink()
 }
 
@@ -653,6 +661,8 @@ if(data.check.plots){
 # check for fatal import/run errors ----
 #------------------------------------------------------------------------------#
 
+message("checking for other data issues")
+
 # ** make sure there are no blanks in required values in Properties.sheet ----
 problem.row.mask = Properties.sheet[, 
                                     !complete.cases(list(parent_object, child_object, parent_class, 
@@ -665,8 +675,7 @@ if (any(problem.row.mask)) {
   print(Properties.sheet[problem.row.mask,
                          .(parent_object, child_object, property, value, scenario)],
         row.names = F,
-        n = nrow(Properties.sheet[problem.row.mask,]), 
-        width = p.width)
+        n = nrow(Properties.sheet[problem.row.mask,]))
   sink()
 }
 
@@ -682,8 +691,7 @@ if (any(problem.row.mask)) {
         "sheets, among other things.\n")
   print(Memberships.sheet[problem.row.mask], 
         row.names = F, 
-        n = nrow(Memberships.sheet[problem.row.mask]),
-        width = p.width)
+        n = nrow(Memberships.sheet[problem.row.mask]))
   sink()
 }
 
@@ -697,8 +705,7 @@ if (any(problem.row.mask)) {
         "This will not import.\n")
     print(Objects.sheet[problem.row.mask], 
           row.names = F, 
-          n = nrow(Objects.sheet[problem.row.mask]),
-          width = p.width)
+          n = nrow(Objects.sheet[problem.row.mask]))
     sink()
 }
 
@@ -712,8 +719,7 @@ if (any(problem.row.mask)) {
         "This will not import.\n")
     print(Attributes.sheet[problem.row.mask], 
           row.names = F, 
-          n = nrow(Attributes.sheet[problem.row.mask]),
-          width = p.width)
+          n = nrow(Attributes.sheet[problem.row.mask]))
     sink()
 }
 
@@ -727,8 +733,7 @@ if (any(problem.row.mask)) {
         "This will not import.\n")
     print(Reports.sheet[problem.row.mask], 
           row.names = F, 
-          n = nrow(Reports.sheet[problem.row.mask]),
-          width = p.width)
+          n = nrow(Reports.sheet[problem.row.mask]))
     sink()
 }
 
@@ -742,8 +747,7 @@ if (!all(all.regions %in% regions.w.nodes)) {
   cat("WARNING: the following region(s) have no nodes. This will not import.\n")
   print(all.regions[!(all.regions %in% regions.w.nodes)], 
         row.names = F, 
-        n = nrow(all.regions[!(all.regions %in% regions.w.nodes)]), 
-        width = p.width)
+        n = nrow(all.regions[!(all.regions %in% regions.w.nodes)]))
   sink()
 }
 
@@ -754,8 +758,7 @@ if (any(Objects.sheet[!is.na(name),nchar(name) > 50])) {
   cat("WARNING: the following object(s) have names with > 50 characters. This will not import.\n")
   print(Objects.sheet[nchar(name) > 50], 
         row.names = F, 
-        n = nrow(Objects.sheet[nchar(name) > 50]),
-        width = p.width)
+        n = nrow(Objects.sheet[nchar(name) > 50]))
   sink()
 }
 
@@ -783,7 +786,7 @@ if (nrow(known.issues) > 0) {
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
                "This will not run properly.\n"))
-  print(known.issues, row.names = F, n = nrow(known.issues), width = p.width)
+  print(known.issues, row.names = F, n = nrow(known.issues))
   sink()
 }
 
@@ -796,7 +799,7 @@ if (nrow(unknown.issues) > 0) {
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
                "This is untested but may not run properly.\n"))
-  print(unknown.issues, row.names = F, n = nrow(unknown.issues), width = p.width)
+  print(unknown.issues, row.names = F, n = nrow(unknown.issues))
   sink()
 }
 
@@ -816,8 +819,7 @@ if (any(dupes)) {
                "will not run.\n"))
   print(Properties.sheet[dupes], 
         row.names = F, 
-        n = nrow(Properties.sheet[dupes]),
-        width = p.width)
+        n = nrow(Properties.sheet[dupes]))
   sink()
 }
 
@@ -835,8 +837,7 @@ if (any(dupes)) {
                "the same objects. This may import but may not run.\n"))
     print(Memberships.sheet[dupes], 
           row.names = F, 
-          n = nrow(Memberships.sheet[dupes]),
-          width = p.width)
+          n = nrow(Memberships.sheet[dupes]))
     sink()
 }
 
@@ -854,8 +855,7 @@ if (any(dupes)) {
                "may not run.\n"))
     print(Attributes.sheet[dupes], 
           row.names = F, 
-          n = nrow(Attributes.sheet[dupes]),
-          width = p.width)
+          n = nrow(Attributes.sheet[dupes]))
     sink()
 }
 
@@ -874,8 +874,7 @@ if (any(dupes)) {
                "may not run.\n"))
     print(Reports.sheet[dupes], 
           row.names = F, 
-          n = nrow(Reports.sheet[dupes]),
-          width = p.width)
+          n = nrow(Reports.sheet[dupes]))
     sink()
 }
 
@@ -894,8 +893,7 @@ if (length(object.list) > 0) {
                "these properties to other object. This may not run.\n"))
   print(Properties.sheet[child_object %in% object.list,], 
         row.names = F, 
-        n = nrow(Properties.sheet[child_object %in% object.list,]), 
-        width = p.width)
+        n = nrow(Properties.sheet[child_object %in% object.list,]))
   sink()
 }
 
@@ -914,8 +912,7 @@ if (length(object.list) > 0) {
                "are not defined in Objects.sheet. This may not import or run.\n"))
     print(Properties.sheet[parent_object %in% object.list,], 
           row.names = F, 
-          n = nrow(Properties.sheet[parent_object %in% object.list,]), 
-          width = p.width)
+          n = nrow(Properties.sheet[parent_object %in% object.list,]))
     sink()
 }
 
@@ -936,8 +933,7 @@ if (length(object.list) > 0) {
                                 parent_object %in% object.list,], 
           row.names = F, 
           n = nrow(Memberships.sheet[child_object %in% object.list |
-                                         parent_object %in% object.list,]), 
-          width = p.width)
+                                         parent_object %in% object.list,]))
     sink()
 }
 
@@ -956,8 +952,7 @@ if (length(object.list) > 0) {
                "these attributes to other object. This may not run.\n"))
     print(Attributes.sheet[name %in% object.list,], 
           row.names = F, 
-          n = nrow(Attributes.sheet[name %in% object.list,]), 
-          width = p.width)
+          n = nrow(Attributes.sheet[name %in% object.list,]))
     sink()
 }
 
@@ -975,8 +970,7 @@ if (length(object.list) > 0) {
                "are not defined in Objects.sheet. This may not run.\n"))
     print(Reports.sheet[object %in% object.list,], 
           row.names = F, 
-          n = nrow(Reports.sheet[object %in% object.list,]), 
-          width = p.width)
+          n = nrow(Reports.sheet[object %in% object.list,]))
     sink()
 }
 
@@ -994,8 +988,7 @@ if (any(non.object.scens)) {
                " not be read correctly by PLEXOS.\n"))
   print(Properties.sheet[non.object.scens], 
         row.names = F, 
-        n = nrow(Properties.sheet[non.object.scens]), 
-        width = p.width)
+        n = nrow(Properties.sheet[non.object.scens]))
   sink()
 }
 
@@ -1013,8 +1006,7 @@ if (any(non.object.dfs)) {
                " not be read correctly by PLEXOS.\n"))
   print(Properties.sheet[non.object.dfs], 
         row.names = F,
-        n = nrow(Properties.sheet[non.object.dfs]),
-        width = p.width)
+        n = nrow(Properties.sheet[non.object.dfs]))
   sink()
 }
 
@@ -1034,8 +1026,7 @@ if (length(object.scens) > 0) {
                "are not defined in Objects.sheet. This may not import.\n"))
     print(Properties.sheet[scenario %in% paste0("{Object}", object.scens)], 
           row.names = F, 
-          n = nrow(Properties.sheet[scenario %in% paste0("{Object}", object.scens),]), 
-          width = p.width)
+          n = nrow(Properties.sheet[scenario %in% paste0("{Object}", object.scens),]))
     sink()
 }
 
@@ -1055,8 +1046,7 @@ if (length(object.dfs) > 0) {
                "are not defined in Objects.sheet. This may not import.\n"))
     print(Properties.sheet[filename %in% paste0("{Object}", object.dfs)], 
           row.names = F, 
-          n = nrow(Properties.sheet[filename %in% paste0("{Object}", object.dfs),]), 
-          width = p.width)
+          n = nrow(Properties.sheet[filename %in% paste0("{Object}", object.dfs),]))
     sink()
 }
 
@@ -1078,8 +1068,7 @@ if (length(object.vars) > 0) {
                "but are not defined in Objects.sheet. This may not import.\n"))
     print(Properties.sheet[get(colname) %in% paste0("{Object}", object.vars)], 
           row.names = F, 
-          n = nrow(Properties.sheet[get(colname) %in% paste0("{Object}", object.vars)]), 
-          width = p.width)
+          n = nrow(Properties.sheet[get(colname) %in% paste0("{Object}", object.vars)]))
     sink()
 }
 
@@ -1095,8 +1084,7 @@ if (any(nonnum.value)) {
              "'value' entries. This will not import.\n"))
   print(Properties.sheet[nonnum.value], 
         row.names = F,
-        n = nrow(Properties.sheet[nonnum.value]), 
-        width = p.width)
+        n = nrow(Properties.sheet[nonnum.value]))
   sink()
 }
 
