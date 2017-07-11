@@ -78,12 +78,15 @@ if (exists("objects.list")) {
             # add to properties sheet using input arguments
             do.call(import_properties, cur.args)
             
+            # clean up
+            rm(excluded.cols, memb.cols, cur.args, elem)
+            
         } # end if (is.data.table(cur.data))
-        
-    }
+
+        # clean up
+        rm(data.path, cur.data) 
     
-    # clean up
-    rm(data.path, cur.data, excluded.cols, memb.cols, cur.args, elem)
+    }
 
 } else {
     
