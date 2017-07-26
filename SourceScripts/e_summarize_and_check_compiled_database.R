@@ -494,17 +494,15 @@ region.lpf <- node.lpf[is.na(scenario),
                        by = .(Region, scenario, pattern)]
 
 # generate warning if LPF does not sum to 1 in all regions
-lpf.sum.to.one <- round(sum(region.lpf$region.lpf), 13) == nrow(region.lpf)
-
-if(lpf.sum.to.one == F){
+if(region.lpf[round(region.lpf, 4) != 1,.N] > 7){
   sink(warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: LPF does not sum to one (1) in at least one region."))
   cat("\n\n")
-  print(region.lpf[region.lpf != 1, .(Region, 
-                                      region.lpf = sprintf("%.10f", region.lpf), 
-                                      scenario, 
-                                      pattern)], 
+  print(region.lpf[round(region.lpf, 4) != 1, .(Region, 
+                                                region.lpf = sprintf("%.10f", region.lpf), 
+                                                scenario, 
+                                                pattern)], 
         row.names = F,
         n = nrow(region.lpf), 
         width = p.width)
