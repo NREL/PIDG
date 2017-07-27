@@ -786,17 +786,22 @@ if (nrow(problem.rows) > 0) {
 
 rm(problem.rows, period_id_props)
 
-if (nrow(unknown.issues) > 0) {
-  sink(warnings, append = T) 
-  cat("\n\n")
-  cat(paste0("WARNING: the following property does not correspond to the ",
-               "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
-               "This is untested but may not run properly.\n"))
-  print(unknown.issues, row.names = F, n = nrow(unknown.issues), width = p.width)
-  sink()
+# ** check for duplicated objects ----
+dupes = duplicated(Objects.sheet, by = c("class", "name"))
+
+if (any(dupes)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following obejcts are defined twice. ",
+               "This may not import.\n"))
+    print(Objects.sheet[dupes], 
+          row.names = F, 
+          n = nrow(Objects.sheet[dupes]),
+          width = p.width)
+    sink()
 }
 
-rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
+rm(dupes)
 
 # ** check for duplicated Properties.sheet definitions (by scenario) ----
 dupes = duplicated(Properties.sheet, 
