@@ -612,7 +612,7 @@ import_properties <- function(input.table,
                               scenario.name = NA,
                               scenario.cat = NA,
                               pattern.col = NA,
-                              period.id = NA, datafile.col = NA, 
+                              period.id = 0, datafile.col = NA, 
                               date_from.col = NA, overwrite = FALSE, 
                               overwrite.cols = NA, band.col = NA, 
                               memo.col = NA) {
@@ -657,7 +657,7 @@ import_properties <- function(input.table,
     
     # if any columns contain datafiles, mark them here to can deal with later
     if (!is.na(datafile.col[1])) {
-        setnames(input.table, datafile.col, paste0(datafile.col, "_datafile"))}
+        setnames(input.table, datafile.col, paste0("datafile_", datafile.col))}
     
     prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
     
@@ -697,17 +697,10 @@ import_properties <- function(input.table,
         # if have datafile cols, move the filepointer to the datafile column and set 
         # property value to zero
         
-        props.tab[grepl("_datafile",property),filename := value]
-        props.tab[grepl("_datafile",property),
+        props.tab[grepl("datafile_",property),filename := value]
+        props.tab[grepl("datafile_",property),
                   c("value", "property") := 
-                      .("0", gsub("_datafile", "", property))]
-        
-        if (!is.na(datafile.col[1])) {
-            props.tab[grepl("_datafile", property), filename := value]
-            props.tab[grepl("_datafile", property), 
-                      c("value", "property") := 
-                          .("0", gsub("_datafile", "", property))]
-        }
+                      .("0", gsub("datafile_", "", property))]
         
         # add pattern column if specified
         if (!is.na(pattern.col)) props.tab[, pattern := input.table[, 
@@ -719,8 +712,20 @@ import_properties <- function(input.table,
                                                                         .SDcols = date_from.col]] 
         
         # add period type id column if specified
-        if (!is.na(period.id)) props.tab[, period_type_id := period.id]
+        if (!is.na(period.id)) {
+            props.tab[, period_type_id := as.character(period.id)]
+        }
         
+        # change period.id if the property calls for it. assumes particular
+        # format of *Hour|Day|Week|Month|Year properties
+        if (any(grepl("(Hour|Day|Week|Month|Year)$", prop.cols))) {
+            props.tab[grepl("Hour$", property), period_type_id := "6"]
+            props.tab[grepl("Day$", property), period_type_id := "1"]
+            props.tab[grepl("Week$", property), period_type_id := "2"]
+            props.tab[grepl("Month$", property), period_type_id := "3"]
+            props.tab[grepl("Year$", property), period_type_id := "4"] 
+        }
+
         # add scenario name if specified
         if (!is.na(scenario.name)) {
             props.tab[,scenario := paste0("{Object}", scenario.name)] }
