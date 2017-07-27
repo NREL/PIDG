@@ -629,9 +629,10 @@ import_properties <- function(input.table,
     if (is.na(object.class)) object.class <- names.col
     
     if (is.na(collection.name)) collection.name <- paste0(object.class, "s")    
-     
+    
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
-                       date_from.col,band.col, memo.col, "scenario")
+                       date_from.col,band.col, memo.col, "scenario", "notes", 
+                       "scenario.cat")
     
     # check to make sure all given columns exist
     given.cols <- na.omit(c(names.col, parent.col, pattern.col,
@@ -639,7 +640,7 @@ import_properties <- function(input.table,
                             datafile.col))
     
     if (!all(given.cols %in% all.cols)) {
-        stop(paste0("At lesat one given column name is not in input table. ",
+        stop(paste0("At least one given column name is not in input table. ",
                     "Cannot merge this table.\n\tGiven columns: ",
                     paste(given.cols, collapse = ", "),
                     "\n\tColumns in table: ",
@@ -659,6 +660,8 @@ import_properties <- function(input.table,
     if (!is.na(datafile.col[1])) {
         setnames(input.table, datafile.col, paste0("datafile_", datafile.col))}
     
+    if (is.na(parent.col)) parent.col <- "System"
+
     prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
     
     if(length(prop.cols) > 0){
@@ -678,11 +681,9 @@ import_properties <- function(input.table,
         props.tab <- initialize_table(Properties.sheet, 
                                       nrow(input.table), 
                                       list(
-                                          parent_class = ifelse(is.na(parent.col), 
-                                                                "System", 
-                                                                parent.col),
-                                          parent_object = ifelse(is.na(parent.col), 
-                                                                 "System", 
+                                          parent_class = parent.col,
+                                          parent_object = ifelse(parent.col == "System", 
+                                                                 parent.col, 
                                                                  list(input.table[,get(parent.col)])),
                                           collection = collection.name, 
                                           child_class = object.class, 
@@ -703,13 +704,14 @@ import_properties <- function(input.table,
                       .("0", gsub("datafile_", "", property))]
         
         # add pattern column if specified
-        if (!is.na(pattern.col)) props.tab[, pattern := input.table[, 
-                                                                    .SD, 
-                                                                    .SDcols = pattern.col]] 
+        if (!is.na(pattern.col)) {
+            props.tab[, pattern := input.table[,.SD, .SDcols = pattern.col]]
+        }
         
         #adding a date_from col if specified
-        if (!is.na(date_from.col)) props.tab[, date_from := input.table[, .SD, 
-                                                                        .SDcols = date_from.col]] 
+        if (!is.na(date_from.col)) {
+            props.tab[, date_from := input.table[, .SD, .SDcols = date_from.col]]
+        }
         
         # add period type id column if specified
         if (!is.na(period.id)) {
@@ -728,7 +730,8 @@ import_properties <- function(input.table,
 
         # add scenario name if specified
         if (!is.na(scenario.name)) {
-            props.tab[,scenario := paste0("{Object}", scenario.name)] }
+            props.tab[,scenario := paste0("{Object}", scenario.name)] 
+        }
         
         # add scenario column if specified
         if ("scenario" %in% names(input.table)) {
@@ -741,17 +744,36 @@ import_properties <- function(input.table,
             }
             
             props.tab[,scenario.temp := input.table[,scenario]]
-            props.tab[!is.na(scenario.temp), scenario := paste0("{Object}", 
-                                                                scenario.temp)]
+            props.tab[!(is.na(scenario.temp) | scenario.temp %in% c("", " ")), 
+                      scenario := paste0("{Object}", scenario.temp)]
             props.tab[,scenario.temp := NULL]
             
-            # add scenarios to objects
-            add_scenarios(input.table[,unique(scenario)], 
-                          category = scenario.cat)
+            if ("scenario.cat" %in% names(input.table)) {
+                
+                if (!is.na(scenario.cat)) {
+                    message(paste0("scenario.cat column overriding argument ", 
+                                   "scenario.cat"))
+                }
+                
+                scens <- unique(input.table[!(is.na(scenario) | scenario %in% c("", " ")),
+                                            .(scenario, scenario.cat)])
+                
+                add_scenarios(scens[,scenario], 
+                              category = scens[,scenario.cat])                
+                
+            } else {
+                # add scenarios to objects
+                add_scenarios(input.table[!(is.na(scenario) | scenario %in% c("", " ")),
+                                          unique(scenario)], 
+                              category = scenario.cat)
+            }
+
         }
         
         # add memo column if specified
-        if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
+        if (!is.na(memo.col)) {
+            props.tab[, memo := input.table[,get(memo.col)]]
+        }
         
         # merge with Properties.sheet
         if (overwrite == FALSE) {
