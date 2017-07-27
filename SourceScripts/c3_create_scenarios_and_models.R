@@ -30,7 +30,7 @@ if (exists("make.aggtx.scenario") && make.aggtx.scenario == TRUE) {
     
     #set aggregate Tx to 1 in each region
     #uses regions.to.objects
-    all.regions <- unique(node.data.table[,Region])
+    all.regions <- unique(Objects.sheet[class == "Region", name])
     
     agTx.to.properties <- initialize_table(Properties.sheet, 
                                            length(all.regions), 
@@ -61,19 +61,19 @@ if (exists("make.aggtx.scenario") && make.aggtx.scenario == TRUE) {
             if (is.data.table(external.refnode)) {
                 
                 # keep track of what regions aren't in this file to assign ref node to them
-                other.regions <- node.data.table[,unique(Region)]
+                other.regions <- Objects.sheet[class == "Region", unique(name)]
                 other.regions <- other.regions[!(other.regions %in% 
                                                      external.refnode[,unique(Region)])]
                 
             }} else {
                 message(paste('... remap.reference.nodes is FALSE.',
                               'Assigning first node in each region as reference node'))
-                other.regions <- node.data.table[,unique(Region)]
+                other.regions <- Objects.sheet[class == "Region", unique(name)]
             }
     } else {
         message(paste('... remap.reference.nodes doesn\'t exist.',
                       'Assigning first node in each region as reference node'))
-        other.regions <- node.data.table[,unique(Region)]
+        other.regions <- Objects.sheet[class == "Region", unique(name)]
     }
     
     if (!exists("other.regions")) {
@@ -400,16 +400,16 @@ if (exists("make.dcline.scenario") && make.dcline.scenario == TRUE) {
     # scenario to properties
     # uses line.data.table
     # create table of only AC lines to use
-    ac.lines <- line.data.table[grepl("\\_AC$|^AC\\_", category)]
+    ac.lines <- Objects.sheet[grepl("\\_AC$|^AC\\_", category), name]
     scenario.dc.lines.to.properties <- initialize_table(Properties.sheet, 
-                                                        nrow(ac.lines), 
+                                                        length(ac.lines), 
                                                         list(parent_class = "System", 
                                                              child_class = "Line",
                                                              parent_object = "System", 
                                                              band_id = 1, 
                                                              collection = "Lines"))
     
-    scenario.dc.lines.to.properties[,child_object := ac.lines[,Line]]
+    scenario.dc.lines.to.properties[,child_object := ac.lines]
     scenario.dc.lines.to.properties[,property := "Reactance"]
     scenario.dc.lines.to.properties[,value := "0"]
     scenario.dc.lines.to.properties[,scenario := "{Object}Make all lines DC"]
@@ -528,7 +528,8 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             
             # add region for calculating LPF
             redo.lpfs.to.properties <-
-                merge(redo.lpfs.to.properties, node.data.table[,.(Node, Region)], 
+                merge(redo.lpfs.to.properties, Memberships.sheet[parent_class == "Node" & collection == "Region",
+                                                                 .(Node = parent_object, Region = child_object)], 
                       by = "Node")
             
             # recalculate LPF
@@ -561,3 +562,5 @@ if (exists('isolated.nodes.to.remove.args.list')) {
 } else {
     message(">>  isolated.nodes.to.remove.file does not exist ... skipping")
 }
+
+
