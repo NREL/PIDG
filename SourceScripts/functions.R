@@ -22,10 +22,13 @@ check_colname_cap <- function(dt) {
     }
     
     # check scenario
-    note.name <- names(dt)[tolower(names(dt)) == "scenario"]
+    prop.name <- names(dt)
+    prop.name <- prop.name[-1]
     
-    if (length(note.name) > 0 && note.name != "scenario") {
-        setnames(dt, note.name, "scenario")
+    scen.name <- prop.name[tolower(prop.name) == "scenario"]
+    
+    if (length(scen.name) > 0 && scen.name != "scenario") {
+        setnames(dt, scen.name, "scenario")
     }
 }
 
@@ -190,23 +193,20 @@ merge_sheet_w_table <- function(sheet.table, table.to.merge) {
 
 ### add_scenario
 # add scenarios to object properties if they don't already exist in category
-add_scenarios <- function(scenarios, category) {
+add_scenarios <- function(scenarios, category = NA) {
     
-    scenarios <- scenarios[!is.na(scenarios)]
+    to.add <- data.table(Scenario = scenarios, category = category)
     
-    to.add <- scenarios[!(scenarios %in% 
-                              Objects.sheet[class == "Scenario", name])]
+    to.add <- to.add[!(is.na(Scenario) | Scenario %in% c(" ", ""))]
+    to.add <- to.add[!(Scenario %in% Objects.sheet[class == "Scenario", name])]
     
-    if (length(to.add) > 0) {
+    to.add[category %in% c(" ", ""), category := NA]
+    
+    to.add <- unique(to.add)
+    
+    if (to.add[,.N] > 0) {
         
-        cur.scen.to.objects <- initialize_table(Objects.sheet, 
-                                                length(to.add), 
-                                                list(name = to.add, 
-                                                     category = category,
-                                                     class = 'Scenario'))
-        
-        Objects.sheet <<- merge_sheet_w_table(Objects.sheet, 
-                                              cur.scen.to.objects)
+        import_objects(to.add)
     }
     
 } 
@@ -771,14 +771,20 @@ import_properties <- function(input.table,
                 scens <- unique(input.table[!(is.na(scenario) | scenario %in% c("", " ")),
                                             .(scenario, scenario.cat)])
                 
-                add_scenarios(scens[,scenario], 
-                              category = scens[,scenario.cat])                
+                if (scens[,.N] > 0) {
+                    
+                    add_scenarios(scens[,scenario], 
+                                  category = scens[,scenario.cat])
+                }
                 
             } else {
                 # add scenarios to objects
-                add_scenarios(input.table[!(is.na(scenario) | scenario %in% c("", " ")),
-                                          unique(scenario)], 
-                              category = scenario.cat)
+                scens <- input.table[!(is.na(scenario) | scenario %in% c("", " ")), 
+                                     unique(scenario)]
+                     
+                if (length(scens) > 0) {
+                    add_scenarios(scens)
+                }
             }
 
         }

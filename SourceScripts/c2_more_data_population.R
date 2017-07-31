@@ -1124,9 +1124,9 @@ if (exists("object.property.list")) {
             # need to deal with categories later
             if ('scenario.name' %in% names(cur.args)) { 
                 
-                add_scenarios(cur.args['scenario.name'], 
+                add_scenarios(cur.args[['scenario.name']], 
                               category = ifelse('scenario.cat' %in% names(cur.args), 
-                                                cur.args['scenario.cat'], 
+                                                cur.args[['scenario.cat']], 
                                                 NA))
                 
             }
