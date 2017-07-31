@@ -14,18 +14,18 @@
 if (exists('units.to.delete.files')) {
   for (fname in units.to.delete.files) {
       
-      to.delete <- read_data(fname)
+      to.delete <- read_data(fname, sep = "\n")
       
       if (is.data.table(to.delete)) {
           
         message(sprintf("... deleting units in  %s", fname))
         
-        Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Object.Name])]
-        Properties.sheet <- Properties.sheet[!(child_object %in% to.delete[,Object.Name]) &
-                                             !(parent_object %in% to.delete[,Object.Name])]
+        Objects.sheet <- Objects.sheet[!(name %in% to.delete[,Object])]
+        Properties.sheet <- Properties.sheet[!(child_object %in% to.delete[,Object]) &
+                                             !(parent_object %in% to.delete[,Object])]
         Memberships.sheet <- 
-          Memberships.sheet[!(child_object %in% to.delete[,Object.Name]) & 
-                              !(parent_object %in% to.delete[,Object.Name])]
+          Memberships.sheet[!(child_object %in% to.delete[,Object]) & 
+                              !(parent_object %in% to.delete[,Object])]
       }
   }
     

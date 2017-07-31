@@ -935,8 +935,9 @@ generator.data.table <- merge(generator.data.table,
 
 if (exists("memberships.list")) {
     
-    for (fname in memberships.list) {
-        
+    for (elem in memberships.list) {
+      
+        fname <- elem[[1]] 
         cur.dt <- read_data(fname)
         
         if (is.data.table(cur.dt)) {
@@ -947,10 +948,43 @@ if (exists("memberships.list")) {
             check_for_dupes(cur.dt, names(cur.dt))
             check_colname_cap(cur.dt)
             
-            # add here to only pull first col and then any _ col
+            # import memberships
+            memb.cols <- names(cur.dt)
+            memb.cols <- c(memb.cols[1], memb.cols[grepl("_", memb.cols)])
             
-            # add memberships
-            import_memberships(cur.dt)
+            if (length(memb.cols) > 1) {
+                import_memberships(cur.dt[,memb.cols, with = FALSE])
+            }
+            
+            # if there are property cols, import those, too
+            non.prop.cols <- c(memb.cols, "notes")
+            prop.cols <- names(cur.dt)[!(names(cur.dt) %in% non.prop.cols)] 
+            
+            if (length(prop.cols) > 0) {
+                
+                # read in other args if given
+                if (length(elem) > 1) {
+                    # get all args but the first (a little gynmastics to account 
+                    # for the args being in a separate list or not)
+                    cur.args <- elem[-1]
+                    
+                    if (is.list(cur.args) & all(is.null(names(cur.args)))) {
+                        cur.args <- cur.args[[1]]
+                    }
+                } else {
+                    cur.args <- list()
+                }
+                
+                # set up and import properties. untested with multiple children
+                suppressWarnings(cur.args$input.table <- cur.dt)
+                cur.args$parent.col <- memb.cols[1]
+                cur.args$names.col <- memb.cols[-1]
+                cur.args$object.class <- tstrsplit(memb.cols[-1], "_")[[2]]
+                cur.args$collection.name <- tstrsplit(memb.cols[-1], "_")[[1]]
+
+                do.call(import_properties, cur.args)
+                
+            }
             
         }
     }
