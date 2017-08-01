@@ -1,43 +1,5 @@
 #create other models/scenarios
 
-#make components of scenarios
-
-#------------------------------------------------------------------------------|
-# [[Scenario archive for other configurations]] Set line reactance to zero ----
-# -----------------------------------------------------------------------------|
-# hopefully, this forces model to run transport instead of DCOPF
-
-if (exists("make.dcline.scenario") && make.dcline.scenario == TRUE) {
-    # scneario to objects
-    scenario.dc.lines <- initialize_table(Objects.sheet, 
-                                          1, 
-                                          list(class = "Scenario", 
-                                               name = "Make all lines DC", 
-                                               category = "Scenario archive for other configurations"))
-    
-    Objects.sheet <- merge_sheet_w_table(Objects.sheet, scenario.dc.lines)
-    
-    # scenario to properties
-    # uses line.data.table
-    # create table of only AC lines to use
-    ac.lines <- Objects.sheet[grepl("\\_AC$|^AC\\_", category), name]
-    scenario.dc.lines.to.properties <- initialize_table(Properties.sheet, 
-                                                        length(ac.lines), 
-                                                        list(parent_class = "System", 
-                                                             child_class = "Line",
-                                                             parent_object = "System", 
-                                                             band_id = 1, 
-                                                             collection = "Lines"))
-    
-    scenario.dc.lines.to.properties[,child_object := ac.lines]
-    scenario.dc.lines.to.properties[,property := "Reactance"]
-    scenario.dc.lines.to.properties[,value := "0"]
-    scenario.dc.lines.to.properties[,scenario := "{Object}Make all lines DC"]
-    
-    Properties.sheet <- merge_sheet_w_table(Properties.sheet, 
-                                            scenario.dc.lines.to.properties)
-}
-
 #------------------------------------------------------------------------------|
 # [[Scen arx for other configs]] Rmve isolated nodes, recalc LPF for others ----
 # -----------------------------------------------------------------------------|
@@ -49,7 +11,7 @@ if (exists('isolated.nodes.to.remove.args.list')) {
         # get file, scenario, and category names
         isolated.nodes.to.remove.file = isolated.nodes.to.remove.args[1]
         cur.scenario = isolated.nodes.to.remove.args["scenario"]
-        cur.category = isolated.nodes.to.remove.args["category"]
+        cur.category = isolated.nodes.to.remove.args["scenario.cat"]
         
         isolated.nodes.to.remove <- read_data(isolated.nodes.to.remove.file)
         
