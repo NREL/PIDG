@@ -22,10 +22,35 @@ check_colname_cap <- function(dt) {
     }
     
     # check scenario
-    note.name <- names(dt)[tolower(names(dt)) == "scenario"]
+    scen.name <- names(dt)[tolower(names(dt)) == "scenario"]
     
-    if (length(note.name) > 0 && note.name != "scenario") {
-        setnames(dt, note.name, "scenario")
+    if (length(scen.name) > 0 && scen.name != "scenario") {
+        setnames(dt, scen.name, "scenario")
+    }
+    
+    # check Expression
+    expression.name <- names(dt)[tolower(names(dt)) == "expression"]
+    
+    if (length(expression.name) > 0 && expression.name != "expression") {
+      setnames(dt, expression.name, "expression")
+    }
+    
+    # check variable
+    
+    prop.names <- names(dt)
+    prop.names <- prop.names[-1]
+    
+    variable.name <- prop.names[ tolower(prop.names) == "variable"]
+    
+    if (length(variable.name) > 0 && variable.name != "variable") {
+      setnames(dt, variable.name, "variable")
+    }
+    
+    # check Action
+    action.name <- names(dt)[tolower(names(dt)) == "action"]
+    
+    if (length(action.name) > 0 && action.name != "action") {
+      setnames(dt, action.name, "action")
     }
 }
 
@@ -631,7 +656,9 @@ import_properties <- function(input.table,
     if (is.na(collection.name)) collection.name <- paste0(object.class, "s")    
      
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
-                       date_from.col,band.col, memo.col, "scenario")
+                       date_from.col,band.col, memo.col, "scenario",
+                       "action", "expression", "escalator", "condition",
+                       "variable")
     
     # check to make sure all given columns exist
     given.cols <- na.omit(c(names.col, parent.col, pattern.col,
@@ -744,6 +771,12 @@ import_properties <- function(input.table,
             add_scenarios(input.table[,unique(scenario)], 
                           category = scenario.cat)
         }
+        
+        if ("action" %in% names(input.table)) {
+          props.tab[,action := input.table$action]}
+        
+        if ("variable" %in% names(input.table)) {
+          props.tab[,variable := paste0("{Object}", input.table$variable)] }
         
         # add memo column if specified
         if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
