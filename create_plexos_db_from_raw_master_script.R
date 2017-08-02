@@ -22,7 +22,7 @@ if (!exists("export.wb")) export.wb <- TRUE
 india.repo = any(strsplit(getwd(),split="/")[[1]]=='India_GtG')
 
 
-if (!("pacman" %in% installed.packages()[, "Package"])) {
+if (!require(pacman)) {
     install.packages("pacman")
 }
 
