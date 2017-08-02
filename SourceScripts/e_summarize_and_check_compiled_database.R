@@ -884,84 +884,138 @@ if (any(dupes)) {
 
 rm(dupes)
 
-# ** check to make sure that all objects in Properties.sheet exist as objects ----
-object.list = Properties.sheet[,unique(child_object)]
+# ** make sure that all child objects in Properties.sheet exist as objects ----
+object.list = unique(Properties.sheet[,.(child_class, child_object)])
 
-object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, 
+                                      child_class = class, 
+                                      child_object = name)],
+                     object.list,
+                     all.y = TRUE)
 
-if (length(object.list) > 0) {
-  sink(fatal.warnings, append = T) 
-  cat("\n\n")
-  cat(paste0("WARNING: the following object(s) have defined properties but ",
-               "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
-               "these properties to other object. This may not run.\n"))
-  print(Properties.sheet[child_object %in% object.list,], 
-        row.names = F, 
-        n = nrow(Properties.sheet[child_object %in% object.list,]), 
-        width = p.width)
-  sink()
-}
+object.list = object.list[is.na(obj.id), .(child_class, child_object)]
 
-rm(object.list)
-
-# ** check to make sure that all parent objects in Properties.sheet exist as objects ----
-object.list = Properties.sheet[,unique(parent_object)]
-
-object.list = object.list[!(object.list %in% Objects.sheet[,name]) &
-                              object.list != "System"]
-
-if (length(object.list) > 0) {
+if (object.list[,.N] > 0) {
+    
+    to.print <- merge(Properties.sheet, 
+                      object.list, 
+                      by = c("child_class", "child_object"))
+    
     sink(fatal.warnings, append = T) 
     cat("\n\n")
-    cat(paste0("WARNING: the following parents object(s) are in Properties.sheet but ",
-               "are not defined in Objects.sheet. This may not import or run.\n"))
-    print(Properties.sheet[parent_object %in% object.list,], 
+    cat(paste0("WARNING: the following child_object(s) have defined properties ",
+               "but are not defined in Objects.sheet. This may result in PLEXOS",
+               " assigning these properties to other object. This may not run.\n"))
+    print(to.print, 
           row.names = F, 
-          n = nrow(Properties.sheet[parent_object %in% object.list,]), 
+          n = nrow(to.print), 
           width = p.width)
     sink()
+    
+    rm(to.print)
 }
 
 rm(object.list)
 
-# ** check to make sure that all objects in Memberships.sheet exist as objects ----
-object.list = unique(c(Memberships.sheet[,child_object], 
-                       Memberships.sheet[,parent_object]))
+# ** make sure that all parent objects in Properties.sheet exist as objects ----
+object.list = unique(Properties.sheet[parent_object != "System",
+                                      .(parent_class, parent_object)])
 
-object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, 
+                                      parent_class = class, 
+                                      parent_object = name)],
+                     object.list,
+                     all.y = TRUE)
 
-if (length(object.list) > 0) {
+object.list = object.list[is.na(obj.id), .(parent_class, parent_object)]
+
+if (object.list[,.N] > 0) {
+    
+    to.print <- merge(Properties.sheet, 
+                      object.list, 
+                      by = c("parent_class", "parent_object"))
+    
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following parent object(s) have defined properties ",
+               "but are not defined in Objects.sheet. This may result in PLEXOS",
+               " assigning these properties to other object. This may not run.\n"))
+    print(to.print, 
+          row.names = F, 
+          n = nrow(to.print), 
+          width = p.width)
+    sink()
+    
+    rm(to.print)
+}
+
+rm(object.list)
+
+# ** make sure that all objects in Memberships.sheet exist as objects ----
+object.list = unique(rbind(Memberships.sheet[,.(class = child_class, 
+                                                name = child_object)], 
+                           Memberships.sheet[,.(class = parent_class, 
+                                                name = parent_object)]))
+
+object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, class, name)],
+                     object.list,
+                     all.y = TRUE)
+
+object.list = object.list[is.na(obj.id), .(class, name)]
+
+if (object.list[,.N] > 0) {
+    
+    to.print <- rbind(merge(Memberships.sheet, 
+                            object.list[,.(parent_class = class, 
+                                           parent_object = name)], 
+                            by = c("parent_class", "parent_object")), 
+                      merge(Memberships.sheet, 
+                            object.list[,.(child_class = class, 
+                                           child_object = name)], 
+                            by = c("child_class", "child_object")))
+    
     sink(fatal.warnings, append = T) 
     cat("\n\n")
     cat(paste0("WARNING: the following object(s) have defined memberships but ",
                "are not defined in Objects.sheet. This may not import or run.\n"))
-    print(Memberships.sheet[child_object %in% object.list |
-                                parent_object %in% object.list,], 
+    print(to.print, 
           row.names = F, 
-          n = nrow(Memberships.sheet[child_object %in% object.list |
-                                         parent_object %in% object.list,]), 
+          n = nrow(to.print), 
           width = p.width)
     sink()
+    
+    rm(to.print)
 }
 
 rm(object.list)
 
 # ** check to make sure that all objects in Attributes.sheet exist as objects ----
-object.list = Attributes.sheet[,unique(name)]
+object.list = unique(Attributes.sheet[,.(class, name)])
 
-object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, class, name)],
+                     object.list,
+                     all.y = TRUE)
 
-if (length(object.list) > 0) {
+object.list = object.list[is.na(obj.id), .(class, name)]
+
+if (object.list[,.N] > 0) {
+    
+    to.print <- merge(Attributes.sheet, 
+                      object.list, 
+                      by = c("class", "name"))
+    
     sink(fatal.warnings, append = T) 
     cat("\n\n")
     cat(paste0("WARNING: the following object(s) have defined attributes but ",
-               "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
-               "these attributes to other object. This may not run.\n"))
-    print(Attributes.sheet[name %in% object.list,], 
+               "are not defined in Objects.sheet. This may result in PLEXOS ",
+               "assigning these attributes to other object. This may not run.\n"))
+    print(to.print, 
           row.names = F, 
-          n = nrow(Attributes.sheet[name %in% object.list,]), 
+          n = nrow(to.print), 
           width = p.width)
     sink()
+    
+    rm(to.print)
 }
 
 rm(object.list)
