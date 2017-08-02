@@ -8,8 +8,9 @@
 # objects)
 check_colname_cap <- function(dt) {
     
-    cols.to.check <- c("category", "notes", "action", "expression", "scenario", 
-                       "variable")
+    cols.to.check <- c("category", "notes", "action", "escalator", "condition", 
+                       "scenario", "variable", "memo", "date_from", "date_to", 
+                       "pattern")
     
     dt.names <- names(dt)[-1]
     
@@ -458,8 +459,8 @@ merge_property_by_fuel <- function(input.table,
     
     non.prop.cols <- na.omit(c(cap.band.col, band.col, memo.col, 
                                "scenario", "notes", "scenario.cat", "action", 
-                               "expression", "escalator", "condition", 
-                               "variable", "category"))
+                               "escalator", "condition", "variable", 
+                               "category"))
     
     prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
     
@@ -638,8 +639,8 @@ import_properties <- function(input.table,
     
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
                        date_from.col,band.col, memo.col, "scenario", "notes", 
-                       "scenario.cat", "action", "expression", "escalator", 
-                       "condition", "variable", "category")
+                       "scenario.cat", "action", "escalator", "condition", 
+                       "variable", "category")
     
     # check to make sure all given columns exist
     given.cols <- na.omit(c(names.col, parent.col, pattern.col,
@@ -785,6 +786,12 @@ import_properties <- function(input.table,
         
         if ("action" %in% names(input.table)) {
           props.tab[,action := input.table$action]}
+        
+        if ("escalator" %in% names(input.table)) {
+            props.tab[,escalator := input.table$escalator]}
+        
+        if ("condition" %in% names(input.table)) {
+            props.tab[,condition := input.table$condition]}
         
         if ("variable" %in% names(input.table)) {
           props.tab[,variable := paste0("{Object}", input.table$variable)] }
