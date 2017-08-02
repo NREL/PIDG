@@ -1059,15 +1059,18 @@ if (any(non.object.scens)) {
 rm(non.object.scens)
 
 # ** check to make sure all data files have either slashes or {Object} ----
-non.object.dfs = Properties.sheet[,
-                                  !(grepl("^\\{Object\\}", filename) | is.na(filename) | grepl("[/\\\\]", filename))]
+non.object.dfs = Properties.sheet[, !(grepl("^\\{Object\\}", filename) | 
+                                          is.na(filename) | 
+                                          grepl("[/\\\\]", filename))]
 
 if (any(non.object.dfs)) {
   sink(fatal.warnings, append = T) 
   cat("\n\n")
-  cat(paste0("WARNING: the following datafile entries need an object tag ",
-               "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
-               " not be read correctly by PLEXOS.\n"))
+  cat(paste0("WARNING: the following datafile entries do not appear to be ",
+             "file paths and so need object tags (i.e. '{Object}datafile A' ",
+             "instead of 'datafile A' This will not be read correctly by ",
+             "PLEXOS. (note: if these are actually file paths and contain no ",
+             "slashes, you can ignore this message)\n"))
   print(Properties.sheet[non.object.dfs], 
         row.names = F,
         n = nrow(Properties.sheet[non.object.dfs]),
@@ -1076,6 +1079,26 @@ if (any(non.object.dfs)) {
 }
 
 rm(non.object.dfs)
+
+# ** check to make sure all variables have {Object} in front of them ----
+non.object.vars = Properties.sheet[,!(grepl("^\\{Object\\}", variable) | 
+                                          is.na(variable) | 
+                                          variable == "")]
+
+if (any(non.object.vars)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following variable entries need an object tag ",
+               "(i.e. '{Object}Variable A' instead of 'Variable A' This will",
+               " not be read correctly by PLEXOS.\n"))
+    print(Properties.sheet[non.object.vars], 
+          row.names = F, 
+          n = nrow(Properties.sheet[non.object.vars]), 
+          width = p.width)
+    sink()
+}
+
+rm(non.object.vars)
 
 # ** make sure scenario objects in Properties.sheet exist as objects ----
 object.scens <- Properties.sheet[, unique(scenario)]
