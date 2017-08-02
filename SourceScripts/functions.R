@@ -10,8 +10,7 @@ check_colname_cap <- function(dt, version = NA) {
     
     # check capitalization
     cols.to.check <- c("category", "notes", "action", "escalator", "condition", 
-                       "scenario", "variable", "memo", "date_from", "date_to", 
-                       "pattern")
+                       "scenario", "variable", "memo", "date_from", "date_to")
     
     dt.names <- names(dt)[-1]
     
