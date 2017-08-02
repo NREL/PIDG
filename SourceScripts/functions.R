@@ -4,31 +4,22 @@
 
 ### check_colname_cap 
 # check to see if there are capitalization errors in category and notes cols, 
-# fix if they exist ("notes" and "category" are the only cols checked)
+# fix if they exist (excluding first col, since scenario, variable are also
+# objects)
 check_colname_cap <- function(dt) {
     
-    # check category
-    cat.name <- names(dt)[tolower(names(dt)) == "category"]
+    cols.to.check <- c("category", "notes", "action", "expression", "scenario", 
+                       "variable")
     
-    if (length(cat.name) > 0 && cat.name != "category") {
-        setnames(dt, cat.name, "category")
-    }
+    dt.names <- names(dt)[-1]
     
-    # check notes
-    note.name <- names(dt)[tolower(names(dt)) == "notes"]
-    
-    if (length(note.name) > 0 && note.name != "notes") {
-        setnames(dt, note.name, "notes")
-    }
-    
-    # check scenario
-    prop.name <- names(dt)
-    prop.name <- prop.name[-1]
-    
-    scen.name <- prop.name[tolower(prop.name) == "scenario"]
-    
-    if (length(scen.name) > 0 && scen.name != "scenario") {
-        setnames(dt, scen.name, "scenario")
+    for (col in cols.to.check) {
+        
+        col.names <- dt.names[tolower(dt.names) == col]
+        
+        if (length(col.names) > 0 && col.names != col) {
+            setnames(dt, col.names, col)
+        }
     }
 }
 
@@ -465,8 +456,10 @@ merge_property_by_fuel <- function(input.table,
     
     all.cols <- colnames(input.table)
     
-    non.prop.cols <- na.omit(c("category", "scenario", "notes", "scenario.cat",
-                               cap.band.col, band.col, memo.col))
+    non.prop.cols <- na.omit(c(cap.band.col, band.col, memo.col, 
+                               "scenario", "notes", "scenario.cat", "action", 
+                               "expression", "escalator", "condition", 
+                               "variable", "category"))
     
     prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
     
@@ -645,7 +638,8 @@ import_properties <- function(input.table,
     
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
                        date_from.col,band.col, memo.col, "scenario", "notes", 
-                       "scenario.cat")
+                       "scenario.cat", "action", "expression", "escalator", 
+                       "condition", "variable", "category")
     
     # check to make sure all given columns exist
     given.cols <- na.omit(c(names.col, parent.col, pattern.col,
@@ -788,6 +782,12 @@ import_properties <- function(input.table,
             }
 
         }
+        
+        if ("action" %in% names(input.table)) {
+          props.tab[,action := input.table$action]}
+        
+        if ("variable" %in% names(input.table)) {
+          props.tab[,variable := paste0("{Object}", input.table$variable)] }
         
         # add memo column if specified
         if (!is.na(memo.col)) {
