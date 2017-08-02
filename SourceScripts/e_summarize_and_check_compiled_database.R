@@ -989,7 +989,7 @@ if (object.list[,.N] > 0) {
 
 rm(object.list)
 
-# ** check to make sure that all objects in Attributes.sheet exist as objects ----
+# ** make sure that all objects in Attributes.sheet exist as objects ----
 object.list = unique(Attributes.sheet[,.(class, name)])
 
 object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, class, name)],
@@ -1020,7 +1020,7 @@ if (object.list[,.N] > 0) {
 
 rm(object.list)
 
-# ** check to make sure that all objects in Reports.sheet exist as objects ----
+# ** make sure that all objects in Reports.sheet exist as objects ----
 object.list = Reports.sheet[,unique(object)]
 
 object.list = object.list[!(object.list %in% Objects.sheet[,name])]
@@ -1039,7 +1039,7 @@ if (length(object.list) > 0) {
 
 rm(object.list)
 
-# ** check to make sure all scenarios have {Object} in front of them ----
+# ** make sure all scenarios have {Object} in front of them ----
 non.object.scens = Properties.sheet[,
                                     !(grepl("^\\{Object\\}", scenario) | is.na(scenario) | scenario == "")]
 
@@ -1058,7 +1058,7 @@ if (any(non.object.scens)) {
 
 rm(non.object.scens)
 
-# ** check to make sure all data files have either slashes or {Object} ----
+# ** make sure all data files have either slashes or {Object} ----
 non.object.dfs = Properties.sheet[, !(grepl("^\\{Object\\}", filename) | 
                                           is.na(filename) | 
                                           grepl("[/\\\\]", filename))]
@@ -1080,7 +1080,7 @@ if (any(non.object.dfs)) {
 
 rm(non.object.dfs)
 
-# ** check to make sure all variables have {Object} in front of them ----
+# ** make sure all variables have {Object} in front of them ----
 non.object.vars = Properties.sheet[,!(grepl("^\\{Object\\}", variable) | 
                                           is.na(variable) | 
                                           variable == "")]
@@ -1165,7 +1165,7 @@ if (length(object.vars) > 0) {
 
 rm(object.vars, colname)
 
-# ** check to make sure no value is non-numeric ----
+# ** make sure no value is non-numeric ----
 nonnum.value = suppressWarnings(Properties.sheet[,is.na(as.numeric(value))])
 
 if (any(nonnum.value)) {
