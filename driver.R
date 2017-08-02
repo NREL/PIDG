@@ -2,7 +2,7 @@
 # get needed packages and functions ----
 #------------------------------------------------------------------------------|
 
-if (!("pacman" %in% installed.packages()[, "Package"])) {
+if (!require(pacman)) {
     install.packages("pacman")
 }
 
