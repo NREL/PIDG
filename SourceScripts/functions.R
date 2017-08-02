@@ -6,8 +6,9 @@
 # check to see if there are capitalization errors in category and notes cols, 
 # fix if they exist (excluding first col, since scenario, variable are also
 # objects)
-check_colname_cap <- function(dt) {
+check_colname_cap <- function(dt, version = NA) {
     
+    # check capitalization
     cols.to.check <- c("category", "notes", "action", "escalator", "condition", 
                        "scenario", "variable", "memo", "date_from", "date_to", 
                        "pattern")
@@ -22,6 +23,25 @@ check_colname_cap <- function(dt) {
             setnames(dt, col.names, col)
         }
     }
+    
+    # optionally check version
+    if (!is.na(version)) {
+        if (version == 7 & 
+            ("escalator" %in% dt.names | "condition" %in% dt.names)) {
+            stop(paste0("Error: you have specified plexos.version == 7 ",
+                        "but you have version 6 column names in your input ",
+                        "data ('escalator' and/or 'condition'). Please ",
+                        "either change these to version 7 names ('action') ",
+                        "or specify plexos.version = 6"))
+        } else if (version == 6 & "action" %in% dt.names) {
+            stop(paste0("Error: you have specified plexos.version == 6 ",
+                        "but you have a version 7 column name in your input ",
+                        "data ('action'). Please either change these to ",
+                        "version 6 names ('escalator' and/or 'condition') ",
+                        "or specify plexos.version = 7"))
+        }
+    }
+    
 }
 
 ### check_for_dupes

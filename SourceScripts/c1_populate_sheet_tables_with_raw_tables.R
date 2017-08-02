@@ -62,7 +62,7 @@ if (exists("node.data.table") && is.data.table(node.data.table)) {
     
     # check for object dupes and capitalization errors in 'category', 'notes' 
     check_for_dupes(node.data.table, "Node")
-    check_colname_cap(node.data.table)
+    check_colname_cap(node.data.table, version = plexos.version)
     
     # if needed, remap regions and/or zones
     if (choose.input == "raw.psse") {
@@ -199,7 +199,7 @@ if (exists("line.data.table") && is.data.table(line.data.table)) {
     
     # check for object dupes and capitalization errors in 'category', 'notes' 
     check_for_dupes(line.data.table, "Line")
-    check_colname_cap(line.data.table)
+    check_colname_cap(line.data.table, version = plexos.version)
     
     # find regions from and to for line categorize
     line.data.table <- merge(line.data.table,
@@ -307,7 +307,7 @@ if (exists("generator.data.table") && is.data.table(generator.data.table)) {
         check_for_dupes(generator.data.table, "Generator")
     }
     
-    check_colname_cap(generator.data.table)
+    check_colname_cap(generator.data.table, version = plexos.version)
     
     # add region
     generator.data.table <- merge(generator.data.table, 
@@ -464,7 +464,7 @@ if (exists("transformer.data.table") && is.data.table(transformer.data.table)) {
     
     # check for object dupes and capitalization errors in 'category', 'notes' 
     check_for_dupes(transformer.data.table, "Transformer")
-    check_colname_cap(transformer.data.table)
+    check_colname_cap(transformer.data.table, version = plexos.version)
     
     # find regions from and to for line categorize
     transformer.data.table <- merge(transformer.data.table,

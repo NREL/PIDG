@@ -19,7 +19,7 @@ if (exists("objects.list")) {
             message(sprintf("... Adding objects/properties from %s", data.path))
           
             # do some cleaning/checking
-            check_colname_cap(cur.data)
+            check_colname_cap(cur.data, version = plexos.version)
             
             if ("notes" %in% names(cur.data)) cur.data[, notes := NULL]
             
@@ -302,7 +302,7 @@ if(exists('reserve.files')) {
         import_objects(reserves[, .(Reserve)])
         
         # fix scenario name so is always lowercase
-        check_colname_cap(reserves)
+        check_colname_cap(reserves, version = plexos.version)
         
         # add scenario on 'Is Enabled' property
         if ("scenario" %in% names(reserves)) {
@@ -620,7 +620,7 @@ if (exists("memberships.list")) {
             
             # do some cleaning/checking
             check_for_dupes(cur.dt, names(cur.dt))
-            check_colname_cap(cur.dt)
+            check_colname_cap(cur.dt, version = plexos.version)
             
             # import memberships
             memb.cols <- names(cur.dt)
@@ -682,7 +682,7 @@ if (exists("generator.property.by.fuel.list")) {
 
         cur.data <- read_data(generator.property.by.fuel.list[[elem]][[1]])
         
-        check_colname_cap(cur.data)
+        check_colname_cap(cur.data, version = plexos.version)
         
         if (is.data.table(cur.data)) {
             
@@ -790,7 +790,7 @@ if (exists("object.property.list")) {
             suppressWarnings(cur.args$input.table <- cur.data)
             
             # clean, add to properties sheet using input arguments and new table
-            check_colname_cap(cur.data)
+            check_colname_cap(cur.data, version = plexos.version)
             
             do.call(import_properties, cur.args)
             
