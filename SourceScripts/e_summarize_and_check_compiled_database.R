@@ -478,7 +478,7 @@ if (nrow(edges) > 0 & nrow(nodes) > 0) {
   sink()
 }
 
-# check that LPFs sum to 1 for each region 
+# check that LPFs sum to 1 for each region ----
 node.lpf <- Properties.sheet[child_class == "Node" & 
                                property == "Load Participation Factor",
                              .(Node = child_object, LPF = as.numeric(value),
@@ -490,19 +490,18 @@ node.lpf <- merge(node.lpf,
                                     .(Node = parent_object, Region = child_object)],
                   by = "Node", all.x = T)
 
-# sum LPF by region *** ignoring scenarios ***
-region.lpf <- node.lpf[is.na(scenario), 
-                       .(region.lpf = sum(LPF)), 
+# sum LPF by region 
+region.lpf <- node.lpf[,.(region.lpf = sum(LPF)), 
                        by = .(Region, scenario, pattern)]
 
 # generate warning if LPF does not sum to 1 in all regions
-if(region.lpf[round(region.lpf, 4) != 1,.N] > 7){
+if(region.lpf[round(region.lpf, 3) != 1,.N] > 0){
   sink(warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: LPF does not sum to one (1) in at least one region."))
   cat("\n\n")
-  print(region.lpf[round(region.lpf, 4) != 1, .(Region, 
-                                                region.lpf = sprintf("%.10f", region.lpf), 
+  print(region.lpf[round(region.lpf, 3) != 1, .(Region, 
+                                                region.lpf = sprintf("%.6f", region.lpf), 
                                                 scenario, 
                                                 pattern)], 
         row.names = F,
@@ -513,6 +512,37 @@ if(region.lpf[round(region.lpf, 4) != 1,.N] > 7){
 
 # clean up working evnironment
 rm(network, edges, lines, lines.from, lines.to, tfmrs, tfmr.to, tfmr.from)
+
+# check that gen PFs sum to 1 for each generator ----
+node.genpf <- Properties.sheet[child_class == "Node" & 
+                                  parent_class == "Generator" &
+                                  property == "Generation Participation Factor",
+                              .(Node = child_object, 
+                                genPF = as.numeric(value),
+                                Generator = parent_object,
+                                scenario, 
+                                pattern)]
+
+# sum LPF by region
+gen.genpf <- node.genpf[,.(gen.genpf = sum(genPF)), 
+                        by = .(Generator, scenario, pattern)]
+
+# generate warning if LPF does not sum to 1 in all regions
+if(gen.genpf[round(gen.genpf, 3) != 1,.N] > 0){
+    sink(warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: generation PF does not sum to one (1) for at least one generator"))
+    cat("\n\n")
+    print(gen.genpf[round(gen.genpf, 3) != 1, .(Generator, 
+                                                 gen.genpf = sprintf("%.6f", gen.genpf), 
+                                                 scenario, 
+                                                 pattern)], 
+          row.names = F,
+          n = nrow(gen.genpf[round(gen.genpf, 3) != 1]), 
+          width = p.width)
+    sink()
+}
+
 
 #------------------------------------------------------------------------------#
 # Check line and tfmr properties ----
