@@ -4,28 +4,23 @@
 
 ### check_colname_cap 
 # check to see if there are capitalization errors in category and notes cols, 
-# fix if they exist ("notes" and "category" are the only cols checked)
+# fix if they exist (excluding first col, since scenario, variable are also
+# objects)
 check_colname_cap <- function(dt) {
     
-    # check category
-    cat.name <- names(dt)[tolower(names(dt)) == "category"]
+    cols.to.check <- c("category", "notes", "action", "escalator", "condition", 
+                       "scenario", "variable", "memo", "date_from", "date_to", 
+                       "pattern")
     
-    if (length(cat.name) > 0 && cat.name != "category") {
-        setnames(dt, cat.name, "category")
-    }
+    dt.names <- names(dt)[-1]
     
-    # check notes
-    note.name <- names(dt)[tolower(names(dt)) == "notes"]
-    
-    if (length(note.name) > 0 && note.name != "notes") {
-        setnames(dt, note.name, "notes")
-    }
-    
-    # check scenario
-    note.name <- names(dt)[tolower(names(dt)) == "scenario"]
-    
-    if (length(note.name) > 0 && note.name != "scenario") {
-        setnames(dt, note.name, "scenario")
+    for (col in cols.to.check) {
+        
+        col.names <- dt.names[tolower(dt.names) == col]
+        
+        if (length(col.names) > 0 && col.names != col) {
+            setnames(dt, col.names, col)
+        }
     }
 }
 
@@ -190,23 +185,20 @@ merge_sheet_w_table <- function(sheet.table, table.to.merge) {
 
 ### add_scenario
 # add scenarios to object properties if they don't already exist in category
-add_scenarios <- function(scenarios, category) {
+add_scenarios <- function(scenarios, category = NA) {
     
-    scenarios <- scenarios[!is.na(scenarios)]
+    to.add <- data.table(Scenario = scenarios, category = category)
     
-    to.add <- scenarios[!(scenarios %in% 
-                              Objects.sheet[class == "Scenario", name])]
+    to.add <- to.add[!(is.na(Scenario) | Scenario %in% c(" ", ""))]
+    to.add <- to.add[!(Scenario %in% Objects.sheet[class == "Scenario", name])]
     
-    if (length(to.add) > 0) {
+    to.add[category %in% c(" ", ""), category := NA]
+    
+    to.add <- unique(to.add)
+    
+    if (to.add[,.N] > 0) {
         
-        cur.scen.to.objects <- initialize_table(Objects.sheet, 
-                                                length(to.add), 
-                                                list(name = to.add, 
-                                                     category = category,
-                                                     class = 'Scenario'))
-        
-        Objects.sheet <<- merge_sheet_w_table(Objects.sheet, 
-                                              cur.scen.to.objects)
+        import_objects(to.add)
     }
     
 } 
@@ -457,7 +449,7 @@ import_table_compact <- function(input.table, object.type) {
 # 
 # If property.name is NULL, take property name to be the name of the column
 # Note: Name of fuel column must be "Fuel"
-merge_property_by_fuel <- function(input.table, prop.cols, 
+merge_property_by_fuel <- function(input.table, 
                                    mult.by.max.cap = FALSE, 
                                    mult.by.num.units = FALSE, 
                                    cap.band.col = NA, band.col = NA, 
@@ -465,24 +457,31 @@ merge_property_by_fuel <- function(input.table, prop.cols,
     
     all.cols <- colnames(input.table)
     
-    non.prop.cols <- na.omit(c("Fuel", cap.band.col, band.col, memo.col))
+    non.prop.cols <- na.omit(c(cap.band.col, band.col, memo.col, 
+                               "scenario", "notes", "scenario.cat", "action", 
+                               "escalator", "condition", "variable", 
+                               "category"))
     
-    # make sure Fuel column exists before merging
-    if (!("Fuel" %in% colnames(input.table))) {
-
-        stop(paste0("There is no 'Fuel' column in the input table. ", 
-                    "Cannot merge this table. Property name is: ", prop.cols, "."))
-    }
+    prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
+    
+    # make sure all non.prop.cols are actually in the dt
+    non.prop.cols <- all.cols[!(all.cols %in% prop.cols)] 
     
     if (!all(prop.cols %in% all.cols)) {
-    
-        stop(paste0("At lesat one listed prop.col is not in associated inputfile ", 
+        
+        stop(paste0("At least one listed prop.col is not in associated inputfile ", 
                     "Cannot merge this table.\n\tListed prop.cols: ", 
                     paste(prop.cols, collapse = ", "), "\n\tColumns in table: ",
-                    paste(colnames(all.cols), collapse = ", ")))
+                    paste(all.cols, collapse = ", ")))
     }
 
-    
+    # make sure Fuel column exists before merging
+    if (!("category" %in% colnames(input.table))) {
+
+        stop(paste0("There is no 'category' column in the input table. ", 
+                    "Cannot merge this table. Property name is: ", prop.cols, "."))
+    }
+
     #This caused errors... need to determine how to insert memos into PLEXOS
     #if (!is.na(memo.col)) prop.cols <- c(prop.cols, memo.col)
     
@@ -494,82 +493,90 @@ merge_property_by_fuel <- function(input.table, prop.cols,
         # capacity, so can do a regular merge with generator.data.table
         # if band.col exists, include it in the merge and allow.cartesian, b/c
         # merged table will probably be big enough to throw an error
-        generator.data.table <- merge(generator.data.table[,.(Generator, 
-                                                              Fuel = category, 
-                                                              `Max Capacity`, 
-                                                              Units)],
+        tmp.gen.data <- unique(generator.data.table[!(Units == 0 & 
+                                                          grepl("GRTPV|GPV|Gwind", Generator) & 
+                                                          !(Generator %in% c("GRTPV_Jammu_Kashmir_MRE_39", "GRTPV_Maharashtra_MRE_73"))),
+                                                    .(Generator, 
+                                                      category,
+                                                      `Max Capacity`, 
+                                                      Units)])
+        
+        generator.data.table <- merge(tmp.gen.data,
                                       input.table[,.SD,
-                                                  .SDcols = c("Fuel", 
-                                                              if(!is.na(band.col)) band.col, 
+                                                  .SDcols = c(non.prop.cols,
                                                               prop.cols)],
-                                      by = "Fuel",
-                                      allow.cartesian = ifelse(!is.na(band.col), 
-                                                               TRUE, 
-                                                               FALSE))  
-
+                                      by = "category",
+                                      allow.cartesian = TRUE)  
+        
     } else {
         
         # is a cap.band.col is give, use that to split up property distribution
         # when merging
         
-        # create vectors of breaks for each fuel type (with min == 0 and 
+        # create vectors of breaks for each category type (with min == -1 and 
         # max == max capacity in generator.data.table)
         maxes <- generator.data.table[,.(maxcap = max(`Max Capacity`)), 
-                                      by = .(Fuel = category)]
-        all.fuels <- input.table[,unique(Fuel)]
+                                      by = .(category)]
+        all.cats <- input.table[,unique(category)]
         
-        fuel.breaks <- list()
-        for (fuel in all.fuels) {
+        category.breaks <- list()
+        for (cat in all.cats) {
             
-         unique.breaks <- input.table[Fuel == fuel, unique(get(cap.band.col))]
+         unique.breaks <- input.table[category == cat, unique(get(cap.band.col))]
          
-         if (!is.na(unique.breaks[1])) {
-           # remove maxcap if it's less than any of the supplied breaks
-            if (any(maxes[Fuel == fuel, maxcap <= unique.breaks]))
-                maxes[Fuel == fuel, maxcap := NA] 
+         if (any(!is.na(unique.breaks))) {
+             
+             unique.breaks <- c(-1, unique.breaks)
+         } else {
+             
+             unique.breaks <- c(-1, maxes[category == cat, maxcap])
          }
          
-         unique.breaks <- c(-1, unique.breaks, maxes[Fuel == fuel, maxcap])
          unique.breaks <- sort(na.omit(unique.breaks))
-    
-         fuel.breaks[[fuel]] <- unique.breaks
+         
+         category.breaks[[cat]] <- unique.breaks
         }
         
-        # now that we have breaks for each fuel, add column to generator.data.table 
-        # and input.table that sorts gens, so can merge by that and fuel
+        # now that we have breaks for each cat, add column to generator.data.table 
+        # and input.table that sorts gens, so can merge by that and cat
         suppressWarnings(generator.data.table[, breaks.col := NULL]) # reset
         
-        for (fuel in all.fuels) {
+        for (cat in all.cats) {
             
-          # add capacity even to NA cols in input.table, so they get sorted right
-          input.table[Fuel == fuel & is.na(get(cap.band.col)), 
-                      (cap.band.col) := maxes[Fuel == fuel, as.integer(maxcap)]]
-          
-          # add breaks col
-          input.table[Fuel == fuel, breaks.col := cut(get(cap.band.col), 
-                                                      breaks = fuel.breaks[[fuel]])]
-          
-          generator.data.table[category == fuel, breaks.col := cut(`Max Capacity`,
-                                                               breaks = fuel.breaks[[fuel]])]
+            # add capacity even to NA cols in input.table, so they get sorted right
+            if (cat %in% maxes$category) {
+                input.table[category == cat & is.na(get(cap.band.col)),
+                            breaks.col := cut(c(0, maxes[category == cat, as.integer(maxcap)]),
+                                              breaks = c(-1, maxes[category == cat, as.integer(maxcap)]))[[1]]]
+                
+                # add breaks col
+                input.table[category == cat & !is.na(get(cap.band.col)), 
+                            breaks.col := cut(get(cap.band.col), breaks = category.breaks[[cat]])]
+                
+                generator.data.table[category == cat, breaks.col := cut(`Max Capacity`,
+                                                                         breaks = category.breaks[[cat]])]
+                
+                generator.data.table <- unique(rbind(generator.data.table[,.(Generator, category, Units, `Max Capacity`, breaks.col)], 
+                                                     generator.data.table[category == cat, 
+                                                                          .(Generator, category, Units, `Max Capacity`, 
+                                                                            breaks.col = cut(c(0, maxes[category == cat, as.integer(maxcap)]),
+                                                                                             breaks = c(-1, maxes[category == cat, as.integer(maxcap)]))[[1]])]))
+            }
         }
         
         # finally, merge input.table with generator.data.table
         # similarly, if there is a band col, include it and allow.cartesian
         generator.data.table <- merge(generator.data.table[,.(Generator, 
-                                                              Fuel = category, 
+                                                              category,
                                                               `Max Capacity`, 
                                                               Units,
                                                               breaks.col)], 
                                       input.table[,.SD,
-                                                  .SDcols = c("Fuel", 
-                                                              if(!is.na(band.col)) band.col, 
+                                                  .SDcols = c(non.prop.cols, 
                                                               prop.cols, 
                                                               "breaks.col")],
-                                      by = c("Fuel", "breaks.col"), 
-                                      all.x = T,
-                                      allow.cartesian = ifelse(!is.na(band.col), 
-                                                               TRUE, 
-                                                               FALSE))
+                                      by = c("category", "breaks.col"), 
+                                      allow.cartesian = TRUE)
         
     }
     # if this property should be multiplied by max capacity, do it
@@ -586,7 +593,7 @@ merge_property_by_fuel <- function(input.table, prop.cols,
         }
     }
     
-    return.cols = c('Generator', prop.cols, band.col)
+    return.cols = c('Generator', prop.cols, if("scenario"%in% names(input.table)) "scenario", band.col)
     
     # return generator + property
     return(generator.data.table[,.SD, 
@@ -612,7 +619,7 @@ import_properties <- function(input.table,
                               scenario.name = NA,
                               scenario.cat = NA,
                               pattern.col = NA,
-                              period.id = NA, datafile.col = NA, 
+                              period.id = 0, datafile.col = NA, 
                               date_from.col = NA, overwrite = FALSE, 
                               overwrite.cols = NA, band.col = NA, 
                               memo.col = NA) {
@@ -629,9 +636,11 @@ import_properties <- function(input.table,
     if (is.na(object.class)) object.class <- names.col
     
     if (is.na(collection.name)) collection.name <- paste0(object.class, "s")    
-     
+    
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
-                       date_from.col,band.col, memo.col, "scenario")
+                       date_from.col,band.col, memo.col, "scenario", "notes", 
+                       "scenario.cat", "action", "escalator", "condition", 
+                       "variable", "category")
     
     # check to make sure all given columns exist
     given.cols <- na.omit(c(names.col, parent.col, pattern.col,
@@ -639,7 +648,7 @@ import_properties <- function(input.table,
                             datafile.col))
     
     if (!all(given.cols %in% all.cols)) {
-        stop(paste0("At lesat one given column name is not in input table. ",
+        stop(paste0("At least one given column name is not in input table. ",
                     "Cannot merge this table.\n\tGiven columns: ",
                     paste(given.cols, collapse = ", "),
                     "\n\tColumns in table: ",
@@ -657,8 +666,10 @@ import_properties <- function(input.table,
     
     # if any columns contain datafiles, mark them here to can deal with later
     if (!is.na(datafile.col[1])) {
-        setnames(input.table, datafile.col, paste0(datafile.col, "_datafile"))}
+        setnames(input.table, datafile.col, paste0("datafile_", datafile.col))}
     
+    if (is.na(parent.col)) parent.col <- "System"
+
     prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
     
     if(length(prop.cols) > 0){
@@ -678,11 +689,9 @@ import_properties <- function(input.table,
         props.tab <- initialize_table(Properties.sheet, 
                                       nrow(input.table), 
                                       list(
-                                          parent_class = ifelse(is.na(parent.col), 
-                                                                "System", 
-                                                                parent.col),
-                                          parent_object = ifelse(is.na(parent.col), 
-                                                                 "System", 
+                                          parent_class = parent.col,
+                                          parent_object = ifelse(parent.col == "System", 
+                                                                 parent.col, 
                                                                  list(input.table[,get(parent.col)])),
                                           collection = collection.name, 
                                           child_class = object.class, 
@@ -697,33 +706,40 @@ import_properties <- function(input.table,
         # if have datafile cols, move the filepointer to the datafile column and set 
         # property value to zero
         
-        props.tab[grepl("_datafile",property),filename := value]
-        props.tab[grepl("_datafile",property),
+        props.tab[grepl("datafile_",property),filename := value]
+        props.tab[grepl("datafile_",property),
                   c("value", "property") := 
-                      .("0", gsub("_datafile", "", property))]
-        
-        if (!is.na(datafile.col[1])) {
-            props.tab[grepl("_datafile", property), filename := value]
-            props.tab[grepl("_datafile", property), 
-                      c("value", "property") := 
-                          .("0", gsub("_datafile", "", property))]
-        }
+                      .("0", gsub("datafile_", "", property))]
         
         # add pattern column if specified
-        if (!is.na(pattern.col)) props.tab[, pattern := input.table[, 
-                                                                    .SD, 
-                                                                    .SDcols = pattern.col]] 
+        if (!is.na(pattern.col)) {
+            props.tab[, pattern := input.table[,.SD, .SDcols = pattern.col]]
+        }
         
         #adding a date_from col if specified
-        if (!is.na(date_from.col)) props.tab[, date_from := input.table[, .SD, 
-                                                                        .SDcols = date_from.col]] 
+        if (!is.na(date_from.col)) {
+            props.tab[, date_from := input.table[, .SD, .SDcols = date_from.col]]
+        }
         
         # add period type id column if specified
-        if (!is.na(period.id)) props.tab[, period_type_id := period.id]
+        if (!is.na(period.id)) {
+            props.tab[, period_type_id := as.character(period.id)]
+        }
         
+        # change period.id if the property calls for it. assumes particular
+        # format of *Hour|Day|Week|Month|Year properties
+        if (any(grepl("(Hour|Day|Week|Month|Year)$", prop.cols))) {
+            props.tab[grepl("Hour$", property), period_type_id := "6"]
+            props.tab[grepl("Day$", property), period_type_id := "1"]
+            props.tab[grepl("Week$", property), period_type_id := "2"]
+            props.tab[grepl("Month$", property), period_type_id := "3"]
+            props.tab[grepl("Year$", property), period_type_id := "4"] 
+        }
+
         # add scenario name if specified
         if (!is.na(scenario.name)) {
-            props.tab[,scenario := paste0("{Object}", scenario.name)] }
+            props.tab[,scenario := paste0("{Object}", scenario.name)] 
+        }
         
         # add scenario column if specified
         if ("scenario" %in% names(input.table)) {
@@ -736,17 +752,54 @@ import_properties <- function(input.table,
             }
             
             props.tab[,scenario.temp := input.table[,scenario]]
-            props.tab[!is.na(scenario.temp), scenario := paste0("{Object}", 
-                                                                scenario.temp)]
+            props.tab[!(is.na(scenario.temp) | scenario.temp %in% c("", " ")), 
+                      scenario := paste0("{Object}", scenario.temp)]
             props.tab[,scenario.temp := NULL]
             
-            # add scenarios to objects
-            add_scenarios(input.table[,unique(scenario)], 
-                          category = scenario.cat)
+            if ("scenario.cat" %in% names(input.table)) {
+                
+                if (!is.na(scenario.cat)) {
+                    message(paste0("scenario.cat column overriding argument ", 
+                                   "scenario.cat"))
+                }
+                
+                scens <- unique(input.table[!(is.na(scenario) | scenario %in% c("", " ")),
+                                            .(scenario, scenario.cat)])
+                
+                if (scens[,.N] > 0) {
+                    
+                    add_scenarios(scens[,scenario], 
+                                  category = scens[,scenario.cat])
+                }
+                
+            } else {
+                # add scenarios to objects
+                scens <- input.table[!(is.na(scenario) | scenario %in% c("", " ")), 
+                                     unique(scenario)]
+                     
+                if (length(scens) > 0) {
+                    add_scenarios(scens)
+                }
+            }
+
         }
         
+        if ("action" %in% names(input.table)) {
+          props.tab[,action := input.table$action]}
+        
+        if ("escalator" %in% names(input.table)) {
+            props.tab[,escalator := input.table$escalator]}
+        
+        if ("condition" %in% names(input.table)) {
+            props.tab[,condition := input.table$condition]}
+        
+        if ("variable" %in% names(input.table)) {
+          props.tab[,variable := paste0("{Object}", input.table$variable)] }
+        
         # add memo column if specified
-        if (!is.na(memo.col)) props.tab[, memo := input.table[,get(memo.col)]]
+        if (!is.na(memo.col)) {
+            props.tab[, memo := input.table[,get(memo.col)]]
+        }
         
         # merge with Properties.sheet
         if (overwrite == FALSE) {
@@ -1171,8 +1224,12 @@ make_interleave_pointers <- function(parent.model, child.model,
         
         
         # map by fuel, then add to properties sheet with given scenario
-        cur.mapped.tab = merge_property_by_fuel(template.fuel.copy, 
-                                                prop.cols = names(template.fuel.copy[,.SD,.SDcols = -"Fuel"]))
+        # for now, fix colnames
+        if ("Fuel" %in% names(template.fuel.copy)) {
+            setnames(template.fuel.copy, "Fuel", "category")
+        }
+        
+        cur.mapped.tab = merge_property_by_fuel(template.fuel.copy)
         
         prop.cols <- names(cur.mapped.tab)
         prop.cols <- prop.cols[prop.cols != "Generator"]

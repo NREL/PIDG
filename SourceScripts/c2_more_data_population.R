@@ -78,66 +78,20 @@ if (exists("objects.list")) {
             # add to properties sheet using input arguments
             do.call(import_properties, cur.args)
             
-            # clean up
-            rm(excluded.cols, memb.cols, cur.args, elem)
+            rm(excluded.cols, memb.cols, cur.args)
             
         } # end if (is.data.table(cur.data))
 
-        # clean up
-        rm(data.path, cur.data) 
-    
     }
+    
+    # clean up
+    rm(data.path, cur.data, elem)
 
 } else {
     
     message(">>  objects.list does not exist ... skipping")
 }
 
-
-#------------------------------------------------------------------------------|
-# add fuels and categorize generators by fuel ----
-#------------------------------------------------------------------------------|
-
-if (exists("map.gen.to.fuel.file")) {
-    
-    fuel.table <- read_data(map.gen.to.fuel.file)
-    
-    if (is.data.table(fuel.table)) {
-        
-        # add fuels to generator.data.table
-        generator.data.table <- 
-            merge(generator.data.table, fuel.table[, .(Generator, Fuel)], 
-                  by = "Generator", all.x = TRUE)
-        
-        # add fuels to objects .sheet
-        all.fuels <- unique(fuel.table[, .(Fuel)])
-        
-        import_objects(all.fuels)
-        
-        # add generator-fuels membership to memberships
-        fuels.to.gens.to.membs <- fuel.table[,.(Generator, Fuels_Fuel = Fuel)]
-        
-        import_memberships(fuels.to.gens.to.membs)
-        
-        # edit generators to categorize by fuel instead of region (edit later)
-        Objects.sheet <- 
-            merge(Objects.sheet, 
-                  generator.data.table[, .(Generator, Fuel, class = 'Generator')], 
-                  by.x = c('class', 'name'), by.y = c('class', 'Generator'), 
-                  all.x = T)
-        Objects.sheet[!is.na(Fuel),category := Fuel]
-        Objects.sheet[,Fuel := NULL]
-        
-        # clean up
-        rm(fuel.table, all.fuels, fuels.to.gens.to.membs)
-        
-    } # end if (is.data.table(fuel.table))
-    
-} else {
-    
-    message(">>  map.gen.to.fuel.file does not exist ... skipping")
-}
-    
 #------------------------------------------------------------------------------|
 # add load (mapped by region by external file) and lpf ----
 #------------------------------------------------------------------------------|
@@ -186,7 +140,7 @@ if (exists("map.region.to.load.file")) {
                                                            NA, name))
         }
         
-        setnames(cur.tab, "filename_datafile", name) #hacky. fix this later
+        setnames(cur.tab, "datafile_filename", name) #hacky. fix this later
         
         # add any scenarios associated with load as objects
         load.scens <- load.scens[tolower(load.scens) != 'base']
@@ -245,7 +199,9 @@ if (exists("load.data.table")) {
     # merge with nodes table
     load.part.fact.table <-
         merge(load.part.fact.table, 
-              node.data.table[, .(Node, Region)], 
+              # node.data.table[, .(Node, Region)], 
+              Memberships.sheet[parent_class == "Node" & collection == "Region", 
+                                .(Node = parent_object, Region = child_object)],
               by = "Node", all.y = TRUE)
     load.part.fact.table[is.na(Load), Load := 0] 
     
@@ -265,280 +221,10 @@ if (exists("load.data.table")) {
 } else {
     message(">>  load.data.table does not exist ... skipping")
 }
-    
-#------------------------------------------------------------------------------|
-# add RE generators ----
-#------------------------------------------------------------------------------|
-# these will be added to generator.data.table
-if (exists("RE.gen.file.list") && add.RE.gens){
-    
-    for (item in RE.gen.file.list) {
-        
-        fname = item[1]
-        scenname = item["scenario"]
-        make.new.nodes = item["make.new.nodes"]
-        
-        RE.gens <- read_data(fname, colClasses = 'numeric')
-        
-        if (is.data.table(RE.gens)) {
-            
-            # read in information about RE gens
-            message(sprintf("... Adding properties for RE gens from %s", fname))
-
-            # run a data check and save results to OutputFiles
-            # check for Number of Units, Max Capacity
-            check.RE.units <- RE.gens[is.na(Num.Units) | Num.Units == "",]
-            if(nrow(check.RE.units) > 0){ 
-                warning(sprintf("At least one generator in %s is missing 'Units'", 
-                                fname))
-            }
-            
-            check.RE.capacity <- RE.gens[is.na(Max.Capacity) | 
-                                             Max.Capacity == "",]
-            if(nrow(check.RE.capacity) > 0){ 
-                warning(sprintf(
-                    "At least one generator in %s is missing 'Max Capacity'",
-                                fname))
-            }
-            
-            # clean up
-            rm(check.RE.capacity)
-            
-            # create scenario if input file scenario in input_params*.R
-            if(!is.na(scenname)){
-                
-                RE.gens[,Num.Units.Scn := Num.Units]
-                RE.gens[,Num.Units := 0]
-                
-                add_scenarios(scenname, category = "Generator status")
-                
-            }
-            
-            if(!is.na(make.new.nodes)){ 
-                # 1. create nodes to put new RE on
-                new.node.table <- unique(RE.gens, by = c('Node', 'Category'))
-                
-                # add new RE nodes to objects .sheet
-                RE.nodes.to.objects <- 
-                    initialize_table(Objects.sheet, 
-                                     nrow(new.node.table), 
-                                     list(class = "Node", 
-                                          name = new.node.table[,Node], 
-                                          category  = new.node.table[,Node.Region]))
-                
-                Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
-                                                     RE.nodes.to.objects)
-                
-                # add new RE nodes to properties .sheet
-                RE.nodes.to.properties <- new.node.table[,.(Node, 
-                                                            Voltage = Node.kV, 
-                                                            Units = 1)]
-                
-                import_properties(RE.nodes.to.properties, 
-                                        names.col = 'Node', 
-                                        collection.name = 'Nodes', 
-                                        object.class = 'Node')
-                
-                # add RE node-region and node-zone membership to memberships .sheet
-                RE.nodes.to.memberships.regions <- 
-                    initialize_table(Memberships.sheet, 
-                                     nrow(new.node.table), 
-                                     list(parent_class = "Node", 
-                                          parent_object = new.node.table[,Node],
-                                          collection = "Region", 
-                                          child_class = "Region", 
-                                          child_object = new.node.table[, Node.Region]))
-                
-                Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                                         RE.nodes.to.memberships.regions)
-                
-                RE.nodes.to.memberships.zones <- 
-                    initialize_table(Memberships.sheet, 
-                                     nrow(new.node.table), 
-                                     list(parent_class = "Node", 
-                                          parent_object = new.node.table[,Node], 
-                                          collection = "Zone", child_class = "Zone", 
-                                          child_object = new.node.table[,Node.Zone]))
-                
-                Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                                         RE.nodes.to.memberships.zones)
-                
-                # 2. create new lines with no congestion to connect new nodes to existing nodes
-                RE.line.table <- new.node.table[,.(Node.From = Node, 
-                                                   Node.To = Node.To.Connect, 
-                                                   kV = Node.kV)]
-                RE.line.table[, To.Node.Number := tstrsplit(Node.To, "_")[1]]
-                RE.line.table[, Line:= paste0(Node.From, "_", 
-                                              To.Node.Number, 
-                                              "_1_CKT")]
-                RE.line.table[, Region := new.node.table[,Node.Region]]
-                
-                # add lines to objects .sheet 
-                RE.lines.to.objects <- 
-                    initialize_table(Objects.sheet, 
-                                     nrow(RE.line.table), 
-                                     list(name = RE.line.table[, Line], 
-                                          class = "Line", 
-                                          category = RE.line.table[,Region]))
-                
-                Objects.sheet <- merge_sheet_w_table(Objects.sheet, RE.lines.to.objects)
-                
-                # add new lines to properties .sheet
-                RE.lines.to.properties <-
-                    RE.line.table[,.(Line, Units = 1, `Max Flow` = 10^30, 
-                                     `Min Flow` = -10^30)]
-                
-                import_properties(RE.lines.to.properties, names.col = 'Line', 
-                                        collection.name = 'Lines', object.class = 'Line')
-                
-                #  add RE Node To/Node From lines to memberships
-                RE.lines.to.memberships.from <- 
-                    initialize_table(Memberships.sheet,nrow(new.node.table), 
-                                     list(parent_class = "Line", collection = "Node From", 
-                                          child_class = "Node"))
-                RE.lines.to.memberships.from[, parent_object := RE.line.table[,Line]]
-                RE.lines.to.memberships.from[, child_object := RE.line.table[,Node.From]]
-                
-                RE.lines.to.memberships.to <- 
-                    initialize_table(Memberships.sheet, nrow(new.node.table), 
-                                     list(parent_class = "Line", collection = "Node To",
-                                          child_class = "Node"))
-                RE.lines.to.memberships.to[, parent_object := RE.line.table[,Line]]
-                RE.lines.to.memberships.to[, child_object := RE.line.table[,Node.To]]
-                
-                Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                                         RE.lines.to.memberships.from)
-                Memberships.sheet <- merge_sheet_w_table(Memberships.sheet, 
-                                                         RE.lines.to.memberships.to)
-                
-                # Reassigned Node.To.Connect with Node if new nodes created
-                RE.gens[,Node.To.Connect := Node] 
-                
-                # add new nodes, gens, and lines to *.data.tables so can be accessed later
-                # need to put each in right format before merging
-                
-                # nodes
-                new.RE.nodes.data <- new.node.table[,.(Node = Node.Name, 
-                                                       Voltage = Node.kV, 
-                                                       Region = Node.Region, 
-                                                       Zone = Node.Zone)]
-                
-                node.data.table <- rbind(node.data.table, new.RE.nodes.data, fill = TRUE)
-                
-                # lines - pull table in right format, then add zones
-                # doesn't fill in RatingB, ID, Status, ToKV, FromKV, category, ACorDC. should?
-                # doesn't have resistance
-                new.RE.lines.data <- RE.line.table[,.(Line = Line.Name, Region.To = Region, 
-                                                      Region.From = Region, 
-                                                      `Node From` = Node.From, 
-                                                      `Node To` = Node.To)]
-                new.RE.lines.data <- merge(new.RE.lines.data, 
-                                           new.RE.nodes.data[,.(Node, Zone)], 
-                                           by.x = 'Node From', by.y = 'Node', 
-                                           all.x = TRUE)
-                new.RE.lines.data[,c('Zone To', 'Zone From') := Zone][,Zone := NULL]
-                
-                line.data.table <- rbind(line.data.table, new.RE.lines.data, fill = TRUE)
-            }
-            
-            # 4. (finally) add in RE gens
-            # add RE gens to objects
-            RE.gens.to.objects <- RE.gens[,.(Generator = Generator.Name, 
-                                             category = Category)]
-
-            import_objects(RE.gens.to.objects)
-            
-            # add RE gens to properties .sheet (Units, Max Capacity)
-            RE.gens.to.properties <- RE.gens[,.(Generator = Generator.Name, 
-                                                Units = Num.Units,
-                                                `Max Capacity` = Max.Capacity)]
-            
-            import_properties(RE.gens.to.properties, 
-                                    object.class = 'Generator', 
-                                    names.col = 'Generator', 
-                                    collection.name = 'Generators')
-            
-            # add RE gens to properties .sheet (Units) -- Scenario
-            if(!is.na(scenname)){
-                RE.gens.to.properties <- RE.gens[,.(Generator = Generator.Name, 
-                                                    Units = Num.Units.Scn)] 
-                
-                import_properties(RE.gens.to.properties, 
-                                        object.class = 'Generator', 
-                                        names.col = 'Generator', 
-                                        collection.name = 'Generators',
-                                        scenario.name = scenname)
-                
-                RE.gens[,Num.Units := Num.Units.Scn]
-            }
-            
-            # add RE gens to properties .sheet (Rating and associated datafile)
-            # note: it is better to add rating separately, but leaving in the option
-            # for backwards compatability reasons
-            if ("Rating" %in% colnames(RE.gens)) {
-                
-                RE.gens.to.properties.rating <- RE.gens[,.(Generator = Generator.Name, 
-                                                           Rating)]
-                
-                import_properties(RE.gens.to.properties.rating, 
-                                        object.class = 'Generator', 
-                                        names.col = 'Generator', 
-                                        collection.name = 'Generators', 
-                                        datafile.col = 'Rating'
-                )
-                rm(RE.gens.to.properties.rating)
-            }
-            
-            # add RE gen-fuel to memberships (connecting gens to fuel and nodes)
-            RE.gens.to.membs <- RE.gens[, .(Generator = Generator.Name, 
-                                            Nodes_Node = Node.To.Connect, 
-                                            Fuels_Fuel = Fuel)]
-            
-            import_memberships(RE.gens.to.membs)
-            
-            # generators - can also add bus number, ID, an implied min cap of 0
-            # must pull node's region and zone from node.data.table, in case new nodes
-            # didn't get added
-            new.RE.gens.data <- RE.gens[,.(Generator = Generator.Name, 
-                                           Node = Node.To.Connect, 
-                                           Fuel, 
-                                           `Max Capacity` = Max.Capacity, 
-                                           Units = Num.Units)]
-            
-            new.RE.gens.data <- merge(new.RE.gens.data, 
-                                      node.data.table[,.(Node, Region, Zone)], 
-                                      by = "Node", 
-                                      all.x = T)
-            
-            generator.data.table <- rbind(generator.data.table, new.RE.gens.data, 
-                                          fill = T)
-            
-            # clean up
-            suppressWarnings({
-                rm(RE.gens, new.node.table, RE.nodes.to.objects, 
-                   RE.nodes.to.properties, 
-                   RE.gens.to.membs,
-                   RE.nodes.to.memberships.regions,
-                   RE.nodes.to.memberships.zones, RE.line.table, 
-                   RE.lines.to.objects, RE.lines.to.properties, 
-                   RE.lines.to.memberships.from, rating.data.files.to.properties, 
-                   RE.gens.to.objects, RE.gens.to.properties,
-                   new.RE.nodes.data, new.RE.lines.data,
-                   new.RE.gens.data, node.info)})
-            
-        } # end if (is.data.table(RE.gens))
-    }
-    
-} else {
-    
-    message('>>  no RE gen info to be added... skipping')
-}
-
 
 #------------------------------------------------------------------------------|
 # add interfaces from interface file list ----
 #------------------------------------------------------------------------------|
-
 
 # uses interfaces.files.list
 if(exists('interfaces.files.list')) {
@@ -887,35 +573,32 @@ if (exists('constraint.import.files')) {
 # Create generator.data.table ----
 #------------------------------------------------------------------------------|
 
-if (!exists("generator.data.table")) {
-    
-    generator.data.table <- unique(Objects.sheet[class == "Generator",
-                                                 .(Generator = name, category)])
-    
-    generator.data.table <- merge(generator.data.table, 
-                                  Memberships.sheet[parent_class == "Generator" &
-                                                        child_class == "Fuel" &
-                                                        collection == "Fuels",
-                                                    .(Generator = parent_object,
-                                                      Fuel = child_object)],
-                                  all.x = TRUE)
-    
-    generator.data.table <- merge(generator.data.table,
-                                  Properties.sheet[property == "Units" & 
-                                                       child_class == "Generator",
-                                                   .(Generator = child_object,
-                                                     Units = as.numeric(value))],
-                                  all.x = TRUE)
-    
-    generator.data.table <- merge(generator.data.table,
-                                  Properties.sheet[property == "Max Capacity" & 
-                                                       child_class == "Generator",
-                                                   .(Generator = child_object,
-                                                     `Max Capacity` = as.numeric(value))],
-                                  all.x = TRUE)
-    
-}
+generator.data.table <- unique(Objects.sheet[class == "Generator",
+                                             .(Generator = name, category)])
 
+generator.data.table <- merge(generator.data.table, 
+                              Memberships.sheet[parent_class == "Generator" &
+                                                    child_class == "Fuel" &
+                                                    collection == "Fuels",
+                                                .(Generator = parent_object,
+                                                  Fuel = child_object)],
+                              all.x = TRUE)
+
+generator.data.table <- merge(generator.data.table,
+                              Properties.sheet[property == "Units" & 
+                                                   child_class == "Generator" & 
+                                                   is.na(scenario),
+                                               .(Generator = child_object,
+                                                 Units = as.numeric(value))],
+                              all.x = TRUE)
+
+generator.data.table <- merge(generator.data.table,
+                              Properties.sheet[property == "Max Capacity" & 
+                                                   child_class == "Generator",
+                                               .(Generator = child_object,
+                                                 `Max Capacity` = as.numeric(value))],
+                              all.x = TRUE)
+    
 #------------------------------------------------------------------------------|
 # ADD PROPERTIES AND MEMBERSHIPS ----
 #------------------------------------------------------------------------------|
@@ -926,8 +609,9 @@ if (!exists("generator.data.table")) {
 
 if (exists("memberships.list")) {
     
-    for (fname in memberships.list) {
-        
+    for (elem in memberships.list) {
+      
+        fname <- elem[[1]] 
         cur.dt <- read_data(fname)
         
         if (is.data.table(cur.dt)) {
@@ -938,10 +622,43 @@ if (exists("memberships.list")) {
             check_for_dupes(cur.dt, names(cur.dt))
             check_colname_cap(cur.dt)
             
-            # add here to only pull first col and then any _ col
+            # import memberships
+            memb.cols <- names(cur.dt)
+            memb.cols <- c(memb.cols[1], memb.cols[grepl("_", memb.cols)])
             
-            # add memberships
-            import_memberships(cur.dt)
+            if (length(memb.cols) > 1) {
+                import_memberships(cur.dt[,memb.cols, with = FALSE])
+            }
+            
+            # if there are property cols, import those, too
+            non.prop.cols <- c(memb.cols, "notes")
+            prop.cols <- names(cur.dt)[!(names(cur.dt) %in% non.prop.cols)] 
+            
+            if (length(prop.cols) > 0) {
+                
+                # read in other args if given
+                if (length(elem) > 1) {
+                    # get all args but the first (a little gynmastics to account 
+                    # for the args being in a separate list or not)
+                    cur.args <- elem[-1]
+                    
+                    if (is.list(cur.args) & all(is.null(names(cur.args)))) {
+                        cur.args <- cur.args[[1]]
+                    }
+                } else {
+                    cur.args <- list()
+                }
+                
+                # set up and import properties. untested with multiple children
+                suppressWarnings(cur.args$input.table <- cur.dt)
+                cur.args$parent.col <- memb.cols[1]
+                cur.args$names.col <- memb.cols[-1]
+                cur.args$object.class <- tstrsplit(memb.cols[-1], "_")[[2]]
+                cur.args$collection.name <- tstrsplit(memb.cols[-1], "_")[[1]]
+
+                do.call(import_properties, cur.args)
+                
+            }
             
         }
     }
@@ -962,16 +679,45 @@ if (exists("memberships.list")) {
 if (exists("generator.property.by.fuel.list")) {
     
     for (elem in seq_along(generator.property.by.fuel.list)) {
-        
+
         cur.data <- read_data(generator.property.by.fuel.list[[elem]][[1]])
+        
+        check_colname_cap(cur.data)
         
         if (is.data.table(cur.data)) {
             
             message(sprintf("... Adding properties from %s", 
                             generator.property.by.fuel.list[[elem]][1]))
             
+            # shifting from doing this by fuel to by category
+            if ("Fuel" %in% names(cur.data)) {
+                setnames(cur.data, "Fuel", "category")
+                message(sprintf(paste0("in merge_property_by_fuel, please change",
+                                      " 'fuel' to 'category' in %s. ",
+                                      "I'll do this for you for now."),
+                                generator.property.by.fuel.list[[elem]][1]))
+            }
+            
             # set up arguments for merge_property_by_fuel
-            cur.map.fuel.args <- generator.property.by.fuel.list[[elem]][[2]]
+            if ("fuel.map.args" %in% names(generator.property.by.fuel.list[[elem]])) {
+                cur.map.fuel.args <- as.list(generator.property.by.fuel.list[[elem]][["fuel.map.args"]])
+            } else {
+                cur.map.fuel.args <- list()
+            }
+            
+            if ("prop.cols" %in% names(cur.map.fuel.args)) {
+                message(sprintf(paste0("use of prop.cols is deprecated in ",
+                                       "merge_property_by_fuel. I'll ",
+                                       "auto-populate prop.cols. for the future,",
+                                       " please remove prop.cols from input ",
+                                       "params when you pass in %s"),
+                                generator.property.by.fuel.list[[elem]][1]))
+                
+                cur.map.fuel.args <- cur.map.fuel.args[names(cur.map.fuel.args) != "prop.cols"]
+            }
+            
+            if ("notes" %in% names(cur.data)) cur.data[,notes := NULL]
+            
             cur.map.fuel.args$input.table <- cur.data
             
             # merge properties fuel, produces table with list of generators in rows
@@ -979,9 +725,13 @@ if (exists("generator.property.by.fuel.list")) {
             mapped.by.fuel <- do.call(merge_property_by_fuel, cur.map.fuel.args)
             
             # set up args for import_properties, using output of merge by fuel  
-            cur.prop.sheet.args <- generator.property.by.fuel.list[[elem]][[3]]
+            if ("add.to.prop.args" %in% names(generator.property.by.fuel.list[[elem]])) {
+                cur.prop.sheet.args <- as.list(generator.property.by.fuel.list[[elem]][["add.to.prop.args"]])
+            } else {
+                cur.prop.sheet.args <- list()
+            }
+            
             cur.prop.sheet.args$input.table <- mapped.by.fuel
-            cur.prop.sheet.args$names.col <- 'Generator'
             
             # add to properties sheet using input arguments and new table
             do.call(import_properties, cur.prop.sheet.args)
@@ -1048,9 +798,9 @@ if (exists("object.property.list")) {
             # need to deal with categories later
             if ('scenario.name' %in% names(cur.args)) { 
                 
-                add_scenarios(cur.args['scenario.name'], 
+                add_scenarios(cur.args[['scenario.name']], 
                               category = ifelse('scenario.cat' %in% names(cur.args), 
-                                                cur.args['scenario.cat'], 
+                                                cur.args[['scenario.cat']], 
                                                 NA))
                 
             }

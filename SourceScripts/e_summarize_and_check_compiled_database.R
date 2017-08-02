@@ -416,7 +416,9 @@ tfmrs <- merge(tfmr.from, tfmr.to, by = "line")
 edges <- rbind(lines, tfmrs)[,.(from,to)]
 
 # create graph object
-network <- graph.data.frame(edges, directed = F, vertices = nodes)
+if (!anyDuplicated(nodes$Node)) {
+    network <- graph.data.frame(edges, directed = F, vertices = nodes)
+}
 
 if (nrow(edges) > 0 & nrow(nodes) > 0) {
   
@@ -485,7 +487,7 @@ if (nrow(edges) > 0 & nrow(nodes) > 0) {
   sink()
 }
 
-# check that LPFs sum to 1 for each region 
+# check that LPFs sum to 1 for each region ----
 node.lpf <- Properties.sheet[child_class == "Node" & 
                                property == "Load Participation Factor",
                              .(Node = child_object, LPF = as.numeric(value),
@@ -497,23 +499,20 @@ node.lpf <- merge(node.lpf,
                                     .(Node = parent_object, Region = child_object)],
                   by = "Node", all.x = T)
 
-# sum LPF by region *** ignoring scenarios ***
-region.lpf <- node.lpf[is.na(scenario), 
-                       .(region.lpf = sum(LPF)), 
+# sum LPF by region 
+region.lpf <- node.lpf[,.(region.lpf = sum(LPF)), 
                        by = .(Region, scenario, pattern)]
 
 # generate warning if LPF does not sum to 1 in all regions
-lpf.sum.to.one <- round(sum(region.lpf$region.lpf), 13) == nrow(region.lpf)
-
-if(lpf.sum.to.one == F){
+if(region.lpf[round(region.lpf, 3) != 1,.N] > 0){
   sink(warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: LPF does not sum to one (1) in at least one region."))
   cat("\n\n")
-  print(region.lpf[region.lpf != 1, .(Region, 
-                                      region.lpf = sprintf("%.10f", region.lpf), 
-                                      scenario, 
-                                      pattern)], 
+  print(region.lpf[round(region.lpf, 3) != 1, .(Region, 
+                                                region.lpf = sprintf("%.6f", region.lpf), 
+                                                scenario, 
+                                                pattern)], 
         row.names = F,
         n = nrow(region.lpf))
   sink()
@@ -521,6 +520,37 @@ if(lpf.sum.to.one == F){
 
 # clean up working evnironment
 rm(network, edges, lines, lines.from, lines.to, tfmrs, tfmr.to, tfmr.from)
+
+# check that gen PFs sum to 1 for each generator ----
+node.genpf <- Properties.sheet[child_class == "Node" & 
+                                  parent_class == "Generator" &
+                                  property == "Generation Participation Factor",
+                              .(Node = child_object, 
+                                genPF = as.numeric(value),
+                                Generator = parent_object,
+                                scenario, 
+                                pattern)]
+
+# sum LPF by region
+gen.genpf <- node.genpf[,.(gen.genpf = sum(genPF)), 
+                        by = .(Generator, scenario, pattern)]
+
+# generate warning if LPF does not sum to 1 in all regions
+if(gen.genpf[round(gen.genpf, 3) != 1,.N] > 0){
+    sink(warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: generation PF does not sum to one (1) for at least one generator"))
+    cat("\n\n")
+    print(gen.genpf[round(gen.genpf, 3) != 1, .(Generator, 
+                                                 gen.genpf = sprintf("%.6f", gen.genpf), 
+                                                 scenario, 
+                                                 pattern)], 
+          row.names = F,
+          n = nrow(gen.genpf[round(gen.genpf, 3) != 1]), 
+          width = p.width)
+    sink()
+}
+
 
 #------------------------------------------------------------------------------#
 # Check line and tfmr properties ----
@@ -765,8 +795,6 @@ if (any(Objects.sheet[!is.na(name),nchar(name) > 50])) {
 # ** check for properties that periods that require non-NA period_type_ids ----
 # have only tested a couple of these,
 period_id_props = Properties.sheet[grepl("(Hour|Day|Week|Month|Year)$", property)]
-period_id_table = data.table(period_id = c(6, 1, 2, 3, 4),
-                             period = c("Hour$", "Day$", "Week$", "Month$", "Year$"))
 
 period_id_props[, problem := NA]
 period_id_props[grepl("Hour$", property) & period_type_id != "6", problem := TRUE]
@@ -777,33 +805,38 @@ period_id_props[grepl("Year$", property) & period_type_id != "4", problem := TRU
 
 period_id_props = period_id_props[problem == TRUE]
 
-# we know that this doesn't work for max energy and target. 
-known.issues = period_id_props[grepl("^(Max Energy|Target)", property)]
+# assuming that all properties that require non-0 period_type_ids follow
+# this pattern
+problem.rows = period_id_props[grepl("^(Max Energy|Target)", property)]
 
-if (nrow(known.issues) > 0) {
+if (nrow(problem.rows) > 0) {
   sink(fatal.warnings, append = T) 
   cat("\n\n")
   cat(paste0("WARNING: the following property does not correspond to the ",
                "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
-               "This will not run properly.\n"))
-  print(known.issues, row.names = F, n = nrow(known.issues))
+               "This will not import.\n"))
+  print(problem.rows, row.names = F, n = nrow(problem.rows), width = p.width)
   sink()
 }
 
-# it problem doesn't work for these others, but we haven't checked
-unknown.issues = period_id_props[!grepl("^(Max Energy|Target)", property)]
+rm(problem.rows, period_id_props)
 
-if (nrow(unknown.issues) > 0) {
-  sink(warnings, append = T) 
-  cat("\n\n")
-  cat(paste0("WARNING: the following property does not correspond to the ",
-               "right period_type_id (Hour: 6, Day: 1, Week: 2, Month: 3, Year: 4). ",
-               "This is untested but may not run properly.\n"))
-  print(unknown.issues, row.names = F, n = nrow(unknown.issues))
-  sink()
+# ** check for duplicated objects ----
+dupes = duplicated(Objects.sheet, by = c("class", "name"))
+
+if (any(dupes)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following obejcts are defined twice. ",
+               "This may not import.\n"))
+    print(Objects.sheet[dupes], 
+          row.names = F, 
+          n = nrow(Objects.sheet[dupes]),
+          width = p.width)
+    sink()
 }
 
-rm(problem.row.mask, known.issues, unknown.issues, period_id_props)
+rm(dupes)
 
 # ** check for duplicated Properties.sheet definitions (by scenario) ----
 dupes = duplicated(Properties.sheet, 
@@ -880,85 +913,139 @@ if (any(dupes)) {
 
 rm(dupes)
 
-# ** check to make sure that all objects in Properties.sheet exist as objects ----
-object.list = Properties.sheet[,unique(child_object)]
+# ** make sure that all child objects in Properties.sheet exist as objects ----
+object.list = unique(Properties.sheet[,.(child_class, child_object)])
 
-object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, 
+                                      child_class = class, 
+                                      child_object = name)],
+                     object.list,
+                     all.y = TRUE)
 
-if (length(object.list) > 0) {
-  sink(fatal.warnings, append = T) 
-  cat("\n\n")
-  cat(paste0("WARNING: the following object(s) have defined properties but ",
-               "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
-               "these properties to other object. This may not run.\n"))
-  print(Properties.sheet[child_object %in% object.list,], 
-        row.names = F, 
-        n = nrow(Properties.sheet[child_object %in% object.list,]))
-  sink()
-}
+object.list = object.list[is.na(obj.id), .(child_class, child_object)]
 
-rm(object.list)
-
-# ** check to make sure that all parent objects in Properties.sheet exist as objects ----
-object.list = Properties.sheet[,unique(parent_object)]
-
-object.list = object.list[!(object.list %in% Objects.sheet[,name]) &
-                              object.list != "System"]
-
-if (length(object.list) > 0) {
+if (object.list[,.N] > 0) {
+    
+    to.print <- merge(Properties.sheet, 
+                      object.list, 
+                      by = c("child_class", "child_object"))
+    
     sink(fatal.warnings, append = T) 
     cat("\n\n")
-    cat(paste0("WARNING: the following parents object(s) are in Properties.sheet but ",
-               "are not defined in Objects.sheet. This may not import or run.\n"))
-    print(Properties.sheet[parent_object %in% object.list,], 
+    cat(paste0("WARNING: the following child_object(s) have defined properties ",
+               "but are not defined in Objects.sheet. This may result in PLEXOS",
+               " assigning these properties to other object. This may not run.\n"))
+    print(to.print, 
           row.names = F, 
-          n = nrow(Properties.sheet[parent_object %in% object.list,]))
+          n = nrow(to.print))
     sink()
+    
+    rm(to.print)
 }
 
 rm(object.list)
 
-# ** check to make sure that all objects in Memberships.sheet exist as objects ----
-object.list = unique(c(Memberships.sheet[,child_object], 
-                       Memberships.sheet[,parent_object]))
+# ** make sure that all parent objects in Properties.sheet exist as objects ----
+object.list = unique(Properties.sheet[parent_object != "System",
+                                      .(parent_class, parent_object)])
 
-object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, 
+                                      parent_class = class, 
+                                      parent_object = name)],
+                     object.list,
+                     all.y = TRUE)
 
-if (length(object.list) > 0) {
+object.list = object.list[is.na(obj.id), .(parent_class, parent_object)]
+
+if (object.list[,.N] > 0) {
+    
+    to.print <- merge(Properties.sheet, 
+                      object.list, 
+                      by = c("parent_class", "parent_object"))
+    
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following parent object(s) have defined properties ",
+               "but are not defined in Objects.sheet. This may result in PLEXOS",
+               " assigning these properties to other object. This may not run.\n"))
+    print(to.print, 
+          row.names = F, 
+          n = nrow(to.print))
+    sink()
+    
+    rm(to.print)
+}
+
+rm(object.list)
+
+# ** make sure that all objects in Memberships.sheet exist as objects ----
+object.list = unique(rbind(Memberships.sheet[,.(class = child_class, 
+                                                name = child_object)], 
+                           Memberships.sheet[,.(class = parent_class, 
+                                                name = parent_object)]))
+
+object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, class, name)],
+                     object.list,
+                     all.y = TRUE)
+
+object.list = object.list[is.na(obj.id), .(class, name)]
+
+if (object.list[,.N] > 0) {
+    
+    to.print <- rbind(merge(Memberships.sheet, 
+                            object.list[,.(parent_class = class, 
+                                           parent_object = name)], 
+                            by = c("parent_class", "parent_object")), 
+                      merge(Memberships.sheet, 
+                            object.list[,.(child_class = class, 
+                                           child_object = name)], 
+                            by = c("child_class", "child_object")))
+    
     sink(fatal.warnings, append = T) 
     cat("\n\n")
     cat(paste0("WARNING: the following object(s) have defined memberships but ",
                "are not defined in Objects.sheet. This may not import or run.\n"))
-    print(Memberships.sheet[child_object %in% object.list |
-                                parent_object %in% object.list,], 
+    print(to.print, 
           row.names = F, 
-          n = nrow(Memberships.sheet[child_object %in% object.list |
-                                         parent_object %in% object.list,]))
+          n = nrow(to.print))
     sink()
+    
+    rm(to.print)
 }
 
 rm(object.list)
 
-# ** check to make sure that all objects in Attributes.sheet exist as objects ----
-object.list = Attributes.sheet[,unique(name)]
+# ** make sure that all objects in Attributes.sheet exist as objects ----
+object.list = unique(Attributes.sheet[,.(class, name)])
 
-object.list = object.list[!(object.list %in% Objects.sheet[,name])]
+object.list <- merge(Objects.sheet[,.(obj.id = 1:.N, class, name)],
+                     object.list,
+                     all.y = TRUE)
 
-if (length(object.list) > 0) {
+object.list = object.list[is.na(obj.id), .(class, name)]
+
+if (object.list[,.N] > 0) {
+    
+    to.print <- merge(Attributes.sheet, 
+                      object.list, 
+                      by = c("class", "name"))
+    
     sink(fatal.warnings, append = T) 
     cat("\n\n")
     cat(paste0("WARNING: the following object(s) have defined attributes but ",
-               "are not defined in Objects.sheet. This may result in PLEXOS assigning ",
-               "these attributes to other object. This may not run.\n"))
-    print(Attributes.sheet[name %in% object.list,], 
+               "are not defined in Objects.sheet. This may result in PLEXOS ",
+               "assigning these attributes to other object. This may not run.\n"))
+    print(to.print, 
           row.names = F, 
-          n = nrow(Attributes.sheet[name %in% object.list,]))
+          n = nrow(to.print))
     sink()
+    
+    rm(to.print)
 }
 
 rm(object.list)
 
-# ** check to make sure that all objects in Reports.sheet exist as objects ----
+# ** make sure that all objects in Reports.sheet exist as objects ----
 object.list = Reports.sheet[,unique(object)]
 
 object.list = object.list[!(object.list %in% Objects.sheet[,name])]
@@ -976,7 +1063,7 @@ if (length(object.list) > 0) {
 
 rm(object.list)
 
-# ** check to make sure all scenarios have {Object} in front of them ----
+# ** make sure all scenarios have {Object} in front of them ----
 non.object.scens = Properties.sheet[,
                                     !(grepl("^\\{Object\\}", scenario) | is.na(scenario) | scenario == "")]
 
@@ -994,16 +1081,19 @@ if (any(non.object.scens)) {
 
 rm(non.object.scens)
 
-# ** check to make sure all data files have either slashes or {Object} ----
-non.object.dfs = Properties.sheet[,
-                                  !(grepl("^\\{Object\\}", filename) | is.na(filename) | grepl("[/\\\\]", filename))]
+# ** make sure all data files have either slashes or {Object} ----
+non.object.dfs = Properties.sheet[, !(grepl("^\\{Object\\}", filename) | 
+                                          is.na(filename) | 
+                                          grepl("[/\\\\]", filename))]
 
 if (any(non.object.dfs)) {
   sink(fatal.warnings, append = T) 
   cat("\n\n")
-  cat(paste0("WARNING: the following datafile entries need an object tag ",
-               "(i.e. '{Object}Scenario A' instead of 'Scenario A' This will",
-               " not be read correctly by PLEXOS.\n"))
+  cat(paste0("WARNING: the following datafile entries do not appear to be ",
+             "file paths and so need object tags (i.e. '{Object}datafile A' ",
+             "instead of 'datafile A' This will not be read correctly by ",
+             "PLEXOS. (note: if these are actually file paths and contain no ",
+             "slashes, you can ignore this message)\n"))
   print(Properties.sheet[non.object.dfs], 
         row.names = F,
         n = nrow(Properties.sheet[non.object.dfs]))
@@ -1011,6 +1101,26 @@ if (any(non.object.dfs)) {
 }
 
 rm(non.object.dfs)
+
+# ** make sure all variables have {Object} in front of them ----
+non.object.vars = Properties.sheet[,!(grepl("^\\{Object\\}", variable) | 
+                                          is.na(variable) | 
+                                          variable == "")]
+
+if (any(non.object.vars)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: the following variable entries need an object tag ",
+               "(i.e. '{Object}Variable A' instead of 'Variable A' This will",
+               " not be read correctly by PLEXOS.\n"))
+    print(Properties.sheet[non.object.vars], 
+          row.names = F, 
+          n = nrow(Properties.sheet[non.object.vars]), 
+          width = p.width)
+    sink()
+}
+
+rm(non.object.vars)
 
 # ** make sure scenario objects in Properties.sheet exist as objects ----
 object.scens <- Properties.sheet[, unique(scenario)]
@@ -1074,7 +1184,7 @@ if (length(object.vars) > 0) {
 
 rm(object.vars, colname)
 
-# ** check to make sure no value is non-numeric ----
+# ** make sure no value is non-numeric ----
 nonnum.value = suppressWarnings(Properties.sheet[,is.na(as.numeric(value))])
 
 if (any(nonnum.value)) {
