@@ -814,7 +814,12 @@ import_properties <- function(input.table,
             props.tab[,condition := input.table$condition]}
         
         if ("variable" %in% names(input.table)) {
-          props.tab[,variable := paste0("{Object}", input.table$variable)] }
+            
+            props.tab[,variable.temp := input.table[,variable]]
+            props.tab[!(is.na(variable.temp) | variable.temp %in% c("", " ")), 
+                      variable := paste0("{Object}", variable.temp)]
+            props.tab[,variable.temp := NULL]
+        }
         
         # add memo column if specified
         if (!is.na(memo.col)) {
