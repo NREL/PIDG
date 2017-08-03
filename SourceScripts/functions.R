@@ -776,34 +776,40 @@ import_properties <- function(input.table,
                       scenario := paste0("{Object}", scenario.temp)]
             props.tab[,scenario.temp := NULL]
             
-            if ("scenario.cat" %in% names(input.table)) {
-                
-                if (!is.na(scenario.cat)) {
-                    message(paste0("scenario.cat column overriding argument ", 
-                                   "scenario.cat"))
-                }
-                
-                scens <- unique(input.table[!(is.na(scenario) | scenario %in% c("", " ")),
-                                            .(scenario, scenario.cat)])
-                
-                if (scens[,.N] > 0) {
-                    
-                    add_scenarios(scens[,scenario], 
-                                  category = scens[,scenario.cat])
-                }
-                
-            } else {
-                # add scenarios to objects
-                scens <- input.table[!(is.na(scenario) | scenario %in% c("", " ")), 
-                                     unique(scenario)]
-                     
-                if (length(scens) > 0) {
-                    add_scenarios(scens)
-                }
-            }
-
         }
         
+        if (any(!is.na(props.tab$scenario))) {
+            
+            if ("scenario" %in% names(input.table) &
+                "scenario.cat" %in% names(input.table)) {
+                scens.to.add <- unique(input.table[,.(scenario, category = scenario.cat)])
+            } else {
+                scens.to.add <- data.table(scenario = character(), 
+                                           category = character())
+            }
+            
+            # add on any scenarios not in input.table
+            all.scens <- unique(props.tab[!is.na(scenario),
+                                          gsub("\\{Object\\}", "", scenario)])
+            all.scens <- all.scens[!(all.scens %in% scens.to.add$scenario)]
+            
+            if (length(all.scens) > 0) {
+                scens.to.add <- rbind(scens.to.add, 
+                                      data.table(scenario = all.scens, 
+                                                 category = NA))
+                scens.to.add <- unique(scens.to.add)
+            }
+            
+            # add category to non-categorized scenarios if was passed in
+            if (!is.na(scenario.cat)) {
+                scens.to.add[is.na(category), category := scenario.cat]
+            }
+            
+            # finally, add scenario objects
+            add_scenarios(scens.to.add$scenario, 
+                          category = scens.to.add$category)
+        }
+
         if ("action" %in% names(input.table)) {
           props.tab[,action := input.table$action]}
         
