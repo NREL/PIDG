@@ -777,7 +777,7 @@ import_properties <- function(input.table,
             props.tab[,scenario.temp := NULL]
             
         }
-        
+
         if (any(!is.na(props.tab$scenario))) {
             
             if ("scenario" %in% names(input.table) &
@@ -1196,9 +1196,10 @@ make_interleave_pointers <- function(parent.model, child.model,
                         variable.name = "Data File", value.name = "filename")
      
         import_properties(pointers, 
-                                datafile.col = "filename",
-                                scenario.name = filepointer.scenario)
-         
+                          datafile.col = "filename",
+                          scenario.name = filepointer.scenario, 
+                          scenario.cat = "Interleaved filepointers")
+        
         # what needs to be attached to the actual properties is the name of the
         # datafile object, not the file path. change values in the table from 
         # file paths to name of datafile objects, then add these to properties 
@@ -1266,10 +1267,11 @@ make_interleave_pointers <- function(parent.model, child.model,
         prop.cols <- prop.cols[prop.cols != "Generator"]
         
         import_properties(cur.mapped.tab, 
-                                datafile.col = prop.cols,
-                                overwrite = TRUE, 
-                                overwrite.cols = "filename",
-                                scenario.name = datafileobj.scenario)
+                          datafile.col = prop.cols,
+                          overwrite = TRUE, 
+                          overwrite.cols = "filename",
+                          scenario.name = datafileobj.scenario, 
+                          scenario.cat = "Interleaved filepointers")
     }
 
     if (is.data.table(template.object[[1]])) {
@@ -1309,11 +1311,12 @@ make_interleave_pointers <- function(parent.model, child.model,
                             value.name = "filename")
             
             import_properties(pointers, 
-                                    object.class = "Data File", 
-                                    names.col = "DataFileObj", 
-                                    collection.name = "Data Files", 
-                                    datafile.col = "filename",
-                                    scenario.name = filepointer.scenario)
+                              object.class = "Data File", 
+                              names.col = "DataFileObj", 
+                              collection.name = "Data Files", 
+                              datafile.col = "filename",
+                              scenario.name = filepointer.scenario, 
+                              scenario.cat = "Interleaved filepointers")
             
             # what needs to be attached to the actual properties is the name of the
             # datafile object, not the file path. change values in the table from 
@@ -1326,29 +1329,16 @@ make_interleave_pointers <- function(parent.model, child.model,
                     paste("{Object}Pass", j)) 
             
             import_properties(template.object.copy, 
-                                    object.class = object.class.col,
-                                    names.col = object.class.col, 
-                                    collection.name = paste0(object.class.col, "s"), 
-                                    datafile.col = template.object.cols,
-                                    overwrite = TRUE, 
-                                    overwrite.cols = "filename",
-                                    scenario.name = datafileobj.scenario)
+                              object.class = object.class.col,
+                              names.col = object.class.col, 
+                              collection.name = paste0(object.class.col, "s"), 
+                              datafile.col = template.object.cols,
+                              overwrite = TRUE, 
+                              overwrite.cols = "filename",
+                              scenario.name = datafileobj.scenario, 
+                              scenario.cat = "Interleaved filepointers")
         } 
     }
-    
-    # create scenario if it doesn't exist
-    scens.to.create <- c(filepointer.scenario, datafileobj.scenario)
-    scens.to.create <- scens.to.create[!(scens.to.create %in% Objects.sheet$name)]
-    
-    if (length(scens.to.create) > 0) {
-        cur.scen.to.objects <- initialize_table(Objects.sheet, 
-                                                length(scens.to.create), 
-                                                list(name = scens.to.create, 
-                                                     category = 'Interleaved filepointers',
-                                                     class = 'Scenario'))
-        
-        Objects.sheet <<- merge_sheet_w_table(Objects.sheet, cur.scen.to.objects)
-    } 
     
     # optionally add scenario to model
     # note: there is currently no way to pass in FALSE to this variable, but
