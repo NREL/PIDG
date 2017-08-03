@@ -87,54 +87,6 @@ print(nodes.summary,
 cat("\n\n")
 sink()
 
-#------------------------------------------------------------------------------#
-# Check for missing objects in Objects sheet ----
-#------------------------------------------------------------------------------#
-
-message("... checking for missing objects")
-
-properties.objects <- rbind(Properties.sheet[,.(object = unique(parent_object))],
-                            Properties.sheet[,.(object = unique(child_object))])
-
-properties.objects <- properties.objects[object != "System",
-                                         .(object = unique(object))]
-
-missing <- which(properties.objects[,object] %in% Objects.sheet[,name] == F)
-
-missing.properties.objects <- properties.objects[missing,]
-
-if(nrow(missing.properties.objects) > 0){
-  sink(fatal.warnings, append = TRUE)
-  cat("\n\n")
-  cat("WARNING: The following objects in Properties.sheet are not found in ",
-      "Objects.sheet\n\n")
-  print(missing.properties.objects, 
-        row.names = FALSE, 
-        quote = FALSE)
-  sink()
-}
-
-memberships.objects <- rbind(Memberships.sheet[,.(object = unique(parent_object))],
-                             Memberships.sheet[,.(object = unique(child_object))])
-
-memberships.objects <- memberships.objects[object != "System",
-                                         .(object = unique(object))]
-
-missing <- which(memberships.objects[,object] %in% Objects.sheet[,name] == F)
-
-missing.memberships.objects <- memberships.objects[missing,]
-
-if(nrow(missing.memberships.objects) > 0){
-  sink(fatal.warnings, append = TRUE)
-  cat("\n\n")
-  cat("WARNING: The following objects in Memberships.sheet are not found in ",
-      "Objects.sheet\n\n")
-  print(missing.memberships.objects, 
-        n = nrow(missing.memberships.objects),
-        row.names = FALSE, 
-        quote = FALSE)
-  sink()
-}
 
 #------------------------------------------------------------------------------#
 # Add gen-fuel memberships to db summary ----
@@ -174,148 +126,152 @@ rm(gen.fuel)
 # Check generator properties ----
 #------------------------------------------------------------------------------#
 
-message("checking generator properties")
-
-### pull generator capacity by fuel and state
-generator.map <- Objects.sheet[class == "Generator", 
-                               .(Generator = name, 
-                                 `Generator category` = category, 
-                                 scenario = NA_character_)]
-
-generator.map <- merge(generator.map,
-                       Properties.sheet[child_class == "Generator" &
-                                          property == "Max Capacity",
-                                        .(Generator = child_object,
-                                          `Max Capacity` = value, 
-                                          scenario)], 
-                       by = c("Generator", "scenario"), all.x = T)
-
-# pull generator fuels
-generator.map <- merge(generator.map,
-                       Memberships.sheet[parent_class == "Generator" &
-                                             collection == "Fuel",
-                                         .(Generator = parent_object,
-                                           Fuel = child_object)],
-                       by = "Generator", all = T)
-
-# pull generator start fuels
-generator.map <- merge(generator.map,
-                       Memberships.sheet[parent_class == "Generator" &
-                                             collection == "Start Fuel",
-                                         .(Generator = parent_object,
-                                           `Start Fuel` = child_object)],
-                       by = "Generator", all = T)
-
-# pull generator nodes
-generator.map <- merge(generator.map,
-                       Memberships.sheet[parent_class == "Generator" &
-                                           child_class == "Node",
-                                         .(Generator = parent_object,
-                                           Node = child_object)],
-                       by = "Generator", all.x = T)
-
-# pull regions
-generator.map <- merge(generator.map,
-                       Memberships.sheet[parent_class == "Node" &
-                                           child_class == "Region",
-                                         .(Node = parent_object,
-                                           Region = child_object)],
-                       by = "Node", all.x = T)
-
-# pull RE units and scenarios
-generator.map <- merge(generator.map,
-                       Properties.sheet[child_class == "Generator" &
-                                          property == "Units",
-                                        .(Generator = child_object,
-                                          Units = value, 
-                                          scenario)], 
-                       by = c("Generator", "scenario"), all.x = T)
-
-# clean up scenario name
-generator.map[,scenario := gsub("{Object}", "",scenario, fixed = T)]
-generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
-
-# flag generators with missing missing nodes, regions, fuels, capacity, units
-
-gens.missing.units <- unique(generator.map[is.na(Units), .(Generator, Units, `Generator category`)])
-gens.missing.capacity <- unique(generator.map[is.na(`Max Capacity`), .(Generator, `Max Capacity`, `Generator category`)])
-gens.missing.node <- unique(generator.map[is.na(Node), .(Generator, Node)])
-
-# add to missing items list
-missing.items.list <- c(missing.items.list, "gens.missing.units", 
-                        "gens.missing.capacity",
-                        "gens.missing.node")
-
-# change colums that can be numeric to numeric
-generator.map <- generator.map[, lapply(.SD, function(x) {
-  if (!is.na(suppressWarnings(as.numeric(x[1])))) {
-    suppressWarnings(as.numeric(x))} else x
-})]
-
-# if don't have max capacity or units, sub in 0 so next lines don't break
-if (all(is.na(generator.map$`Max Capacity`))) {
-    generator.map[, `Max Capacity` := NULL] # is a char column
-    generator.map[, `Max Capacity` := 0]
+if (Objects.sheet[class == "Generator", .N] > 0) {
+    message("checking generator properties")
+    
+    ### pull generator capacity by fuel and state
+    generator.map <- Objects.sheet[class == "Generator", 
+                                   .(Generator = name, 
+                                     `Generator category` = category, 
+                                     scenario = NA_character_)]
+    
+    generator.map <- merge(generator.map,
+                           Properties.sheet[child_class == "Generator" &
+                                                property == "Max Capacity",
+                                            .(Generator = child_object,
+                                              `Max Capacity` = value, 
+                                              scenario)], 
+                           by = c("Generator", "scenario"), all.x = T)
+    
+    # pull generator fuels
+    generator.map <- merge(generator.map,
+                           Memberships.sheet[parent_class == "Generator" &
+                                                 collection == "Fuel",
+                                             .(Generator = parent_object,
+                                               Fuel = child_object)],
+                           by = "Generator", all = T)
+    
+    # pull generator start fuels
+    generator.map <- merge(generator.map,
+                           Memberships.sheet[parent_class == "Generator" &
+                                                 collection == "Start Fuel",
+                                             .(Generator = parent_object,
+                                               `Start Fuel` = child_object)],
+                           by = "Generator", all = T)
+    
+    # pull generator nodes
+    generator.map <- merge(generator.map,
+                           Memberships.sheet[parent_class == "Generator" &
+                                                 child_class == "Node",
+                                             .(Generator = parent_object,
+                                               Node = child_object)],
+                           by = "Generator", all.x = T)
+    
+    # pull regions
+    generator.map <- merge(generator.map,
+                           Memberships.sheet[parent_class == "Node" &
+                                                 child_class == "Region",
+                                             .(Node = parent_object,
+                                               Region = child_object)],
+                           by = "Node", all.x = T)
+    
+    # pull RE units and scenarios
+    generator.map <- merge(generator.map,
+                           Properties.sheet[child_class == "Generator" &
+                                                property == "Units",
+                                            .(Generator = child_object,
+                                              Units = value, 
+                                              scenario)], 
+                           by = c("Generator", "scenario"), all.x = T)
+    
+    # clean up scenario name
+    generator.map[,scenario := gsub("{Object}", "",scenario, fixed = T)]
+    generator.map[,scenario := ifelse(is.na(scenario),"No scenario",scenario)]
+    
+    # flag generators with missing missing nodes, regions, fuels, capacity, units
+    
+    gens.missing.units <- unique(generator.map[is.na(Units), .(Generator, Units, `Generator category`)])
+    gens.missing.capacity <- unique(generator.map[is.na(`Max Capacity`), .(Generator, `Max Capacity`, `Generator category`)])
+    gens.missing.node <- unique(generator.map[is.na(Node), .(Generator, Node)])
+    
+    # add to missing items list
+    missing.items.list <- c(missing.items.list, "gens.missing.units", 
+                            "gens.missing.capacity",
+                            "gens.missing.node")
+    
+    # change colums that can be numeric to numeric
+    generator.map <- generator.map[, lapply(.SD, function(x) {
+        if (!is.na(suppressWarnings(as.numeric(x[1])))) {
+            suppressWarnings(as.numeric(x))} else x
+    })]
+    
+    # if don't have max capacity or units, sub in 0 so next lines don't break
+    if (all(is.na(generator.map$`Max Capacity`))) {
+        generator.map[, `Max Capacity` := NULL] # is a char column
+        generator.map[, `Max Capacity` := 0]
+    }
+    
+    if (all(is.na(generator.map$Units))) {
+        generator.map[, Units := NULL] # is a char column
+        generator.map[, Units := 0]
+    }
+    
+    if (!is.numeric(generator.map$`Max Capacity`)) {
+        generator.map[, `Max Capacity` := as.numeric(`Max Capacity`)] # is a char column
+    }
+    
+    if (!is.numeric(generator.map$Units)) {
+        generator.map[, Units := as.numeric(Units)] # is a char column
+    }
+    
+    
+    # summarize generator properties by fuel and save to OutputFiles
+    generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(`Max Capacity`*Units),
+                                               avg.capacity = mean(`Max Capacity`),
+                                               total.capacity = sum(`Max Capacity`),
+                                               min.capacity = min(`Max Capacity`),
+                                               max.capacity = max(`Max Capacity`),
+                                               sd.capacity = sd(`Max Capacity`),
+                                               avg.units = mean(Units),
+                                               total.units = sum(Units),
+                                               min.units = min(Units),
+                                               max.units = max(Units),
+                                               sd.units = sd(Units)),
+                                            by = .(`Generator category`, Fuel, `Start Fuel`,  Region, scenario)]
+    
+    generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(`Max Capacity`*Units),
+                                                avg.capacity = mean(`Max Capacity`),
+                                                total.capacity = sum(`Max Capacity`),
+                                                min.capacity = min(`Max Capacity`),
+                                                max.capacity = max(`Max Capacity`),
+                                                sd.capacity = sd(`Max Capacity`),
+                                                avg.units = mean(Units),
+                                                total.units = sum(Units),
+                                                min.units = min(Units),
+                                                max.units = max(Units),
+                                                sd.units = sd(Units)),
+                                             by = .(`Generator category`, Fuel, `Start Fuel`, scenario)]
+    
+    # tidy up
+    setorder(generator.fuels.region, Region, `Generator category`, Fuel, `Start Fuel`, scenario)
+    setorder(generator.fuels.summary, `Generator category`, Fuel, `Start Fuel`, scenario)
+    
+    sink(db.summary, append = TRUE)
+    cat("Summary of generators in database")
+    cat("\n------------\n\n")
+    cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n\n", data.check.dir))
+    print(generator.fuels.summary,
+          row.names = F, 
+          n = nrow(generator.fuels.summary))
+    cat("\n\n")
+    sink()
+    
+    write.csv(generator.fuels.region,
+              file = file.path(data.check.dir, "generator.summary.by.fuel.region.csv"),
+              quote = F, row.names = F)
+    
+    
 }
-
-if (all(is.na(generator.map$Units))) {
-    generator.map[, Units := NULL] # is a char column
-    generator.map[, Units := 0]
-}
-
-if (!is.numeric(generator.map$`Max Capacity`)) {
-    generator.map[, `Max Capacity` := as.numeric(`Max Capacity`)] # is a char column
-}
-
-if (!is.numeric(generator.map$Units)) {
-    generator.map[, Units := as.numeric(Units)] # is a char column
-}
-
-
-# summarize generator properties by fuel and save to OutputFiles
-generator.fuels.region <- generator.map[,.(total.cap.x.units = sum(`Max Capacity`*Units),
-                                           avg.capacity = mean(`Max Capacity`),
-                                           total.capacity = sum(`Max Capacity`),
-                                           min.capacity = min(`Max Capacity`),
-                                           max.capacity = max(`Max Capacity`),
-                                           sd.capacity = sd(`Max Capacity`),
-                                           avg.units = mean(Units),
-                                           total.units = sum(Units),
-                                           min.units = min(Units),
-                                           max.units = max(Units),
-                                           sd.units = sd(Units)),
-                                        by = .(`Generator category`, Fuel, `Start Fuel`,  Region, scenario)]
-
-generator.fuels.summary <- generator.map[,.(total.cap.x.units = sum(`Max Capacity`*Units),
-                                            avg.capacity = mean(`Max Capacity`),
-                                            total.capacity = sum(`Max Capacity`),
-                                            min.capacity = min(`Max Capacity`),
-                                            max.capacity = max(`Max Capacity`),
-                                            sd.capacity = sd(`Max Capacity`),
-                                            avg.units = mean(Units),
-                                            total.units = sum(Units),
-                                            min.units = min(Units),
-                                            max.units = max(Units),
-                                            sd.units = sd(Units)),
-                                         by = .(`Generator category`, Fuel, `Start Fuel`, scenario)]
-
-# tidy up
-setorder(generator.fuels.region, Region, `Generator category`, Fuel, `Start Fuel`, scenario)
-setorder(generator.fuels.summary, `Generator category`, Fuel, `Start Fuel`, scenario)
-
-sink(db.summary, append = TRUE)
-cat("Summary of generators in database")
-cat("\n------------\n\n")
-cat(sprintf("To see this information by region, see %s/generator.summary.by.fuel.region.csv\n\n", data.check.dir))
-print(generator.fuels.summary,
-				  row.names = F, 
-				  n = nrow(generator.fuels.summary))
-cat("\n\n")
-sink()
-
-write.csv(generator.fuels.region,
-          file = file.path(data.check.dir, "generator.summary.by.fuel.region.csv"),
-          quote = F, row.names = F)
 
 # plot generator capacity plus existing RE by state
 if(data.check.plots){
