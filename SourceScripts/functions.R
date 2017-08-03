@@ -482,7 +482,7 @@ merge_property_by_fuel <- function(input.table,
                                "category"))
     
     prop.cols <- all.cols[!(all.cols %in% non.prop.cols)] 
-    
+
     # make sure all non.prop.cols are actually in the dt
     non.prop.cols <- all.cols[!(all.cols %in% prop.cols)] 
     
@@ -612,7 +612,8 @@ merge_property_by_fuel <- function(input.table,
         }
     }
     
-    return.cols = c('Generator', prop.cols, if("scenario"%in% names(input.table)) "scenario", band.col)
+    return.cols = c('Generator', prop.cols, non.prop.cols)
+    return.cols = return.cols[!(return.cols %in% c("category", cap.band.col))]
     
     # return generator + property
     return(generator.data.table[,.SD, 
