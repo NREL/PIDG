@@ -4,7 +4,7 @@
 
 PLEXOS can read in any Excel file that has the following structure: one workbook with 6 worksheets named Objects, Categories, Memberships, Attributes, Properties, and Reports, each containing specific columns. These worksheets can hold almost all the information needed to construct and personalize a working model in PLEXOS. The PLEXOS Input Data Generator (PIDG) can take data stored in csv files or a postgreSQL database and compile it into an appropriately-formatted Excel workbook. This allows the input data to be scripted, reproducible, and version-controlled.
 
-Soon, there may be a command line interface that would enable the automated import of a PIDG-produced Excel file into PLEXOS. For now, this step requires human intervention through PLEXOS's import wizard. When working with a large database, it is often useful to uncheck the "Check Data" box in the second step of the import wizard to cut down import time. Finally, there are two types of data that cannot be imported using PLEXOS's import wizard: anything in the "Settings" menu (unit changes) and toggles for writing specific flat files (it is possible to import the option to write all or no flat files, but not to select which to write out separately from selecting what properties will be reported).
+Soon, there may be a command line interface that would enable the automated import of a PIDG-produced Excel file into PLEXOS. For now, this step requires human intervention through PLEXOS's import wizard. When working with a large database, it is often useful to uncheck the "Check Data" box in the second step of the import wizard to cut down import time (note: this is only tested for importing into a fresh database, not for importing into an existing database). Finally, there are two types of data that cannot be imported using PLEXOS's import wizard: anything in the "Settings" menu (ex: unit changes) and toggles for writing specific flat files (it is possible to import the option to write all or no flat files, but not to select which to write out separately from selecting what properties will be reported).
 
 This README describes how to run PIDG, all options for types of data to import, and required data formats.
 
@@ -12,7 +12,14 @@ This README describes how to run PIDG, all options for types of data to import, 
 
 PIDG is run by **PIDG/driver.R** and all pointers to data and options for reading data are set in a separate input parameters file. To run PIDG, set up in the input parameters file (all options for this defined below) and run **PIDG/driver.R** (required arguments defined below). **PIDG/driver.R** will read in data referred to in the input parameter file and run PIDG's core scripts to process, compile, check, and output that data.
 
-### PIDG/driver.R
+The file structure usually as follows. All of these will be project-specific and should be storage outside of the PIDG repository. An example of this setup can be found in **PIDG/example**.
+
+* a file called **run_PIDG.R** which loads the arguments in the *PIDG/driver.R parameters* section below and calls **PIDG/driver.R**
+* an **input_params.R** file that specifies what data to use by defining variables described below in the *Input parameter file options* section
+* a directory called **inputfiles** 
+* a directory called **outputfiles**
+
+### PIDG/driver.R parameters
 
 **PIDG/driver.R** can be run either through the command line with the following arguments (in argname=argvalue form) or by running another R script which includes defining the following variables and then sourcing **PIDG/driver.R**.
 
@@ -27,15 +34,38 @@ PIDG is run by **PIDG/driver.R** and all pointers to data and options for readin
 
 ### Input parameter file options
 
-[[lots of text here]]
+The input parameter file tells PIDG where to look for data and how to process it. Data can be stored in a PSS/E (version 31) .raw file, .csv files, or in a postgresql database. Pointers to data are defined in the input parameters file in one of several lists, and which list data is read in in will determine how PIDG will treat the data. This is a list of possible variables that can be defined as input parameters. Note: below, "data pointer" means either a path to a csv file, relative to the variable `inputfiles.dir` or a SQL query (beginning with "SELECT") that will be sent to the postgresql database defined by `inputfiles.db`. Unless otherwise specified, if a variable is undefined, it will be ignored.
 
-order does not matter
+switches:
+* `choose.input`: character, can to "pre.parsed" or "raw.psse". Defaults to "pre.parsed" if undefined. Set to "pre.parsed" unless data should be read from a PSS/E .raw file.
+* `plexos.version`: numeric, can be 6 or 7. Defaults to 7 if undefined. This determine the column names in the Properties tab of the final Excel workbook, since these are different between PLEXOS 6.xx and 7.xx.
 
-[[lots of text here]]
+basic functionality:
+* `raw.file.path`: character, optional. filepointer to the PSS/E .raw file.
+* `objects.list`: list. Import objects, their categories, any memberships with child objects, and any properties.
+* `memberships.list`: list. Import memberships between objects and any properties of memberships.
+* `object.property.list`: list. Import properties of objects only.
+* `generic.import.files`: list. Import anything.
 
-[[lots of text here]]
+convenience functions:
+* `generator.property.by.fuel.list`: list. Rather than importing object-specific properties, import generator properties by their category (optionally multiplying by max capacity of the generators and/or number of units)
+* `interleave.models.list`: list. More easily enable running DA-RT (etc) sequence by created filepointers between objects for certain properies, either for generator category or for specific objects (CHECK THIS ONE). Optionally, set models to run interleaved.
+* `compact.generic.import.files`: list. Convenience format for importing models and horizons. 
+* `reserve.files` - MAYBE. Semi-convenient format for importing reserves. 
+* `interfaces.files.list` - MAYBE - need to update this. Semi-convenient format for importing interfaces. 
+* `constraint.import.files`: Convenience format for importing constraints. 
+* `turn.off.except.in.scen.list` - MAYBE. Convenience format for setting Units = 0 in the base data and Units = 1 in a scenario for any object (?).
+* `map.region.to.load.file`: soon to be deprecated - MAYBE: Convenience format for creating load data file object with multiple load scenarios for each region.
+* `isolated.nodes.to.remove.args.list` - MAYBE. Convenience format that creates a scenario to turn off isolated nodes and recalculate load participation factor. 
+* `units.to.delete.files` - MAYBE. Convenience format to remove objects entirely from the database.
 
-[[lots of text here]]
+soon to be deprecated:
+* `node.file`: charcter, optional. data pointer to path that defines nodes. soon to be deprecated.
+* `line.file`: charcter, optional. data pointer to path that defines lines. soon to be deprecated.
+* `generator.file`: charcter, optional. data pointer to path that defines generators. soon to be deprecated.
+* `transmformer.file`: charcter, optional. data pointer to path that defines transformers. soon to be deprecated.
+* `load.file`: charcter, optional. data pointer to path that defines load by node. soon to be deprecated. CHECK for LPFs HERE
+
 
 ### Basic PIDG code structure and troubleshooting
 
@@ -56,6 +86,8 @@ It is also important to heed "fatal warnings." Most of these are known to cause 
 
 **********
 **********
+
+## STOP HERE. Everything below this is old and probably no longer relevant.
 
 #### Guide to input parameter file
 
