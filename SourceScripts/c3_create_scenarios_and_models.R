@@ -89,12 +89,13 @@ if (exists('isolated.nodes.to.remove.args.list')) {
                                         overwrite = TRUE)
             }
             
+            rm(redo.lpfs.to.properties, isolated.nodes.to.remove.args, 
+               scenario.remove.isolated)
+            
         } # end if (is.data.table(isolated.nodes.to.remove))
         
         # clean up
-        rm(cur.category, cur.scenario, redo.lpfs.to.properties, 
-           isolated.nodes.to.remove.args, isolated.nodes.to.remove, 
-           scenario.remove.isolated)
+        rm(cur.category, cur.scenario, isolated.nodes.to.remove)
         
     }
 } else {

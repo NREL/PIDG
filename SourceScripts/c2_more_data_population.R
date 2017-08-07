@@ -159,7 +159,7 @@ if (exists("map.region.to.load.file")) {
     message(">>  map.region.to.load.file does not exist ... skipping")
 }
 
-if (exists("load.data.table")) {
+if (exists("load.data.table") && !is.na(load.data.table)) {
 
     # add load participation factor to nodes
     # uses Load.table, node.data.table
@@ -747,11 +747,13 @@ if (exists("generator.property.by.fuel.list")) {
                 
             }
             
+            rm(cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel)
+            
         } # end if (is.data.table(cur.data))
     }
     
     # clean up
-    rm(cur.data, cur.map.fuel.args, cur.prop.sheet.args, mapped.by.fuel, elem)
+    rm(cur.data, elem)
 }
 
 #----------------------------------------------------------------------------|
