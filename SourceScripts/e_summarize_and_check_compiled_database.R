@@ -657,9 +657,13 @@ problem.row.mask = Properties.sheet[,
 if (any(problem.row.mask)) {
   sink(fatal.warnings, append = T) 
   cat("\n\n")
-  cat("WARNING: the following property sheet value(s) are missing. This will not import.\n")
+  cat(paste0("WARNING: the following entries in property sheet are missing at ",
+             "least one of: parent_object, child_object, parent_class, ",
+             "child_class, collection, property, value, band_id. This will not ",
+             "import.\n"))
   print(Properties.sheet[problem.row.mask,
-                         .(parent_object, child_object, property, value, scenario)],
+                         .(parent_object, child_object, parent_class, 
+                           child_class, collection, property, value, band_id)],
         row.names = F,
         n = nrow(Properties.sheet[problem.row.mask,]))
   sink()
