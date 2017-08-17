@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------|
 
 #------------------------------------------------------------------------------|
-# test generic object/property adder ----
+# add objects from objects.list ----
 #------------------------------------------------------------------------------|
 
 if (exists("objects.list")) {
@@ -92,138 +92,115 @@ if (exists("objects.list")) {
     message(">>  objects.list does not exist ... skipping")
 }
 
+
 #------------------------------------------------------------------------------|
-# add load (mapped by region by external file) and lpf ----
+# import generic files from generic.import.files----
 #------------------------------------------------------------------------------|
 
-if (exists("map.region.to.load.file")) {
-    
-    load.to.region.map <- read_data(map.region.to.load.file)
-    
-    if (is.data.table(load.to.region.map)) {
-        # create data file object name column
-        load.to.region.map[,DataFile := paste0(load.to.region.map[,Region], 
-                                               " Load File Object")]
-        
-        # add load data file objects to objects .sheet 
-        # uses load.to.region.map
-        load.file.to.object <- load.to.region.map[, .(`Data File` = DataFile, 
-                                                      category = "Regional Load")]
+#uses generic.import.files
 
-        import_objects(load.file.to.object)
-        
-        # load file object to as regional load
-        # uses load.to.region.map
-        load.to.region.props <- load.to.region.map[, .(Region, 
-                                                       Load = paste0("{Object}", DataFile))]
-        
-        import_properties(load.to.region.props, datafile.col = "Load")
-        
-        # load to properties (attach filepath to object based on scenario)
-        # uses load.to.region.map
-        
-        # loop through each column and add columns
-        load.scens <- colnames(load.to.region.map)
-        load.scens <- load.scens[!(load.scens %in% c('Region', 'DataFile'))]
-        
-        for (name in load.scens) {
-            # create small table to pass to import_properties
-            cur.tab <- load.to.region.map[,.SD, .SDcols = c('DataFile', name)]
-            
-            setnames(cur.tab, name, "filename")
-            
-            import_properties(cur.tab, names.col = 'DataFile', 
-                                    object.class = 'Data File', 
-                                    collection.name = 'Data Files', 
-                                    datafile.col = "filename", 
-                                    scenario.name = ifelse(tolower(name) == 'base', 
-                                                           NA, name))
-        }
-        
-        setnames(cur.tab, "datafile_filename", name) #hacky. fix this later
-        
-        # add any scenarios associated with load as objects
-        load.scens <- load.scens[tolower(load.scens) != 'base']
-        
-        if (length(load.scens)) {
-            add_scenarios(load.scens, category = "Load scenarios")
-        }
+all.sheets <- c("Objects", "Categories", "Memberships", "Attributes", 
+                "Properties", "Reports")
 
-        # clean up
-        rm(load.to.region.map, load.file.to.object, load.to.region.props, 
-           load.scens, cur.tab)
-        
-    } # end if (is.data.table(load.to.region.map))
+import_and_merge <- function(imported.tab, sheet.name) {
     
-} else {
-    message(">>  map.region.to.load.file does not exist ... skipping")
+    cur.tab <- import_table_generic(imported.tab, sheet.name)
+    
+    if (!is.null(cur.tab)) {
+        
+        assign(paste0(sheet.name, ".sheet"), 
+               merge_sheet_w_table(get(paste0(sheet.name,".sheet")), cur.tab), 
+               envir = .GlobalEnv)
+    } 
 }
 
-if (exists("load.data.table") && !is.na(load.data.table)) {
-
-    # add load participation factor to nodes
-    # uses Load.table, node.data.table
+#import and merge all generic import files
+if (exists('generic.import.files')) {
     
-    message('... Adding load participation factor from load.data.table')
-    
-    # original table has duplicates which aren't related to each other--only select
-    # one. Should refine later. 
-    # since there are NAs, must convert them to zero for the next step to work 
-    # correctly and for PLEXOS to read them in correctly
-    # remove any negative loads and replace them with zero
-    # convert NaNs to zero for PLEXOS to read them in correctly
-    
-    if ("Status" %in% names(load.data.table)) {
+    invisible(lapply(generic.import.files, function (x) {
         
-        # remove Status = 0 load
-        load.data.table[,Load := Load * Status]
+        # read in data, change blanks to NA, and import into .sheet tables
+        imported.file <- read_data(x[[1]],
+                                   fill = TRUE, 
+                                   header = FALSE, 
+                                   strip.white = TRUE, 
+                                   fix.db.colnames = FALSE)
+        
+        if (is.data.table(imported.file)) {
+            
+            message(sprintf("... importing from %s", x[[1]]))
+            
+            # hacky: if a table type is given, assume that table needs 
+            # formatting (put header as first col, add begin and end tags) 
+            if (length(x) > 1) {
+                
+                type <- x[[2]]
+                
+                # add headers as first row (useful for reading from db)
+                if (names(imported.file)[1] != "V1") {
+                    imported.file <- rbind(as.list(names(imported.file)), 
+                                           imported.file)
+                    
+                    # change names to V1:Vn
+                    setnames(imported.file, 
+                             names(imported.file), 
+                             paste0("V", 1:length(imported.file)))
+                }
+                
+                # add / BEGIN and / END tags
+                imported.file <- rbindlist(list(list(V1 = "/ BEGIN", 
+                                                     V2 = type), 
+                                                imported.file, 
+                                                list(V1 = "/ END", 
+                                                     V2 = type)), 
+                                           fill = TRUE)
+                
+            }
+            
+            for (j in seq_len(ncol(imported.file)))
+                set(imported.file, which(imported.file[[j]] == ""), j, NA)
+            
+            lapply(all.sheets, function(y) import_and_merge(imported.file, y))
+            
+        } # end if (is.data.table(imported.file)) 
+    }))
+} else { message('>>  no generic import files defined ... skipping') }
+
+rm(import_and_merge, all.sheets)
+
+#------------------------------------------------------------------------------|
+# import compact generic files from compact.generic.import.files ----
+#------------------------------------------------------------------------------|
+# uses compact.generic.import.files
+# loop through compact generic input files and read in tables
+
+if (exists('compact.generic.import.files')) {
+    
+    for (i in seq_along(compact.generic.import.files)) {
+        
+        cur.data <- read_data(compact.generic.import.files[[i]][[1]])
+        
+        if (is.data.table(cur.data)) {
+            message(sprintf("... importing from %s", 
+                            compact.generic.import.files[[i]][1]))
+            
+            cur.obj.type <- compact.generic.import.files[[i]][2]
+            
+            # read in file, add appropriate sections to object, attib, memb .sheet tables
+            import_table_compact(cur.data, cur.obj.type)
+            
+        } # end if (is.data.table(cur.data))
     }
-    
-    load.part.fact.table <- load.data.table[, .(Node, Load)] 
-    
-    # remove negative LPFs
-    if (any(load.part.fact.table[,Load < 0])) {
-        message("Removing negative load participation factors... hope that is OK")
-        load.part.fact.table[Load < 0, Load := 0] 
-    }
-    # if there are multiple LPFs for a given node, sum those
-    if (any(load.part.fact.table[,length(Load) > 1, by = "Node"][,V1]
-    )) {
-        message(
-            paste0("Summing multiple load participation factors at same node... ",
-                   "hope that is OK"))
-        load.part.fact.table <- 
-            load.part.fact.table[,list(Load = sum(Load)), by = "Node"]
-    }
-    
-    # merge with nodes table
-    load.part.fact.table <-
-        merge(load.part.fact.table, 
-              # node.data.table[, .(Node, Region)], 
-              Memberships.sheet[parent_class == "Node" & collection == "Region", 
-                                .(Node = parent_object, Region = child_object)],
-              by = "Node", all.y = TRUE)
-    load.part.fact.table[is.na(Load), Load := 0] 
-    
-    load.part.fact.table[, LPF := prop.table(Load), by = "Region"]
-    load.part.fact.table[is.nan(LPF), LPF := 0] 
-    
-    # add LPFs to properties .sheet
-    lpf.to.node.properties <- 
-        load.part.fact.table[,.(Node, `Load Participation Factor` = LPF)]
-    
-    import_properties(lpf.to.node.properties, object.class = 'Node', 
-                            names.col = 'Node', collection.name = 'Nodes')
     
     # clean up
-    rm(lpf.to.node.properties, load.part.fact.table)
+    if (exists("cur.data")) rm(cur.data)
+    if (exists("cur.obj.type")) rm(cur.obj.type)
     
-} else {
-    message(">>  load.data.table does not exist ... skipping")
-}
+} else { message('>>  no compact generic import files defined ... skipping')}
+
 
 #------------------------------------------------------------------------------|
-# add interfaces from interface file list ----
+# convenience function: add interfaces from interface file list ----
 #------------------------------------------------------------------------------|
 
 # uses interfaces.files.list
@@ -246,7 +223,7 @@ if(exists('interfaces.files.list')) {
             # Add interfaces to objects sheet
             import_objects(interface.names[, .(Interface = Interface.Name, 
                                                category)])
-                
+            
             # Add interface properties - changed to data.file. need to genericize, 
             # change to data file object so can put in 2014 and 2022 data files, etc 
             # import_properties(interface.properties, object.class = "Interface", 
@@ -254,9 +231,9 @@ if(exists('interfaces.files.list')) {
             
             # add min and max flow datafile pointers 
             import_properties(interface.properties, object.class = "Interface", 
-                                    names.col = "Interface.Name", 
-                                    collection.name = "Interfaces", 
-                                    datafile.col = c("Min Flow", "Max Flow"))
+                              names.col = "Interface.Name", 
+                              collection.name = "Interfaces", 
+                              datafile.col = c("Min Flow", "Max Flow"))
             
             
             # Add interface-line memberships
@@ -272,7 +249,7 @@ if(exists('interfaces.files.list')) {
                                            `Flow Coefficient`)]
             
             import_properties(interface.coefficients.to.props, 
-                                    parent.col = "Interface")
+                              parent.col = "Interface")
             
         } else {
             message(sprintf(">>  %s does not exist ... skipping", 
@@ -284,7 +261,7 @@ if(exists('interfaces.files.list')) {
 }
 
 #------------------------------------------------------------------------------|
-# add reserves ----
+# convenience function: add reserves from reserve.files ----
 #------------------------------------------------------------------------------|
 
 # read in files from reserve.files specified in input_params
@@ -436,115 +413,11 @@ if(exists('reserve.files')) {
     message('>>  no reserves files defined ... skipping')
 }
 
+
 #------------------------------------------------------------------------------|
-# Import Generic Files ----
+# convenience function: add user-defined constraints ----
 # -----------------------------------------------------------------------------|
 
-#uses generic.import.files
-
-all.sheets <- c("Objects", "Categories", "Memberships", "Attributes", 
-                "Properties", "Reports")
-
-import_and_merge <- function(imported.tab, sheet.name) {
-    
-    cur.tab <- import_table_generic(imported.tab, sheet.name)
-    
-    if (!is.null(cur.tab)) {
-        
-        assign(paste0(sheet.name, ".sheet"), 
-               merge_sheet_w_table(get(paste0(sheet.name,".sheet")), cur.tab), 
-               envir = .GlobalEnv)
-    } 
-}
-
-#import and merge all generic import files
-if (exists('generic.import.files')) {
-    
-    invisible(lapply(generic.import.files, function (x) {
-        
-        # read in data, change blanks to NA, and import into .sheet tables
-        imported.file <- read_data(x[[1]],
-                                   fill = TRUE, 
-                                   header = FALSE, 
-                                   strip.white = TRUE, 
-                                   fix.db.colnames = FALSE)
-        
-        if (is.data.table(imported.file)) {
-            
-            message(sprintf("... importing from %s", x[[1]]))
-            
-            # hacky: if a table type is given, assume that table needs 
-            # formatting (put header as first col, add begin and end tags) 
-            if (length(x) > 1) {
-                
-                type <- x[[2]]
-                
-                # add headers as first row (useful for reading from db)
-                if (names(imported.file)[1] != "V1") {
-                    imported.file <- rbind(as.list(names(imported.file)), 
-                                           imported.file)
-                    
-                    # change names to V1:Vn
-                    setnames(imported.file, 
-                             names(imported.file), 
-                             paste0("V", 1:length(imported.file)))
-                }
-                
-                # add / BEGIN and / END tags
-                imported.file <- rbindlist(list(list(V1 = "/ BEGIN", 
-                                                     V2 = type), 
-                                                imported.file, 
-                                                list(V1 = "/ END", 
-                                                     V2 = type)), 
-                                           fill = TRUE)
-                
-            }
-            
-            for (j in seq_len(ncol(imported.file)))
-                set(imported.file, which(imported.file[[j]] == ""), j, NA)
-            
-            lapply(all.sheets, function(y) import_and_merge(imported.file, y))
-            
-        } # end if (is.data.table(imported.file)) 
-    }))
-} else { message('>>  no generic import files defined ... skipping') }
-
-rm(import_and_merge, all.sheets)
-
-#------------------------------------------------------------------------------|
-# Import Compact Generic Files ----
-#------------------------------------------------------------------------------|
-# uses compact.generic.import.files
-# loop through compact generic input files and read in tables
-
-if (exists('compact.generic.import.files')) {
-    
-    for (i in seq_along(compact.generic.import.files)) {
-        
-        cur.data <- read_data(compact.generic.import.files[[i]][[1]])
-        
-        if (is.data.table(cur.data)) {
-            message(sprintf("... importing from %s", 
-                            compact.generic.import.files[[i]][1]))
-            
-            cur.obj.type <- compact.generic.import.files[[i]][2]
-            
-            # read in file, add appropriate sections to object, attib, memb .sheet tables
-            import_table_compact(cur.data, cur.obj.type)
-            
-        } # end if (is.data.table(cur.data))
-    }
-    
-    # clean up
-    if (exists("cur.data")) rm(cur.data)
-    if (exists("cur.obj.type")) rm(cur.obj.type)
-    
-} else { message('>>  no compact generic import files defined ... skipping')}
-
-#------------------------------------------------------------------------------|
-# User-defined Constraint Import                                      ----
-# -----------------------------------------------------------------------------|
-# 
 if (exists('constraint.import.files')) {
     
     for (i in seq_along(constraint.import.files)) {
@@ -569,9 +442,21 @@ if (exists('constraint.import.files')) {
     
 } else { message('>>  no constraint import files defined ... skipping')}
 
+
+#------------------------------------------------------------------------------|
+# convenience function: placeholder for psse parsing ----
+# -----------------------------------------------------------------------------|
+
+# convenience functions from before that would be useful for PSS/E parsing
+#     - gen by fuel, create fuels, recategorize gens 
+#     - 0 MW lines by some standard limit
+#     - remap region and zone, recreate objects, recategorize
+# these may belong as optional pss/e parsing arguments
+
 #------------------------------------------------------------------------------|
 # Create generator.data.table ----
 #------------------------------------------------------------------------------|
+# this is used to map generators by category later on
 
 generator.data.table <- unique(Objects.sheet[class == "Generator",
                                              .(Generator = name, category)])
@@ -594,7 +479,8 @@ generator.data.table <- merge(generator.data.table,
 
 generator.data.table <- merge(generator.data.table,
                               Properties.sheet[property == "Max Capacity" & 
-                                                   child_class == "Generator",
+                                                   child_class == "Generator" & 
+                                                   is.na(scenario),
                                                .(Generator = child_object,
                                                  `Max Capacity` = as.numeric(value))],
                               all.x = TRUE)
@@ -604,7 +490,7 @@ generator.data.table <- merge(generator.data.table,
 #------------------------------------------------------------------------------|
 
 #------------------------------------------------------------------------------|
-# test generic membership adder ----
+# add memberships, membership properties from memberships.list ----
 #------------------------------------------------------------------------------|
 
 if (exists("memberships.list")) {
@@ -672,7 +558,7 @@ if (exists("memberships.list")) {
 }
 
 #------------------------------------------------------------------------------|
-# generator properties by fuel----
+# convenience function: generator properties by category ----
 #------------------------------------------------------------------------------|
 
 # uses generator.property.by.fuel.list
@@ -757,7 +643,7 @@ if (exists("generator.property.by.fuel.list")) {
 }
 
 #----------------------------------------------------------------------------|
-# add object properties by object ----
+# add object properties from object.property.list ----
 #----------------------------------------------------------------------------|
 # uses generator.property.file.list
 
@@ -818,7 +704,7 @@ if (exists("object.property.list")) {
 }
 
 #------------------------------------------------------------------------------|
-# turn off objects except in scenario ----
+# convenience function: turn off objects except in scenario ----
 #------------------------------------------------------------------------------|
 # uses turn.off.except.in.scen.list
 if (exists('turn.off.except.in.scen.list')) {
@@ -881,8 +767,111 @@ if (exists('turn.off.except.in.scen.list')) {
     message('>>  turn.off.except.in.scen.list does not exist ... skipping')
 }
 
+
 #------------------------------------------------------------------------------|
-# Import model interleave                                       ----
+# convenience function: remove isolated nodes ----
+# -----------------------------------------------------------------------------|
+if (exists('isolated.nodes.to.remove.args.list')) {
+    for (i in seq_along(isolated.nodes.to.remove.args.list)) {
+        # pull element from the list
+        isolated.nodes.to.remove.args = isolated.nodes.to.remove.args.list[[i]]
+        
+        # get file, scenario, and category names
+        isolated.nodes.to.remove.file = isolated.nodes.to.remove.args[1]
+        cur.scenario = isolated.nodes.to.remove.args["scenario"]
+        cur.category = isolated.nodes.to.remove.args["scenario.cat"]
+        
+        isolated.nodes.to.remove <- read_data(isolated.nodes.to.remove.file)
+        
+        if (is.data.table(isolated.nodes.to.remove)) {
+            
+            if (is.null(cur.scenario))
+                cur.scenario = NA
+            
+            if (is.null(cur.category))
+                cur.category = NA
+            
+            message(sprintf("... removing isolated nodes from  %s in scenario %s in category %s", 
+                            isolated.nodes.to.remove.file,
+                            cur.scenario,
+                            cur.category))
+            
+            if (!is.na(cur.scenario)) {
+                # scenario to objects
+                scenario.remove.isolated <- 
+                    initialize_table(Objects.sheet, 1, 
+                                     list(class = "Scenario", 
+                                          name = cur.scenario, 
+                                          category = cur.category))
+                
+                Objects.sheet <- merge_sheet_w_table(Objects.sheet, 
+                                                     scenario.remove.isolated)
+            }
+            
+            # scenario to properties
+            # uses isolated.nodes.to.remove.file
+            # read in isolated nodes to remove file and change it to a veector
+            isolated.nodes.to.remove[,Units:="0"]
+            
+            if(!is.na(cur.scenario)){
+                import_properties(isolated.nodes.to.remove, names.col = "Node.Name", 
+                                  object.class = "Node", collection.name =  "Nodes",
+                                  scenario.name = cur.scenario)
+            } else {
+                import_properties(isolated.nodes.to.remove, names.col = "Node.Name", 
+                                  object.class = "Node", collection.name =  "Nodes",
+                                  overwrite = TRUE)
+            }
+            
+            # recalculate relevant LPFs for other nodes 
+            # pull node LPFs in base case (no scenario) from properties sheet for all 
+            # nodes except the ones to be removed
+            redo.lpfs.to.properties <- 
+                Properties.sheet[property == "Load Participation Factor" & 
+                                     !(child_object %in% isolated.nodes.to.remove$Node.Name) &
+                                     is.na(scenario), 
+                                 .(Node = child_object, value)]
+            
+            # add region for calculating LPF
+            redo.lpfs.to.properties <-
+                merge(redo.lpfs.to.properties, Memberships.sheet[parent_class == "Node" & collection == "Region",
+                                                                 .(Node = parent_object, Region = child_object)], 
+                      by = "Node")
+            
+            # recalculate LPF
+            redo.lpfs.to.properties[,`Load Participation Factor` := prop.table(as.numeric(value)), 
+                                    by = "Region"]
+            redo.lpfs.to.properties <- redo.lpfs.to.properties[value != `Load Participation Factor`]
+            
+            # for nodes with LPFs that have changed, assign the new LPFs to the nodes
+            # and attach the scenario
+            redo.lpfs.to.properties[, c("value", "Region") := NULL]
+            
+            if(!is.na(cur.scenario)){
+                import_properties(redo.lpfs.to.properties, names.col = "Node", 
+                                  object.class = "Node", collection.name =  "Nodes",
+                                  scenario.name = cur.scenario)
+            } else {
+                import_properties(redo.lpfs.to.properties, names.col = "Node", 
+                                  object.class = "Node", collection.name =  "Nodes",
+                                  overwrite = TRUE)
+            }
+            
+            rm(redo.lpfs.to.properties, isolated.nodes.to.remove.args, 
+               scenario.remove.isolated)
+            
+        } # end if (is.data.table(isolated.nodes.to.remove))
+        
+        # clean up
+        rm(cur.category, cur.scenario, isolated.nodes.to.remove)
+        
+    }
+} else {
+    message(">>  isolated.nodes.to.remove.file does not exist ... skipping")
+}
+
+#------------------------------------------------------------------------------|
+# convenience function: import model interleave ----
 #------------------------------------------------------------------------------|
 
 if (exists("interleave.models.list")) {

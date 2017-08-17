@@ -1,7 +1,4 @@
-#clean data to allow the final export to import to Plexos and run with no errors
-
-# uses 
-#   units.to.delete.file
+# clean data to allow the final export to import to Plexos/run with no errors
 
 #------------------------------------------------------------------------------|
 # Optional inputs ----
@@ -32,12 +29,6 @@ if (exists('units.to.delete.files')) {
 } else {
    message(">>  units.to.delete.file does not exist ... skipping")
 }
-
-# add standard flow limits to lines with ratings of zero
-# do this in a scenario (in script d)
-
-# add standard flow limits to transformers with ratings of zero
-# do this in a scenario (in script d)
 
 
 #------------------------------------------------------------------------------|

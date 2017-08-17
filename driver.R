@@ -183,9 +183,7 @@ runAllFiles <- function () {
     source(file.path(pidg.dir, "SourceScripts", "b_create_sheet_tables.R"))
     
     message("populating tables...")
-    source(file.path(pidg.dir, "SourceScripts", "c1_populate_sheet_tables_with_raw_tables.R"))
-    source(file.path(pidg.dir, "SourceScripts", "c2_more_data_population.R"))
-    source(file.path(pidg.dir, "SourceScripts", "c3_create_scenarios_and_models.R"))
+    source(file.path(pidg.dir, "SourceScripts", "c2_data_population.R"))
     
     message("cleaning tables...")
     source(file.path(pidg.dir, "SourceScripts", "d_data_cleanup.R"))
@@ -197,7 +195,7 @@ runAllFiles <- function () {
     }else{
         message("checking data...")
     }
-    source(file.path(pidg.dir, "SourceScripts", "e_summarize_and_check_compiled_database.R"))
+    source(file.path(pidg.dir, "SourceScripts", "e_data_checks.R"))
     
     # export tables
     if (export.wb) {
