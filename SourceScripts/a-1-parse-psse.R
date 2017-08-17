@@ -21,40 +21,22 @@
 #       but cleaning 3-winding transformer data needs to be written 
 #
 
+#------------------------------------------------------------------------------|
+# setup ----
+#------------------------------------------------------------------------------|
 
-# #------------------------------------------------------------------------------|
-# # fake user inputs (for devel) ----
-# #------------------------------------------------------------------------------|
-# 
-# root.dir <- "~/GitHub/India_GtG/Process_for_PLEXOS_import/PSSE2PLEXOS/Update"
-# 
-# raw.file <- file.path(root.dir, "inputs/Base Case_2021-22-Peak-Demand_edit.raw")
-# output.dir <- file.path(root.dir, "outputs_a-1_raw_psse")
-# 
-
-# #------------------------------------------------------------------------------|
-# # setup ----
-# #------------------------------------------------------------------------------|
-# 
-# # load packages
-# pacman::p_load(data.table)
-# 
-# # make sure output.dir exists
-# if (!dir.exists(output.dir)) {
-#     dir.create(output.dir, recursive = TRUE)
-# }
-
-
+# signpost
+message(sprintf("... reading in data from PSS/E .raw file %s", cur.raw.file))
 
 # read in files
-num.cols <- max(count.fields(file.path(inputfiles.dir, raw.file.path), 
+num.cols <- max(count.fields(file.path(inputfiles.dir, cur.raw.file), 
                              sep = ','), na.rm = TRUE)
 
 # can't use fread b/c not a regular file (diff rows have diff num cols)
 # need to suppress warnings b/c read.csv doesn't like blanks in the file
 raw.table <- data.table(
              suppressWarnings(
-             read.csv(file.path(inputfiles.dir, raw.file.path), 
+             read.csv(file.path(inputfiles.dir, cur.raw.file), 
                       stringsAsFactors = FALSE, 
                       fill = TRUE, 
                       header=FALSE, 
@@ -133,6 +115,15 @@ rm(start.index, end.index, table.delims, data.name, i, sub.table, all.blank)
 mva.base <- as.numeric(raw.table[1, V2])
 
 psse.version <- as.numeric(raw.table[1, V3])
+
+# right now, this is coded specifically for version 31
+if (psse.version != 31) {
+    stop(sprintf(paste0("Attempting to parse a PSS/E .raw file in version %s ",
+                        "format. I only know how to parse PSS/E .raw files in ",
+                        "version 31 format. Please edit the code,",
+                        " change PSS/E versions, or some other manual hack. ",
+                        "PSS/E file name: %s"), psse.version, cur.raw.file))
+}
 
 # no.data.vec
 
@@ -416,9 +407,9 @@ for (tab.name in done.tables) {
 rm(tab.name, info)
 
 
-# #------------------------------------------------------------------------------|
-# # write out ----
-# #------------------------------------------------------------------------------|
+#------------------------------------------------------------------------------|
+# write out ----
+#------------------------------------------------------------------------------|
 # 
 # # write out csv files
 # for (tab.name in done.tables) {
@@ -428,23 +419,23 @@ rm(tab.name, info)
 #               quote = FALSE)
 # }
 # 
-# # write out report
-# conn <- file(file.path(output.dir, "00-metadata.txt"))
-# 
-# writeLines(c(as.character(Sys.time()), "\n\n",
-#              paste("psse file parsed:", basename(raw.file), "\n"),
-#              paste("psse version:", psse.version, "\n"),
-#              paste("mva base:", mva.base, "\n\n"),
-#              paste("tables processed:\n\t-", paste0(done.tables, collapse = "\n\t- "), "\n\n"),
-#              paste("tables skipped:\n\t-", paste0(skip.tables, collapse = "\n\t- "), "\n\n"),
-#              paste("empty tables:\n\t-", paste0(no.data.vec, collapse = "\n\t- "), "\n\n"),
-#              "----------\n\n",
-#              paste("other information:\n\t-", paste0(tab.info, collapse = "\n\t- "))
-#              ), 
-#            conn, 
-#            sep = "")
-# 
-# close(conn)
-# 
-# # clean up
-# rm(tab.name, conn)
+# write out report
+conn <- file(file.path(outputfiles.dir, "00-metadata.txt"))
+
+writeLines(c(as.character(Sys.time()), "\n\n",
+             paste("psse file parsed:", basename(cur.raw.file), "\n"),
+             paste("psse version:", psse.version, "\n"),
+             paste("mva base:", mva.base, "\n\n"),
+             paste("tables processed:\n\t-", paste0(done.tables, collapse = "\n\t- "), "\n\n"),
+             paste("tables skipped:\n\t-", paste0(skip.tables, collapse = "\n\t- "), "\n\n"),
+             paste("empty tables:\n\t-", paste0(no.data.vec, collapse = "\n\t- "), "\n\n"),
+             "----------\n\n",
+             paste("other information:\n\t-", paste0(tab.info, collapse = "\n\t- "))
+             ),
+           conn,
+           sep = "")
+
+close(conn)
+
+# clean up
+rm(conn, mva.base, no.data.vec, tab.info, psse.version, raw.table)

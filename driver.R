@@ -41,9 +41,10 @@ if (length(cl.args) > 0) {
     }
     
     # clean up
-    rm(cl.args, cl.args.vec, arg.name)
+    rm(cl.args.vec, arg.name)
 }
 
+rm(cl.args)
 
 #------------------------------------------------------------------------------|
 # check inputs and set defaults ----
@@ -173,9 +174,21 @@ runAllFiles <- function () {
     
     # only parse psse if need to
     if (choose.input == 'raw.psse') {
-        message("importing PSSE files...")
-        source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
-        source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
+        
+        # if running here, want to parse in place
+        parse.in.place <- TRUE
+        
+        if (exists("raw.file.list")) {
+            for (cur.raw.file in raw.file.list) {
+                # hacky... move cur.raw.file to global env so scripts can find it
+                cur.raw.file <<- cur.raw.file 
+                
+                message("importing PSSE files...")
+                source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
+                source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
+                
+            }
+        }
     }
     
     # proceed with rest of data compilation
