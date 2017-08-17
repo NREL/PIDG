@@ -561,19 +561,37 @@ if (exists("memberships.list")) {
 # convenience function: generator properties by category ----
 #------------------------------------------------------------------------------|
 
-# uses generator.property.by.fuel.list
-if (exists("generator.property.by.fuel.list")) {
+if (exists("generator.property.by.fuel.list") & 
+    !exists("generator.property.by.cat.list")) {
     
-    for (elem in seq_along(generator.property.by.fuel.list)) {
+    message(">>  generator.property.by.fuel.list is defined, but it is ",
+            "deprecated. changed to generator.property.by.cat.list. ", 
+            "please redefine this variable next time.")
+    
+    generator.property.by.cat.list <- generator.property.by.fuel.list
+    
+} else if (exists("generator.property.by.fuel.list") & 
+           exists("generator.property.by.cat.list"))  {
+    
+    message(paste0(">>  generator.property.by.fuel.list and ",
+                   "generator.property.by.cat.list are both defined. ",
+                   "generator.property.by.fuel.list is deprecated and will ",
+                   "be ignored."))
+}
 
-        cur.data <- read_data(generator.property.by.fuel.list[[elem]][[1]])
+# uses generator.property.by.cat.list
+if (exists("generator.property.by.cat.list")) {
+    
+    for (elem in seq_along(generator.property.by.cat.list)) {
+
+        cur.data <- read_data(generator.property.by.cat.list[[elem]][[1]])
         
         check_colname_cap(cur.data, version = plexos.version)
         
         if (is.data.table(cur.data)) {
             
             message(sprintf("... Adding properties from %s", 
-                            generator.property.by.fuel.list[[elem]][1]))
+                            generator.property.by.cat.list[[elem]][1]))
             
             # shifting from doing this by fuel to by category
             if ("Fuel" %in% names(cur.data)) {
@@ -581,12 +599,12 @@ if (exists("generator.property.by.fuel.list")) {
                 message(sprintf(paste0("in merge_property_by_fuel, please change",
                                       " 'fuel' to 'category' in %s. ",
                                       "I'll do this for you for now."),
-                                generator.property.by.fuel.list[[elem]][1]))
+                                generator.property.by.cat.list[[elem]][1]))
             }
             
             # set up arguments for merge_property_by_fuel
-            if ("fuel.map.args" %in% names(generator.property.by.fuel.list[[elem]])) {
-                cur.map.fuel.args <- as.list(generator.property.by.fuel.list[[elem]][["fuel.map.args"]])
+            if ("fuel.map.args" %in% names(generator.property.by.cat.list[[elem]])) {
+                cur.map.fuel.args <- as.list(generator.property.by.cat.list[[elem]][["fuel.map.args"]])
             } else {
                 cur.map.fuel.args <- list()
             }
@@ -597,7 +615,7 @@ if (exists("generator.property.by.fuel.list")) {
                                        "auto-populate prop.cols. for the future,",
                                        " please remove prop.cols from input ",
                                        "params when you pass in %s"),
-                                generator.property.by.fuel.list[[elem]][1]))
+                                generator.property.by.cat.list[[elem]][1]))
                 
                 cur.map.fuel.args <- cur.map.fuel.args[names(cur.map.fuel.args) != "prop.cols"]
             }
@@ -611,8 +629,8 @@ if (exists("generator.property.by.fuel.list")) {
             mapped.by.fuel <- do.call(merge_property_by_fuel, cur.map.fuel.args)
             
             # set up args for import_properties, using output of merge by fuel  
-            if ("add.to.prop.args" %in% names(generator.property.by.fuel.list[[elem]])) {
-                cur.prop.sheet.args <- as.list(generator.property.by.fuel.list[[elem]][["add.to.prop.args"]])
+            if ("add.to.prop.args" %in% names(generator.property.by.cat.list[[elem]])) {
+                cur.prop.sheet.args <- as.list(generator.property.by.cat.list[[elem]][["add.to.prop.args"]])
             } else {
                 cur.prop.sheet.args <- list()
             }
