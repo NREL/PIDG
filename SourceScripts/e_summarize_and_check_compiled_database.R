@@ -1184,15 +1184,15 @@ for(item in missing.items.list){
 
 # show data check reports 
 if(data.check.plots == TRUE){
-    file.show(db.summary)
+#    file.show(db.summary)
 }
     
 if(length(readLines(warnings, warn = F)) > 1){
-    file.show(warnings)
+i#    file.show(warnings)
 }
 
 if(length(readLines(fatal.warnings, warn = F)) > 1){
-    file.show(fatal.warnings)
+i#    file.show(fatal.warnings)
 }
 
 
