@@ -144,20 +144,6 @@ source(input.params)
 # set defaults for required input parameter variables ----
 #------------------------------------------------------------------------------|
 
-# set default choose.input to 'pre.parsed' if not set
-if (!exists("choose.input")){
-    
-    choose.input <- "pre.parsed"
-    
-} else {
-    
-    if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
-        
-        stop(paste("Please set 'choose.input' in input_params",
-                   "to 'raw.psse' or 'pre.parsed'"))
-    }
-}
-
 # set plexos.version to 7 if not provided
 if (!exists("plexos.version")) {
     
@@ -172,22 +158,19 @@ if (!exists("plexos.version")) {
 
 runAllFiles <- function () {
     
-    # only parse psse if need to
-    if (choose.input == 'raw.psse') {
+    if (exists("raw.file.list")) {
         
         # if running here, want to parse in place
         parse.in.place <- TRUE
         
-        if (exists("raw.file.list")) {
-            for (cur.raw.file in raw.file.list) {
-                # hacky... move cur.raw.file to global env so scripts can find it
-                cur.raw.file <<- cur.raw.file 
-                
-                message("importing PSSE files...")
-                source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
-                source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
-                
-            }
+        for (cur.raw.file in raw.file.list) {
+            # hacky... move cur.raw.file to global env so scripts can find it
+            cur.raw.file <<- cur.raw.file 
+            
+            message("importing PSSE files...")
+            source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
+            source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
+            
         }
     }
     

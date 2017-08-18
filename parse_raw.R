@@ -14,7 +14,6 @@ pacman::p_load(data.table)
 # be v clear about what assumptions are being made
 # then clean up inputs
 # be able to loop through PSSE files
-# remove raw.psse/pre.parsed argument
 # 
 # if time: comparer (otherwise do this thurs night)
 # decide where outputs should go
