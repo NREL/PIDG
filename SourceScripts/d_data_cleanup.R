@@ -32,21 +32,6 @@ if (exists('units.to.delete.files')) {
 
 
 #------------------------------------------------------------------------------|
-# Data cleaning ----
-#------------------------------------------------------------------------------|
-
-
-# Plexoscan't handle min stable levels that are less than zero. Change these
-# to zero and notify user.
-if (any(Properties.sheet[property=="Min Stable Level",
-                         as.numeric(value) < 0])) {
-  message('Changing negative min stable levels to 0 MW... hope that is OK')
-  Properties.sheet[property=="Min Stable Level" & as.numeric(value) < 0,
-                   value := "0"]
-}
-
-
-#------------------------------------------------------------------------------|
 # Alphabetize all categories ----
 #------------------------------------------------------------------------------|
 

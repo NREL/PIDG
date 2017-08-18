@@ -508,6 +508,23 @@ if(gen.genpf[round(gen.genpf, 3) != 1,.N] > 0){
 }
 
 
+# check for negative min stable levels ----
+problem.row.mask = Properties.sheet[,property == "Min Stable Level" & 
+                                        as.numeric(value) < 0]
+
+if (any(problem.row.mask)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: there are negative min stable levels in Properties.sheet\n"))
+    print(Properties.sheet[problem.row.mask],
+          row.names = F,
+          n = nrow(Properties.sheet[problem.row.mask]))
+    sink()
+}
+
+rm(problem.row.mask)
+
+
 #------------------------------------------------------------------------------#
 # Check line and tfmr properties ----
 #------------------------------------------------------------------------------#

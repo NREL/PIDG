@@ -82,7 +82,7 @@ fix_db_colnames <- function(x) {
     x <- paste(toupper(substring(s, 1, 1)), substring(s, 2),
                sep = "", collapse = "_")
     
-    # hard cord exceptions
+    # hard cord exceptions - may need to add to this
     if (x == "Voll") x <- "VoLL"
     if (x == "Vors") x <- "VoRS"
     if (grepl(" At ", x)) x <- gsub(" At ", " at ", x)
@@ -917,6 +917,7 @@ import_memberships <- function(input.table,
     if ("notes" %in% names(input.table)) input.table[, notes := NULL]
     
     # loop through other columns, add them as memberships to objs in first col
+    # should probably just melt this instead of looping
     all.membs <- initialize_table(model.table = Memberships.sheet, 
                                   nrows = 0)
     

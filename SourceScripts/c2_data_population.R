@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------|
 
 #------------------------------------------------------------------------------|
-# add objects from objects.list ----
+# objects.list ----
 #------------------------------------------------------------------------------|
 
 if (exists("objects.list")) {
@@ -94,7 +94,7 @@ if (exists("objects.list")) {
 
 
 #------------------------------------------------------------------------------|
-# import generic files from generic.import.files----
+# generic.import.files----
 #------------------------------------------------------------------------------|
 
 #uses generic.import.files
@@ -169,7 +169,7 @@ if (exists('generic.import.files')) {
 rm(import_and_merge, all.sheets)
 
 #------------------------------------------------------------------------------|
-# import compact generic files from compact.generic.import.files ----
+# compact.generic.import.files ----
 #------------------------------------------------------------------------------|
 # uses compact.generic.import.files
 # loop through compact generic input files and read in tables
@@ -200,7 +200,7 @@ if (exists('compact.generic.import.files')) {
 
 
 #------------------------------------------------------------------------------|
-# convenience function: add interfaces from interface file list ----
+# convenience function: interface.file.list ----
 #------------------------------------------------------------------------------|
 
 # uses interfaces.files.list
@@ -261,7 +261,7 @@ if(exists('interfaces.files.list')) {
 }
 
 #------------------------------------------------------------------------------|
-# convenience function: add reserves from reserve.files ----
+# convenience function: reserve.files ----
 #------------------------------------------------------------------------------|
 
 # read in files from reserve.files specified in input_params
@@ -415,7 +415,7 @@ if(exists('reserve.files')) {
 
 
 #------------------------------------------------------------------------------|
-# convenience function: add user-defined constraints ----
+# convenience function: user-defined constraints ----
 # -----------------------------------------------------------------------------|
 
 if (exists('constraint.import.files')) {
@@ -451,6 +451,10 @@ if (exists('constraint.import.files')) {
 #     - gen by fuel, create fuels, recategorize gens 
 #     - 0 MW lines by some standard limit
 #     - remap region and zone, recreate objects, recategorize
+# checker:
+#     - negative min stable level
+#     - neg reactance interregion line
+#     - interregion transformer
 # these may belong as optional pss/e parsing arguments
 
 #------------------------------------------------------------------------------|
@@ -490,7 +494,7 @@ generator.data.table <- merge(generator.data.table,
 #------------------------------------------------------------------------------|
 
 #------------------------------------------------------------------------------|
-# add memberships, membership properties from memberships.list ----
+# memberships.list ----
 #------------------------------------------------------------------------------|
 
 if (exists("memberships.list")) {
