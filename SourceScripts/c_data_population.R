@@ -835,14 +835,31 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             # read in isolated nodes to remove file and change it to a veector
             isolated.nodes.to.remove[,Units:="0"]
             
+            # turn off generators on isolated nodes
+            isolated.generators.to.remove = generator.data.table[Node %in%
+                                                                     isolated.nodes.to.remove[,Node.Name],
+                                                                 .(Generator)]
+            
+            isolated.generators.to.remove[,Units:="0"]
+            
             if(!is.na(cur.scenario)){
                 import_properties(isolated.nodes.to.remove, names.col = "Node.Name", 
                                   object.class = "Node", collection.name =  "Nodes",
                                   scenario.name = cur.scenario)
+                
+                import_properties(isolated.generators.to.remove, names.col = "Generator",
+                                  object.class = "Generator", collection.name =  "Generators",
+                                  scenario.name = cur.scenario)
+                
             } else {
                 import_properties(isolated.nodes.to.remove, names.col = "Node.Name", 
                                   object.class = "Node", collection.name =  "Nodes",
                                   overwrite = TRUE)
+                
+                import_properties(isolated.generators.to.remove, names.col = "Generator",
+                                  object.class = "Generator", collection.name =  "Generators",
+                                  overwrite = TRUE)
+                
             }
             
             # recalculate relevant LPFs for other nodes 
@@ -880,7 +897,7 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             }
             
             rm(redo.lpfs.to.properties, isolated.nodes.to.remove.args, 
-               scenario.remove.isolated)
+               scenario.remove.isolated, isolated.generators.to.remove)
             
         } # end if (is.data.table(isolated.nodes.to.remove))
         
