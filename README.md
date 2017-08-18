@@ -19,14 +19,16 @@ The file structure usually as follows. All of these will be project-specific and
 * a directory called **inputfiles** 
 * a directory called **outputfiles**
 
+Note: **PIDG/driver.R** can also be called from the command line, using a format like this: `$ Rscript PIDG/driver.R pidg.dir=EXAMPLE_DIR output.wb.name=EXCELFILE.XLSX`, where argument names are exactly anything listed in the **"PIDG/driver.R parameters"**. Thhe file **run_PIDG.R** could also be set up this way, but is currently not in **PIDG/example**.  
+
 ### PIDG/driver.R parameters
 
-**PIDG/driver.R** can be run either through the command line with the following arguments (in argname=argvalue form) or by running another R script which includes defining the following variables and then sourcing **PIDG/driver.R**.
+**PIDG/driver.R** can be run either through the command line with the following arguments (see previous section) or by running another R script which includes defining the following variables (i.e. **run_PIDG.R**) and then sourcing **PIDG/driver.R**.
 
 * `pidg.dir`: required. path to directory of the PIDG repo. like any of the following path inputs, this can be an absolute path or, if calling from another script that sets the working directory, a path relative to the working directory
 * `input.params`: required. path to input parameter file. 
 * `inputfiles.dir`: optional (required if input parameters file contains pointers to csv files). directory in which all input csv files are stored. paths in the input parameter file will be interpreted as relative to `inputfiles.dir`
-* `inputfiles.db`: optional (required if input parameter file contains SQL queries). list with the following named elements: `drv`, `host`, `dbname`, `user`, `password`, all arguments of RPostgreSQL's function `dbConnect()`. this is used to open a connection to a postgreSQL database 
+* `inputfiles.db`: optional (required if input parameter file contains SQL queries). list with the following named elements: `drv`, `host`, `dbname`, `user`, `password`, all arguments of RPostgreSQL's function `dbConnect()`. this is used to open a connection to a postgreSQL database. NOTE: capital letters and spaces don't play well in PostgreSQL column names. To handle this, PIDG includes a column name converter for data in PostgreSQL. When naming columns in PostgreSQL, follow the convention described in the rest of this document but keep everything lowercase. Instead of a space, use a single underscore, and instead of an underscore, use two underscores. *Note:* some PLEXOS property names are not consistently capitalized. If you are using any of those in a database other than VoLL and VoRS, you may need to edit the function `fix_db_colnames()` in **functions.R**.
 * `outputfiles.dir`: optional. directory where the output workbook and data check outputs will be saved. if does not exist, will be set to directory where `input.params` lives
 * `output.wb.name`: optional. name (including ".xlsx") of workbook to be saved. if not set, workbook will automatically be saved as "pidg\_export\_[*current\_datetime*].xlsx"
 * `export.db`: optional. logical, setting whether Excel workbook will be saved. setting this to `FALSE` can be useful for testing if the stage of writing the Excel file takes a while. if not set, will be set to `TRUE`
@@ -37,34 +39,59 @@ The file structure usually as follows. All of these will be project-specific and
 The input parameter file tells PIDG where to look for data and how to process it. Data can be stored in a PSS/E (version 31) .raw file, .csv files, or in a postgresql database. Pointers to data are defined in the input parameters file in one of several lists, and which list data is read in in will determine how PIDG will treat the data. This is a list of possible variables that can be defined as input parameters. Note: below, "data pointer" means either a path to a csv file, relative to the variable `inputfiles.dir` or a SQL query (beginning with "SELECT") that will be sent to the postgresql database defined by `inputfiles.db`. Unless otherwise specified, if a variable is undefined, it will be ignored.
 
 switches:
-* `choose.input`: character, can to "pre.parsed" or "raw.psse". Defaults to "pre.parsed" if undefined. Set to "pre.parsed" unless data should be read from a PSS/E .raw file.
 * `plexos.version`: numeric, can be 6 or 7. Defaults to 7 if undefined. This determine the column names in the Properties tab of the final Excel workbook, since these are different between PLEXOS 6.xx and 7.xx.
 
 basic functionality:
-* `raw.file.path`: character, optional. filepointer to the PSS/E .raw file.
-* `objects.list`: list. Import objects, their categories, any memberships with child objects, and any properties.
-* `memberships.list`: list. Import memberships between objects and any properties of memberships.
-* `object.property.list`: list. Import properties of objects only.
-* `generic.import.files`: list. Import anything.
+* `raw.file.list`: list of character or a character vector, optional. elements should be filepointers to the PSS/E .raw 
+file (currently only version 31 is supported). Each .raw file will be parsed and reformated in scripts 
+**a-1-parse-psse.R**, **a-2-reformat-psse.R**, and (as the parsing is currently set up), this will generatate up to 6 
+data.tables (nodes, regions, zones, lines, transformers, and generators, depending on what data the .raw file contains), 
+which will be added to `objects.list` (see next) and imported like any other data file. *Note:* certain assumptions are made when parsing a .raw file. For example, if the status column for any object is zero, its PLEXOS Units property will be set to zero. Line max flows are equal to rating B, unless this doesn't exist, in which case, they are set to the max of rating A or C. These types of assumptions may need to be adjusted differently for different projects, so it may be better to use PIDG's functionality to parse and write out the PSS/E .raw data once, make changes, then import it from a .csv file subsequently.
+* `objects.list`: list. Elements are either a character vector specifying path to .csv file or SQL command, or a vector or list where the first element is a character specifying path to .csv file or SQL command, and all other elements are named additional options. Import objects, their categories, any memberships with child objects, and any properties. Note: repeating objects in multiple rows will not create issues as long as the catgory column (if there is one) is also identical in each of the repeats.
+	* **Data format:**  
+		* First column contains objects that will be created. Column name is their PLEXOS class, capitalized correctly (i.e. "Generator", "Line"). 
+		* If a column called "category" (capitalized in any way) is included, that will be the category of the imported object. 
+		* If a "notes" (capitalized any way) column is included, it will be ignored. 
+		* Any other column will be treated as a property or membership column. 
+			* Membership columns identify child objects of the objects to be imported. The column name should be of the format "collection_child class". For example, if importing generators, the first column in the data would be Generator. A column to attach nodes to generators would be called "Nodes_Node" (as the column will contain objects of class Node that will be added to a given generator's "Nodes" collection), to attach fuels would be "Fuels_Fuel", and to attach fuels as start fuels would be "Start Fuels_Fuel". Note: objects in membership columns will not be automatically created. Membership columns are identified by an underscore. 
+			* Property columns are identified as any column other than the first column, membership columns, category, notes, or any additional options (see next). Any Property column should be named the PLEXOS property, spelled and capitalized exactly as it is in PLEXOS. Blank or NA values will always be ignored. 
+    
+	* **Additional options:** There is a set of optional arguments that can be added to specify certain behavior during importing. These only are considered when importing property columns. They are generally used as follows: `list("nodes.csv", datafile.col = "Load", band.col = "Band")` where this list is an element of `objects.list`:
+	    * `object.class` rarely used. class of objects to be imported. if not defined, the default value is the name of the first column. 
+		* `names.col` rarely used. name of column to be imported. if not defined, the default value will be the first column.
+		* `collection.name` rarely used, but sometimes necessary. the collection of the object to which the property is being applied. if not defined, the default value will be the class of the object with an "s" appended. This default will need to be overwritten when importing properties of, for example, batteries.
+		* `parent.col` some properties are properties of memberships. For example: Emission.Fuels Production Rate is a property of each Fuel *within* the Fuels collection of a particular Emission object. To import properties like this, a "parent" object must be specified. For example, to import prodcution rate, a data file would have these columns: "Fuel", "Emission", and "Production Rate" and it would be passed to `objects.list` like this: list("emissions_rate.csv", parent.col = "Emission").
+		* `scenario.name` name of scenario which should be added to every property within the given data. Scenario can also be specified by adding a column named "scenario" (capitalized any way). Any number of scenario names can be included in that column and blanks/NA values will be ignored. If `scenario.name` is specified and the data includes a "scenario" column, the "scenario" column will override the `scenario.name` variable (in other words, `scenario.name` would be used to fill in blanks or NA values). In either case, scenario objects will be created automatically if they do not already exist.
+		* `scenario.cat` (meaningful only when `scenario.name` is defined or when a "scenario" column is included in imported data) name of category scenario(s) that will be created. Alternately, a "scenario.cat" column can be included in the data to specify scenario object categories with more granularity. Data in the "scenario.cat" column overrides the `scenario.cat` argument in the same way that the "scenario" column overrides the `scenario.name` argument. 
+		* `pattern.col` name of column in data that contains timeslice patterns (for example: "M01" or "H1-12")
+		* `period.id` largely deprecated. Properties that aren't optimized in one interval (ex: "Max Energy Month") must have a non-zero period_type_id. This can be passed as a character to be applied to all data in a given file; however, PIDG automatically adds the right period_type_id values while cleaning data, so it is no longer necessary to use this argument. 
+		* `datafile.col` character vector (any length) specifying columns in data that contain data file pointers rather than values. These can be either file paths (pointing to a data file from where the .xml will be saved) or Data File object names, which must include "{Object}" at the beginngin (ex: "{Object}Region A Load"). Any non-blank/NA entry in the specified columns will be moved to the "filename" column in properties sheet and given an actual value of 0.
+		* `date_from.col` character vector specifying column which contains Date From information. 
+		* `overwrite` logical: should any property in the data overwrite existing data?
+		* `overwrite.cols` character vector (any length), only meaningful if `overwrite == TRUE` specifying which columns (in addition to "value") should be overwritten (ex: "scenario" or "date_from")
+		* `band.col` character vector specifying which column contains band information
+		* `memo.col` in theory, could contain memo information to be imported. in practice, not currently functional.
+		
+The data format and additional options described above are the basis for the rest of the input data formatting.
+		
+* `memberships.list`: list, same as `objects.list`, of elements which are either single character vector data pointer or a list/vector where the first element is the data pointer and all other elements are named additional options. Import memberships between objects and any properties of memberships (no objects will be imported). **Format** First column is parent object, any other column with an underscore is a membership column (see above). Any additional column (other than "notes" or any additional arguments) will be considered a property column, but the property will be imported as a property of the imported membership. No need to pass in `parent.col`
+* `object.property.list`: list, same as `objects.list`. Import properties of objects only (no objects or memberships will be imported). Use the **format** described under `objects.list`.
+* `generic.import.files`: list, where each element can have one of two formats. Import anything in the exact same format that the final excel file will be in. **Two format options**:  
+	* Stack multiple sheet types, in which case list element should be a single pointer to the datafile. The file format in this case is one or more tables that are formatted like the final Objects, Properties, Attributes, Memberships, Reports, or Categories table (in any order). Tags should be added before and after each table chunk so that PIDG can identify the data. Begin tags look like "/ BEGIN", "Objects" (or whichever table is being specified) and end tags look like "/ END", "Objects". Both begin and end tags are required.
+	* Import each table separately. In this case, the data should be formatted exactly like whichever sheet is being imported (no begin or end tags) and the list element in `generic.import.files` should be a two-element vector where the first element is a pointer to the data and the second element is the (properly capitalized) name of the sheet, such as "Objects" or "Memberships"
 
 convenience functions:
-* `generator.property.by.fuel.list`: list. Rather than importing object-specific properties, import generator properties by their category (optionally multiplying by max capacity of the generators and/or number of units)
+* `generator.property.by.cat.list`: list (previously `generator.property.by.cat.list`). Rather than importing object-specific properties, import generator properties by their category (optionally multiplying by max capacity of the generators and/or number of units)
 * `interleave.models.list`: list. More easily enable running DA-RT (etc) sequence by created filepointers between objects for certain properies, either for generator category or for specific objects (CHECK THIS ONE). Optionally, set models to run interleaved.
 * `compact.generic.import.files`: list. Convenience format for importing models and horizons. 
-* `reserve.files` - MAYBE. Semi-convenient format for importing reserves. 
-* `interfaces.files.list` - MAYBE - need to update this. Semi-convenient format for importing interfaces. 
+* `reserve.files` - Semi-convenient format for importing reserves. 
+* `interfaces.files.list` - need to update this. Semi-convenient format for importing interfaces. 
 * `constraint.import.files`: Convenience format for importing constraints. 
-* `turn.off.except.in.scen.list` - MAYBE. Convenience format for setting Units = 0 in the base data and Units = 1 in a scenario for any object (?).
-* `map.region.to.load.file`: soon to be deprecated - MAYBE: Convenience format for creating load data file object with multiple load scenarios for each region.
-* `isolated.nodes.to.remove.args.list` - MAYBE. Convenience format that creates a scenario to turn off isolated nodes and recalculate load participation factor. 
-* `units.to.delete.files` - MAYBE. Convenience format to remove objects entirely from the database.
+* `turn.off.except.in.scen.list` - Convenience format for setting Units = 0 in the base data and Units = 1 in a scenario for any object (?).
+* `isolated.nodes.to.remove.args.list` - Convenience format that creates a scenario to turn off isolated nodes and recalculate load participation factor. 
+* `units.to.delete.files` - Convenience format to remove objects entirely from the database. **Format** Two columns: "Objects" and "notes". Anythinng in "Objects" will be completely removed from the database.
 
-soon to be deprecated:
-* `node.file`: charcter, optional. data pointer to path that defines nodes. soon to be deprecated.
-* `line.file`: charcter, optional. data pointer to path that defines lines. soon to be deprecated.
-* `generator.file`: charcter, optional. data pointer to path that defines generators. soon to be deprecated.
-* `transmformer.file`: charcter, optional. data pointer to path that defines transformers. soon to be deprecated.
-* `load.file`: charcter, optional. data pointer to path that defines load by node. soon to be deprecated. CHECK for LPFs HERE
+* categories: categories will be automatically created and alphabetized, so there is no need to import them separately (doing so often leads to duplication).
 
 
 ### Basic PIDG code structure and troubleshooting
@@ -74,11 +101,11 @@ Once all variables are read in and checked as described in the **"How to run PID
 Basic information of PIDG is as follows:
 
 1. **prepare environment** (**PIDG/driver.R**): read in arguments and necessary functions and source `input.params`
-2. _**optional: parse specifically formatted input data** (**a-1**, **a-2**): if a PSS/E file has been given, parse it_
-3. **create blank \*.sheet tables** (**b**): as described in the introduction, the final Excel workbook will contain six sheets, Objects, Categories, Memberships, Attributes, Properties, and Reports. Create a blank data.table to correspond to each sheet, with correct column names (i.e. `Objects.sheet`, `Categories.sheet`, `Memberships.sheet`, `Attributes.sheet`, `Properties.sheet`, and `Reports.sheet`)
-4. **populate \*.sheet tables** (**c1**, **c2**, **c3**, **d**): the core of PIDG's functionality: go through each possible variable that could exist in `input.params`. if it does exist, read in data, process it, then add it to whichever of these table(s) is appropriate. the processing of each variable happens independently of the processing of each other variable
-5. **check data** (**e**): once all `input.params` input variables are dealt with, run checks on the data. export summaries of various parts of the database and flag potential issues. these issues are sorted into "fatal warnings" (known to cause failures in importing to PLEXOS or when running PLEXOS) and "warnings" (which may not cause failures but may be grounds for a second look at input data) 
-6. **export data** (**f**): if `export.wb == TRUE`, save the workbook
+2. _**optional: parse specifically formatted input data** (**a-1-parse-psse.R**, **a-2-reformat-psse.R**): if a PSS/E .raw file has been given, parse it and add its data to objects.list_
+3. **create blank \*.sheet tables** (**b_create_sheet_tables.R**): as described in the introduction, the final Excel workbook will contain six sheets, Objects, Categories, Memberships, Attributes, Properties, and Reports. Create a blank data.table to correspond to each sheet, with correct column names (i.e. `Objects.sheet`, `Categories.sheet`, `Memberships.sheet`, `Attributes.sheet`, `Properties.sheet`, and `Reports.sheet`)
+4. **populate \*.sheet tables** (**c_data_population.R**, **d_data_cleanup.R**): the core of PIDG's functionality: go through each possible variable that could exist in `input.params`. if it does exist, read in data, process it, then add it to whichever of these table(s) is appropriate. the processing of each variable happens independently of the processing of each other variable
+5. **check data** (**e_data_check.R**): once all `input.params` input variables are dealt with, run checks on the data. export summaries of various parts of the database and flag potential issues. these issues are sorted into "fatal warnings" (known to cause failures in importing to PLEXOS or when running PLEXOS) and "warnings" (which may not cause failures but may be grounds for a second look at input data) 
+6. **export data** (**f_export_to_excel.R**): if `export.wb == TRUE`, save the workbook
 
 Because of the modularity of step 4, if something goes wrong, it is usually helpful to use progress messages to identify what data PIDG is trying to process in when the error happens and which variable that data corresponds to. Then, find within the PIDG scripts where that variable is processed, add a `stop()` or `message()` or two and rerun.
 
@@ -175,70 +202,7 @@ These all refer to variables in input_params
 		
 
 
-**********
-###REQUIRED INPUT FILES - everything below here needs to be updated
-**********
-
-* (a) _a_import_raw.R:_ This script reads in the .raw file and breaks it into tables based on the .raw delimiter "0 /". Columns of each of these tables are then manually renamed based on documentation for PSSE v31. If intending to use a .raw file from a different version of PSSE, this script should be modified to ensure that columns are named correctly. This is the only script that is dependent on the version of PSSE being used, although the names of the columns (but not their order) are used in later scripts. 
-  * Note: Lines are given 3 ratings (A, B, and C) in the PSS/e .raw files. These scripts assume that RatingA is a technical limit (not useful for this application), Rating B is a thermal limit, and Rating C is the overload limit.
-* (b) _b_create_sheet_tables.R:_ This script creates empty .sheet tables (Objects.sheet, Categories.sheet, Memberships.sheet, Attributes.sheet, Properties.sheet, and Reports.sheet), as well as prototypes of these tables to be used in the initialize_table function (see below).
-* _(functions) functions.R:_ This script defines three functions that are used throughout the rest of the scripts:  
-	1. _initialize_table_ takes a prototype of a .sheet table and creates an empty table with the same columns as that prototype, however many rows are specified by the user, and fills specified columns with any constants provided by the user. The resultant table can then be filled in with the relevant data. 
-	2. _import_table imports_ a specified .sheet table from a .csv file.
-	3. _merge_sheet_w_table_ merges a data.table to a .sheet table, preserving the column order in the .sheet table. 
-In every step of data population throughout the remainder of the scripts, a table is initialized using initialize_table or import_table. If needed, more data (from .raw or .csv files) is added. Then, the table is merged to the appropriate .sheet table using merge_sheet_w_table.
-* (c1) _c1_populate_sheet_tables_with_raw_tables.R:_ This script formats and populates .sheets tables using tables from the .raw file created in script (a).
-* (c2) _c2_more_data_population.R:_ This script continues to populate the .sheet tables by integrating data in other .csv input files into .sheet tables.
-* (c3) _c3_create_scenarios_and_models.R:_ Any new scenarios or models (other than the Base model) associated with those scenarios are defined here, by reading in definition tables from input .csv files.
-* (d) _d_data_cleanup.R:_ If there are steps required to clean the database to ensure that it can be read by Plexos and run out of the box, they are coded here.   
-* (e) _e_export_to_excel.R:_ This final scripts exports populated .sheet tables as separate sheets in an Excel workbook, which can be imported directly into Plexos.
-
-
-**********
-### REQUIRED INPUT FILES
-**********
-
-####Input parameters 
-
-* _raw.file.path:_ Filepath to .raw PSSE file to be imported. This .raw file makes up the core of the database, and is supplemented by other .csv input files. Required format: PSSE version 31 
-* _map.gen.to.fuel.file:_ Filepath to a .csv file that maps generator identifier (Generator.Name) to fuel type. Required columns: Generator.Name, Fuel
-* _map.region.to.load.file:_ Filepath to a .csv file that maps region names to the location of corresponding load data files, relative to where this model will be run in Plexos. These are used to create data file objects in Plexos. Required columns: RegionName, Loadfile
-* _map.fuel.price.to.fuel.file:_ Filepath to .csv file that maps fuel type to cost of power generation ($/MWh), which is read into Plexos's Generator.Fuels "Offer Price" property. Required columns: Fuel, Price
-* _map.ramps.to.fuel.file:_ Filepath to a .csv file that maps fuel type to max (and min) ramp rates. Required columns: Fuel, maxRamp
-
-* _rename.regions:_ Should nodes be regrouped in regions that are different from regions (areas) defined in the PSSE database? Required format: logical
-* Optional: _map.newregion.file:_ If rename.regions is true, filepath to .csv that maps nodes to new regions. Required columns: BusNumber, RegionName
-
-* _rename.zones:_ Should nodes be remapped to zones that are different from zones defined in the PSSE database? Required format: logical
-* Optional: _map.newzone.file:_ If rename.zones is true, filepath to .csv that maps nodes to new zones. Required columns: BusNumber, ZoneName
-
-* _hydro.energy.limits.file:_ Filepath to a .csv file that maps hydro generators to monthly energy limit constrints. Required columns: Generator.Name, month (in format "Mxx"), monthly.limit.GWh 
-* _hydro.cf.limits.file:_ Filepath to a .csv file that maps hydro generators to monthly capacity factor limit constrints. Required columns: Generator.Name, month (in format "Mxx"), monthly.limit.GWh 
-* _min.gen.file:_ Filepath to a .csv file that maps generator min gens by fuel. Required columns: Fuel, MinStableLevel
-* _unit.status.file:_ Filepath to a .csv file that maps generators to their status. 1 means to be Commissioned, 2 means commissioned but switched off in basecase, 3 means to be Deleted. The sheet from the NLDC used '3' for units that might have been recently retired or are not operational. The 1's should not be included in the 2014 validation,so we might need to out a commission date of 2015 on these and just assume they are built before our 2022 case (good assumption) Required columns: Generator.Name, status
-
-* _generic.import.files:_ Character vector of any number of filepaths to any files of the form of _import.model.base.file_. For now, this is used to import objects, attributes, and memberships of any horizons or models that a user wants to define. However, these files could contain any data to be imported. equired format: must be made up of at least one of the following tables: Objects, Memberships, Attributes, Properties, Reports, Categories. Line immediately before the beginning of a table must start with (for example) '/ BEGIN', 'Objects' and line immediately after the end of a table must start with (for example) '/ END','OBJECTS'. It is not necessary to include all tables in this file, but if a table is present, it must have columns names as they are spelled and capitalized in .sheet tables.
-
-
-**********
-#### miscellany
-
-###### PSSE notes
-- does BusTypeCode matter at all? 
-- what do we care about phase angle at any point? this info is in the PSSE database, at least for the timeperiod in the power flow case
-- load table - using the "Active Power" column. Is that right?
-- 31 nodes in PSSE load table have negative load. Why? For now, correcting that to zero in the R scripts. None of them are duplicates. 
-- why do some generators have negative min stable levels? switching them to zero in the script so Plexos doesn't yell.
-- using max and min output columns for generator max cap and min stable level, but there are a lot of columns. Are any of the others useful?
-- which line rating?
-- transformers have so many options! Should probably double check that we're using the right ones. 
-- same with DC lines
-- since transformers can have two or three windings in PSSE, there is code (which is currently commented out because it is slow) to separate the two to two different tables (this is because the .raw formatting is different between them). Will we ever have three-winding transformers? If no, we can delete this code. If yes, we need to keep it or think of a better way to separate transformer types.
-- some lines have max/min flows of 0 (even if the line is turned on). Why?
-- not doing anything with fixed or switched shunt. Should we be?
-- not doing anything with PSSE's Owner column at the moment (other than reading it in)
-
 ###### other notes
 
 - the following command (run from a bash terminal, like GitBash) will change the currency units from $ to PHP
- ```sed -ie 's/\$/PHP/' OutputFiles/ph_2014_V0_3.xml```
+ ```sed -ie 's/\$/PHP/' OutputFiles/example.xml```
