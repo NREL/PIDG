@@ -302,71 +302,83 @@ if (exists('Zone.table')) {
   message("No Zone Table exists ... skipping")
 }
 
+if (exists('Transformer.table')) {
 
-# Transformer.table, p.5-22
-# This code separates 2- and 3- winding transformers (4 and 5 lines of data, 
-# respectively) and is very slow. only run if needed. 
-# two.winding.txfmrs <- data.table(matrix(NA, ncol = 16, nrow = 0)); 
-# three.winding.txfmrs <- data.table(matrix(NA, ncol = 16, nrow = 0))
-# two.count <- 0; three.count <- 0
-# i <- 1
-# while (i <= nrow(Transformer.table)) {
-#   if (is.na(Transformer.table[i,V3])) {i <- i + 1} else if (
-#   Transformer.table[i,V3] == 0) { #2 windings (4 lines)
-#     #two.winding.txfmrs <- rbind.fill(two.winding.txfmrs, 
-#                                       Transformer.table[i:(i+3),]) 
-#     #uncomment this to separate two-winding transformers into another table
-#     i <- i + 4; two.count <- two.count + 1
-#   } else {#3 windings (5 lines)
-#     #rbind.fill(three.winding.txfmrs, Transformer.table[i:(i+4),]) 
-#     #uncomment this to separate three-winding transformers into another table
-#     i <- i + 5; three.count <- three.count + 1
-#     }
-# }
-# if (three.count > 0) {print("WARNING: three-winding transformers exist in this 
-# data set and are not properly dealt with. Please re-code.")}
- 
+  # Transformer.table, p.5-22
+  # This code separates 2- and 3- winding transformers (4 and 5 lines of data, 
+  # respectively) and is very slow. only run if needed. 
+  # two.winding.txfmrs <- data.table(matrix(NA, ncol = 16, nrow = 0)); 
+  # three.winding.txfmrs <- data.table(matrix(NA, ncol = 16, nrow = 0))
+  # two.count <- 0; three.count <- 0
+  # i <- 1
+  # while (i <= nrow(Transformer.table)) {
+  #   if (is.na(Transformer.table[i,V3])) {i <- i + 1} else if (
+  #   Transformer.table[i,V3] == 0) { #2 windings (4 lines)
+  #     #two.winding.txfmrs <- rbind.fill(two.winding.txfmrs, 
+  #                                       Transformer.table[i:(i+3),]) 
+  #     #uncomment this to separate two-winding transformers into another table
+  #     i <- i + 4; two.count <- two.count + 1
+  #   } else {#3 windings (5 lines)
+  #     #rbind.fill(three.winding.txfmrs, Transformer.table[i:(i+4),]) 
+  #     #uncomment this to separate three-winding transformers into another table
+  #     i <- i + 5; three.count <- three.count + 1
+  #     }
+  # }
+  # if (three.count > 0) {print("WARNING: three-winding transformers exist in this 
+  # data set and are not properly dealt with. Please re-code.")}
+   
+  
+  # Transformer.table - only handles 2-winding transformers. also only pulls data
+  # used by plexos.
+  Transformer.table[,i := 1:.N]
+  
+  # create empty table to populate 
+  Transformer.table.v2 <- data.table(node.from.number = 
+                                     numeric(length = nrow(Transformer.table)/4))
+  
+  Transformer.table.v2$node.from.number <- Transformer.table[i %% 4 == 1, .(V1)]
+  Transformer.table.v2$node.to.number   <- Transformer.table[i %% 4 == 1, .(V2)]
+  Transformer.table.v2$id               <- Transformer.table[i %% 4 == 1, .(V4)]
+  Transformer.table.v2$status           <- Transformer.table[i %% 4 == 1, .(V12)]
+  Transformer.table.v2$resistance.pu    <- Transformer.table[i %% 4 == 2, .(V1)]
+  Transformer.table.v2$reactance.pu     <- Transformer.table[i %% 4 == 2, .(V2)]
+  Transformer.table.v2$rating.MW        <- Transformer.table[i %% 4 == 3, .(V4)]
+  Transformer.table.v2$overload.rating.MW <- Transformer.table[i %% 4 == 3, .(V6)] 
+  
+  Transformer.table <- Transformer.table.v2
+  
+  # is character because of table structure
+  Transformer.table[,rating.MW := as.numeric(rating.MW)]
+  
+  # clean up
+  rm(Transformer.table.v2)
+  
+} else {
+  
+  message("No Transformer Table exists ... skipping")
+}
 
-# Transformer.table - only handles 2-winding transformers. also only pulls data
-# used by plexos.
-Transformer.table[,i := 1:.N]
+if (exists('Two.terminal.dc.line.table')) {
 
-# create empty table to populate 
-Transformer.table.v2 <- data.table(node.from.number = 
-                                   numeric(length = nrow(Transformer.table)/4))
+  # Two.terminal.dc.line.table
+  # this table has three lines of data per DC line
+  Two.terminal.dc.line.table[,i := 1:.N]
+  
+  # create empty table to populate
+  DC.line.table <- data.table(node.from.number = 
+                              numeric(length = nrow(Two.terminal.dc.line.table)/3))
+  
+  DC.line.table$node.from.number <- Two.terminal.dc.line.table[i %% 3 == 2, .(V1)]
+  DC.line.table$node.to.number   <- Two.terminal.dc.line.table[i %% 3 == 0, .(V1)]
+  DC.line.table$id               <- Two.terminal.dc.line.table[i %% 3 == 2, .(V16)]
+  DC.line.table$resistance.pu    <- Two.terminal.dc.line.table[i %% 3 == 1, .(V3/mva.base)]
+  DC.line.table$max.flow.MW      <- Two.terminal.dc.line.table[i %% 3 == 1, .(V4)]
+  DC.line.table$id.num           <- Two.terminal.dc.line.table[i %% 3 == 1, .(V1)]
 
-Transformer.table.v2$node.from.number <- Transformer.table[i %% 4 == 1, .(V1)]
-Transformer.table.v2$node.to.number   <- Transformer.table[i %% 4 == 1, .(V2)]
-Transformer.table.v2$id               <- Transformer.table[i %% 4 == 1, .(V4)]
-Transformer.table.v2$status           <- Transformer.table[i %% 4 == 1, .(V12)]
-Transformer.table.v2$resistance.pu    <- Transformer.table[i %% 4 == 2, .(V1)]
-Transformer.table.v2$reactance.pu     <- Transformer.table[i %% 4 == 2, .(V2)]
-Transformer.table.v2$rating.MW        <- Transformer.table[i %% 4 == 3, .(V4)]
-Transformer.table.v2$overload.rating.MW <- Transformer.table[i %% 4 == 3, .(V6)] 
-
-Transformer.table <- Transformer.table.v2
-
-# is character because of table structure
-Transformer.table[,rating.MW := as.numeric(rating.MW)]
-
-# clean up
-rm(Transformer.table.v2)
-
-# Two.terminal.dc.line.table
-# this table has three lines of data per DC line
-Two.terminal.dc.line.table[,i := 1:.N]
-
-# create empty table to populate
-DC.line.table <- data.table(node.from.number = 
-                            numeric(length = nrow(Two.terminal.dc.line.table)/3))
-
-DC.line.table$node.from.number <- Two.terminal.dc.line.table[i %% 3 == 2, .(V1)]
-DC.line.table$node.to.number   <- Two.terminal.dc.line.table[i %% 3 == 0, .(V1)]
-DC.line.table$id               <- Two.terminal.dc.line.table[i %% 3 == 2, .(V16)]
-DC.line.table$resistance.pu    <- Two.terminal.dc.line.table[i %% 3 == 1, .(V3/mva.base)]
-DC.line.table$max.flow.MW      <- Two.terminal.dc.line.table[i %% 3 == 1, .(V4)]
-DC.line.table$id.num           <- Two.terminal.dc.line.table[i %% 3 == 1, .(V1)]
-
+} else {
+  
+  message("No Two Terminal DC Line Table exists ... skipping")
+}
 
 #------------------------------------------------------------------------------|
 # id skipped tables ----

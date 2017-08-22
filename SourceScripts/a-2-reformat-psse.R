@@ -52,8 +52,6 @@
 # clean environment of skipped and empty tables, rename tables to use
 
 node.data.table <- Bus.table
-line.dc.data.table <- DC.line.table
-transformer.data.table <- Transformer.table
 
 if (exists('Load.table')) {
  load.data.table <- Load.table
@@ -72,6 +70,12 @@ if (exists('Area.interchange.table')){
 }
 if (exists('Owner.table')) {
   owner.data.table <- Owner.table
+}
+if (exists('DC.line.table')) {
+  line.dc.data.table <- DC.line.table
+}
+if (exists('Transformer.table')) {
+  transformer.data.table <- Transformer.table
 }
 
 # clean up from initial parsing script
