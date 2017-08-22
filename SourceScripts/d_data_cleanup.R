@@ -14,7 +14,7 @@
 if (exists('units.to.delete.files')) {
   for (fname in units.to.delete.files) {
       
-      to.delete <- read_data(fname, sep = "\n")
+      to.delete <- read_data(fname, sep = ",")
       
       if (is.data.table(to.delete)) {
           
