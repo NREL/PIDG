@@ -71,7 +71,7 @@ if (exists("node.data.table") && is.data.table(node.data.table)) {
           
           map.newregions <- read_data(map.newregion.file)
           
-          if (is.data.table(map.newrgions)) {
+          if (is.data.table(map.newregions)) {
               node.data.table <- merge(node.data.table[,Region := NULL], 
                                    map.newregions[,.(Node, Region)], 
                                    by = "Node", 
