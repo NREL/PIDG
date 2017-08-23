@@ -304,54 +304,99 @@ if (exists('Zone.table')) {
 
 if (exists('Transformer.table')) {
 
-  # Transformer.table, p.5-22
-  # This code separates 2- and 3- winding transformers (4 and 5 lines of data, 
-  # respectively) and is very slow. only run if needed. 
-  # two.winding.txfmrs <- data.table(matrix(NA, ncol = 16, nrow = 0)); 
-  # three.winding.txfmrs <- data.table(matrix(NA, ncol = 16, nrow = 0))
-  # two.count <- 0; three.count <- 0
-  # i <- 1
-  # while (i <= nrow(Transformer.table)) {
-  #   if (is.na(Transformer.table[i,V3])) {i <- i + 1} else if (
-  #   Transformer.table[i,V3] == 0) { #2 windings (4 lines)
-  #     #two.winding.txfmrs <- rbind.fill(two.winding.txfmrs, 
-  #                                       Transformer.table[i:(i+3),]) 
-  #     #uncomment this to separate two-winding transformers into another table
-  #     i <- i + 4; two.count <- two.count + 1
-  #   } else {#3 windings (5 lines)
-  #     #rbind.fill(three.winding.txfmrs, Transformer.table[i:(i+4),]) 
-  #     #uncomment this to separate three-winding transformers into another table
-  #     i <- i + 5; three.count <- three.count + 1
-  #     }
-  # }
-  # if (three.count > 0) {print("WARNING: three-winding transformers exist in this 
-  # data set and are not properly dealt with. Please re-code.")}
-   
+  # first seperate two- and three-winding transformers
+  Transformer.table[V1 %in% Bus.table[,node.number] & V3 %in% Bus.table[,node.number],
+                    winding:=3]
+  Transformer.table[V1 %in% Bus.table[,node.number] & V3 ==0,
+                    winding:=2]
+  Transformer.table[,winding:=na.locf(winding)]
   
-  # Transformer.table - only handles 2-winding transformers. also only pulls data
-  # used by plexos.
-  Transformer.table[,i := 1:.N]
+  Transformer.table.2wind = Transformer.table[winding == 2]
+  Transformer.table.2wind[,i := 1:.N]
+  Transformer.table.3wind = Transformer.table[winding == 3]
+  Transformer.table.3wind[,i := 1:.N]
   
-  # create empty table to populate 
-  Transformer.table.v2 <- data.table(node.from.number = 
-                                     numeric(length = nrow(Transformer.table)/4))
+  if(nrow(Transformer.table.2wind[i%%4 == 1 & V6!=1])>0){
+    message(paste0('two-winding transformer impedance data sometimes specified in ',
+                   'irregular units. refer to PSSE users manual'))
+  }
   
-  Transformer.table.v2$node.from.number <- Transformer.table[i %% 4 == 1, .(V1)]
-  Transformer.table.v2$node.to.number   <- Transformer.table[i %% 4 == 1, .(V2)]
-  Transformer.table.v2$id               <- Transformer.table[i %% 4 == 1, .(V4)]
-  Transformer.table.v2$status           <- Transformer.table[i %% 4 == 1, .(V12)]
-  Transformer.table.v2$resistance.pu    <- Transformer.table[i %% 4 == 2, .(V1)]
-  Transformer.table.v2$reactance.pu     <- Transformer.table[i %% 4 == 2, .(V2)]
-  Transformer.table.v2$rating.MW        <- Transformer.table[i %% 4 == 3, .(V4)]
-  Transformer.table.v2$overload.rating.MW <- Transformer.table[i %% 4 == 3, .(V6)] 
+  if(nrow(Transformer.table.3wind[i%%5 == 1 & V6!=1])>0){
+    message(paste0('three-winding transformer impedance data sometimes specified in ',
+                   'irregular units. refer to PSSE users manual'))
+  }
   
-  Transformer.table <- Transformer.table.v2
+  if(nrow(Transformer.table.3wind[i%%5 == 1 & !(V12 %in% c(0,1))])){
+    message(paste0('three-winding transformers sometimes have irregular statuses. refer ',
+                   'to PSSE users manual'))
+  }
   
-  # is character because of table structure
-  Transformer.table[,rating.MW := as.numeric(rating.MW)]
+  # two-winding transformers from node 1 to node 2
+  Transformer.table.2wind_1_2 <- data.table(node.from.number = 
+                                              numeric(length = nrow(Transformer.table.2wind)/4))
+  
+  Transformer.table.2wind_1_2$node.from.number <- Transformer.table.2wind[i %% 4 == 1, .(V1)]
+  Transformer.table.2wind_1_2$node.to.number   <- Transformer.table.2wind[i %% 4 == 1, .(V2)]
+  Transformer.table.2wind_1_2$id               <- Transformer.table.2wind[i %% 4 == 1, .(V4)]
+  Transformer.table.2wind_1_2$status           <- Transformer.table.2wind[i %% 4 == 1, .(V12)]
+  Transformer.table.2wind_1_2$resistance.pu    <- Transformer.table.2wind[i %% 4 == 2, .(V1)]
+  Transformer.table.2wind_1_2$reactance.pu     <- Transformer.table.2wind[i %% 4 == 2, .(V2)]
+  Transformer.table.2wind_1_2$rating.MW        <- as.numeric(Transformer.table.2wind[i %% 4 == 3, V4])
+  Transformer.table.2wind_1_2$overload.rating.MW <- as.numeric(Transformer.table.2wind[i %% 4 == 3, V6])
+  
+  # three-winding transformers from node 1 to node 2
+  Transformer.table.3wind_1_2 <- data.table(node.from.number = 
+                                              numeric(length = nrow(Transformer.table.3wind)/5))
+  
+  Transformer.table.3wind_1_2$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V1)]
+  Transformer.table.3wind_1_2$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, .(V2)]
+  Transformer.table.3wind_1_2$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
+  Transformer.table.3wind_1_2$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
+  Transformer.table.3wind_1_2$resistance.pu    <- Transformer.table.3wind[i %% 5 == 2, .(V1)]
+  Transformer.table.3wind_1_2$reactance.pu     <- Transformer.table.3wind[i %% 5 == 2, .(V2)]
+  Transformer.table.3wind_1_2$rating.MW        <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 3, V4]),
+                                                       as.numeric(Transformer.table.3wind[i %% 5 == 4, V4]))
+  Transformer.table.3wind_1_2$overload.rating.MW <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 3, V6]),
+                                                         as.numeric(Transformer.table.3wind[i %% 5 == 4, V6]))
+  # three-winding transformers from node 2 to node 3
+  Transformer.table.3wind_2_3 <- data.table(node.from.number = 
+                                              numeric(length = nrow(Transformer.table.3wind)/5))
+  
+  Transformer.table.3wind_2_3$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V2)]
+  Transformer.table.3wind_2_3$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, .(V3)]
+  Transformer.table.3wind_2_3$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
+  Transformer.table.3wind_2_3$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
+  Transformer.table.3wind_2_3$resistance.pu    <- Transformer.table.3wind[i %% 5 == 2, .(V4)]
+  Transformer.table.3wind_2_3$reactance.pu     <- Transformer.table.3wind[i %% 5 == 2, .(V5)]
+  Transformer.table.3wind_2_3$rating.MW        <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 4, V4]),
+                                                       as.numeric(Transformer.table.3wind[i %% 5 == 0, V4]))
+  Transformer.table.3wind_2_3$overload.rating.MW <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 4, V6]),
+                                                         as.numeric(Transformer.table.3wind[i %% 5 == 0, V6])) 
+  # three-winding transformers from node 3 to node 1
+  Transformer.table.3wind_3_1 <- data.table(node.from.number = 
+                                              numeric(length = nrow(Transformer.table.3wind)/5))
+  
+  Transformer.table.3wind_3_1$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V3)]
+  Transformer.table.3wind_3_1$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, .(V1)]
+  Transformer.table.3wind_3_1$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
+  Transformer.table.3wind_3_1$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
+  Transformer.table.3wind_3_1$resistance.pu    <- Transformer.table.3wind[i %% 5 == 2, .(V7)]
+  Transformer.table.3wind_3_1$reactance.pu     <- Transformer.table.3wind[i %% 5 == 2, .(V8)]
+  Transformer.table.3wind_3_1$rating.MW        <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 0, V4]),
+                                                       as.numeric(Transformer.table.3wind[i %% 5 == 3, V4]))
+  Transformer.table.3wind_3_1$overload.rating.MW <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 0, V6]),
+                                                         as.numeric(Transformer.table.3wind[i %% 5 == 3, V6])) 
+  
+  Transformer.table = rbind(Transformer.table.2wind_1_2,
+                            Transformer.table.3wind_1_2,
+                            Transformer.table.3wind_2_3,
+                            Transformer.table.3wind_3_1)
   
   # clean up
-  rm(Transformer.table.v2)
+  rm(Transformer.table.2wind,Transformer.table.2wind_1_2,
+     Transformer.table.3wind,Transformer.table.3wind_1_2,
+     Transformer.table.3wind_2_3,Transformer.table.3wind_3_1)
+  
   
 } else {
   
