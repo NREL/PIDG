@@ -475,37 +475,41 @@ node.data.table[, node.number := NULL]
 setorder(node.data.table, Node)
 
 # write out (to objects.list or csv)
-if (parse.in.place == TRUE) {
+
+if(!exists("parse.in.place")){
+  message('set parse.in.place = TRUE if using driver.R or FALSE if using parse_raw.R')
+} else if (parse.in.place == TRUE) {
+  
+  # add to objects.list so will be ingested by PIDG (has to be list of lists
+  # of data.tables to be processed correctly)
+  if (exists("objects.list")) {
+    objects.list <- c(objects.list, lapply(reformatted.tables, 
+                                           function(x) list(get(x))))
+  } else {
+    objects.list <- lapply(reformatted.tables, 
+                           function(x) list(get(x)))
+  }
+  
+  # clean up
+  to.clean <- c("line.dc.data.table", "load.data.table", "owner.data.table",
+                "Two.terminal.dc.line.table")
+  
+  to.clean <- to.clean[to.clean %in% ls()]
+  
+  rm(list = c(to.clean, reformatted.tables))
+  rm(to.clean, reformatted.tables)
+  
+}else if(parse.in.place == FALSE){
+  
+  for (tab.name in reformatted.tables) {
     
-    # add to objects.list so will be ingested by PIDG (has to be list of lists
-    # of data.tables to be processed correctly)
-    if (exists("objects.list")) {
-        objects.list <- c(objects.list, lapply(reformatted.tables, 
-                                               function(x) list(get(x))))
-    } else {
-        objects.list <- lapply(reformatted.tables, 
-                               function(x) list(get(x)))
-    }
+    write.csv(get(tab.name), 
+              file.path(outputfiles.dir, paste0(tab.name, ".csv")),
+              row.names = FALSE, 
+              quote = FALSE)
+  }
+}else{
+  
+  message('set parse.in.place = TRUE if using driver.R or FALSE if using parse_raw.R')
+  
 }
-
-# clean up
-to.clean <- c("line.dc.data.table", "load.data.table", "owner.data.table",
-              "Two.terminal.dc.line.table")
-
-to.clean <- to.clean[to.clean %in% ls()]
-
-rm(list = c(to.clean, reformatted.tables))
-rm(to.clean, reformatted.tables)
-
-#------------------------------------------------------------------------------|
-
-# for (tab.name in reformatted.tables) {
-#     
-#     write.csv(get(tab.name), 
-#               file.path(output.dir, paste0(tab.name, ".csv")),
-#               row.names = FALSE, 
-#               quote = FALSE)
-# }
-# 
-# # clean up
-# rm(tab.name)
