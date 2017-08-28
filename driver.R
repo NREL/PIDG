@@ -179,7 +179,7 @@ runAllFiles <- function () {
     source(file.path(pidg.dir, "SourceScripts", "b_create_sheet_tables.R"))
     
     message("populating tables...")
-    source(file.path(pidg.dir, "SourceScripts", "c2_data_population.R"))
+    source(file.path(pidg.dir, "SourceScripts", "c_data_population.R"))
     
     message("cleaning tables...")
     source(file.path(pidg.dir, "SourceScripts", "d_data_cleanup.R"))
