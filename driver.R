@@ -41,9 +41,10 @@ if (length(cl.args) > 0) {
     }
     
     # clean up
-    rm(cl.args, cl.args.vec, arg.name)
+    rm(cl.args.vec, arg.name)
 }
 
+rm(cl.args)
 
 #------------------------------------------------------------------------------|
 # check inputs and set defaults ----
@@ -143,20 +144,6 @@ source(input.params)
 # set defaults for required input parameter variables ----
 #------------------------------------------------------------------------------|
 
-# set default choose.input to 'pre.parsed' if not set
-if (!exists("choose.input")){
-    
-    choose.input <- "pre.parsed"
-    
-} else {
-    
-    if (!(choose.input %in% c("raw.psse", "pre.parsed"))) {    
-        
-        stop(paste("Please set 'choose.input' in input_params",
-                   "to 'raw.psse' or 'pre.parsed'"))
-    }
-}
-
 # set plexos.version to 7 if not provided
 if (!exists("plexos.version")) {
     
@@ -171,11 +158,20 @@ if (!exists("plexos.version")) {
 
 runAllFiles <- function () {
     
-    # only parse psse if need to
-    if (choose.input == 'raw.psse') {
-        message("importing PSSE files...")
-        source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
-        source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
+    if (exists("raw.file.list")) {
+        
+        # if running here, want to parse in place
+        parse.in.place <- TRUE
+        
+        for (cur.raw.file in raw.file.list) {
+            # hacky... move cur.raw.file to global env so scripts can find it
+            cur.raw.file <<- cur.raw.file 
+            
+            message("importing PSSE files...")
+            source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
+            source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
+            
+        }
     }
     
     # proceed with rest of data compilation
@@ -183,9 +179,7 @@ runAllFiles <- function () {
     source(file.path(pidg.dir, "SourceScripts", "b_create_sheet_tables.R"))
     
     message("populating tables...")
-    source(file.path(pidg.dir, "SourceScripts", "c1_populate_sheet_tables_with_raw_tables.R"))
-    source(file.path(pidg.dir, "SourceScripts", "c2_more_data_population.R"))
-    source(file.path(pidg.dir, "SourceScripts", "c3_create_scenarios_and_models.R"))
+    source(file.path(pidg.dir, "SourceScripts", "c2_data_population.R"))
     
     message("cleaning tables...")
     source(file.path(pidg.dir, "SourceScripts", "d_data_cleanup.R"))
@@ -197,7 +191,7 @@ runAllFiles <- function () {
     }else{
         message("checking data...")
     }
-    source(file.path(pidg.dir, "SourceScripts", "e_summarize_and_check_compiled_database.R"))
+    source(file.path(pidg.dir, "SourceScripts", "e_data_checks.R"))
     
     # export tables
     if (export.wb) {

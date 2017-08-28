@@ -1,7 +1,4 @@
-#clean data to allow the final export to import to Plexos and run with no errors
-
-# uses 
-#   units.to.delete.file
+# clean data to allow the final export to import to Plexos/run with no errors
 
 #------------------------------------------------------------------------------|
 # Optional inputs ----
@@ -14,8 +11,8 @@
 if (exists('units.to.delete.files')) {
   for (fname in units.to.delete.files) {
       
-      to.delete <- read_data(fname, sep = ",")
-      
+      to.delete <- read_data(fname)
+
       if (is.data.table(to.delete)) {
           
         message(sprintf("... deleting units in  %s", fname))
@@ -31,27 +28,6 @@ if (exists('units.to.delete.files')) {
     
 } else {
    message(">>  units.to.delete.file does not exist ... skipping")
-}
-
-# add standard flow limits to lines with ratings of zero
-# do this in a scenario (in script d)
-
-# add standard flow limits to transformers with ratings of zero
-# do this in a scenario (in script d)
-
-
-#------------------------------------------------------------------------------|
-# Data cleaning ----
-#------------------------------------------------------------------------------|
-
-
-# Plexoscan't handle min stable levels that are less than zero. Change these
-# to zero and notify user.
-if (any(Properties.sheet[property=="Min Stable Level",
-                         as.numeric(value) < 0])) {
-  message('Changing negative min stable levels to 0 MW... hope that is OK')
-  Properties.sheet[property=="Min Stable Level" & as.numeric(value) < 0,
-                   value := "0"]
 }
 
 

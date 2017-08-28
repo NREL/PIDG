@@ -82,7 +82,7 @@ fix_db_colnames <- function(x) {
     x <- paste(toupper(substring(s, 1, 1)), substring(s, 2),
                sep = "", collapse = "_")
     
-    # hard cord exceptions
+    # hard cord exceptions - may need to add to this
     if (x == "Voll") x <- "VoLL"
     if (x == "Vors") x <- "VoRS"
     if (grepl(" At ", x)) x <- gsub(" At ", " at ", x)
@@ -98,51 +98,66 @@ fix_db_colnames <- function(x) {
 read_data <- function(to_data, dir = inputfiles.dir, con = conn, 
                       fix.db.colnames = TRUE, ...) {
     
-    if (endsWith(to_data, ".csv")) {
+    if (is.data.table(to_data)) {
         
-        # pull data from csv if the csv exists
-        if (file.exists(file.path(dir, to_data))) {
-            to.return <- fread(file.path(dir, to_data), ...)
-            
-        } else {
-            message(sprintf(">>  %s does not exist ... skipping", to_data))
-            to.return <- NA
-        }
+        to.return <- to_data
         
-    } else if (startsWith(tolower(to_data), "select")) {
+        # change global path to data so doesn't print entire data.table 
+        # when printing message (this is probably bad practice...)
+        data.name <- deparse(substitute(to_data))
+        tab.message <- paste0("data.table in environment with colnames: ",
+                              paste(names(to.return), collapse = ", "))
         
-        # pull data from a db if a connection exists
-        if (exists("conn")) {
+        assign(data.name, tab.message, .GlobalEnv)
+        
+    } else {
+        
+        if (endsWith(to_data, ".csv")) {
             
-            # pull data from database and process colnames
-            to.return <- dbGetQuery(con, to_data) 
+            # pull data from csv if the csv exists
+            if (file.exists(file.path(dir, to_data))) {
+                to.return <- fread(file.path(dir, to_data), ...)
+                
+            } else {
+                message(sprintf(">>  %s does not exist ... skipping", to_data))
+                to.return <- NA
+            }
             
-            setDT(to.return)
+        } else if (startsWith(tolower(to_data), "select")) {
             
-            if (fix.db.colnames) {
-                setnames(to.return, 
-                         names(to.return), 
-                         sapply(names(to.return), fix_db_colnames))
+            # pull data from a db if a connection exists
+            if (exists("conn")) {
+                
+                # pull data from database and process colnames
+                to.return <- dbGetQuery(con, to_data) 
+                
+                setDT(to.return)
+                
+                if (fix.db.colnames) {
+                    setnames(to.return, 
+                             names(to.return), 
+                             sapply(names(to.return), fix_db_colnames))
+                }
+                
+            } else {
+                
+                message(sprintf(">>  %s is a sql query, but no db connection exists ... skipping", 
+                                to_data))
+                to.return <- NA
             }
             
         } else {
             
-            message(sprintf(">>  %s is a sql query, but no db connection exists ... skipping", 
+            # this isn't a csv or a db query, so skip
+            message(sprintf(">>  couldn't identify %s as a csv or sql query ... skipping", 
                             to_data))
             to.return <- NA
+            
         }
-        
-    } else {
-        
-        # this isn't a csv or a db query, so skip
-        message(sprintf(">>  couldn't identify %s as a csv or sql query ... skipping", 
-                        to_data))
-        to.return <- NA
-        
     }
     
     return(to.return)
-
+    
 }
 
 #------------------------------------------------------------------------------|
@@ -917,6 +932,7 @@ import_memberships <- function(input.table,
     if ("notes" %in% names(input.table)) input.table[, notes := NULL]
     
     # loop through other columns, add them as memberships to objs in first col
+    # should probably just melt this instead of looping
     all.membs <- initialize_table(model.table = Memberships.sheet, 
                                   nrows = 0)
     

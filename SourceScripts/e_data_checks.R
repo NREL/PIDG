@@ -508,6 +508,23 @@ if(gen.genpf[round(gen.genpf, 3) != 1,.N] > 0){
 }
 
 
+# check for negative min stable levels ----
+problem.row.mask = Properties.sheet[,property == "Min Stable Level" & 
+                                        as.numeric(value) < 0]
+
+if (any(problem.row.mask)) {
+    sink(fatal.warnings, append = T) 
+    cat("\n\n")
+    cat(paste0("WARNING: there are negative min stable levels in Properties.sheet\n"))
+    print(Properties.sheet[problem.row.mask],
+          row.names = F,
+          n = nrow(Properties.sheet[problem.row.mask]))
+    sink()
+}
+
+rm(problem.row.mask)
+
+
 #------------------------------------------------------------------------------#
 # Check line and tfmr properties ----
 #------------------------------------------------------------------------------#
@@ -657,9 +674,13 @@ problem.row.mask = Properties.sheet[,
 if (any(problem.row.mask)) {
   sink(fatal.warnings, append = T) 
   cat("\n\n")
-  cat("WARNING: the following property sheet value(s) are missing. This will not import.\n")
+  cat(paste0("WARNING: the following entries in property sheet are missing at ",
+             "least one of: parent_object, child_object, parent_class, ",
+             "child_class, collection, property, value, band_id. This will not ",
+             "import.\n"))
   print(Properties.sheet[problem.row.mask,
-                         .(parent_object, child_object, property, value, scenario)],
+                         .(parent_object, child_object, parent_class, 
+                           child_class, collection, property, value, band_id)],
         row.names = F,
         n = nrow(Properties.sheet[problem.row.mask,]))
   sink()
