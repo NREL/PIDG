@@ -836,11 +836,13 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             isolated.nodes.to.remove[,Units:="0"]
             
             # turn off generators on isolated nodes
-            isolated.generators.to.remove = generator.data.table[Node %in%
-                                                                     isolated.nodes.to.remove[,Node.Name],
-                                                                 .(Generator)]
-            
-            isolated.generators.to.remove[,Units:="0"]
+            isolated.generators.to.remove <- merge(isolated.nodes.to.remove, 
+                                                   Memberships.sheet[parent_class == "Generator" &
+                                                                       child_class == "Node" &
+                                                                       collection == "Nodes",
+                                                                     .(Generator = parent_object,
+                                                                       Node.Name = child_object)],
+                                                   by = 'Node.Name')[,.(Generator,Units)]
             
             if(!is.na(cur.scenario)){
                 import_properties(isolated.nodes.to.remove, names.col = "Node.Name", 
