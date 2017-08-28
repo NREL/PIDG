@@ -6,7 +6,7 @@ if (!require(pacman)) {
     install.packages("pacman")
 }
 
-pacman::p_load(data.table) 
+pacman::p_load(data.table,zoo) 
 
 # be able to call this from within PIDG or externally to write out csv files
 # - write out switch (keep in memory or write out to csv so can edit externally)
@@ -93,6 +93,11 @@ if (exists("outputfiles.dir")) {
     outputfiles.dir <- dirname(input.params)
 }
 
+#------------------------------------------------------------------------------|
+# source input parameters ----
+#------------------------------------------------------------------------------|
+
+source(input.params)
 
 #------------------------------------------------------------------------------|
 # function definition ----
@@ -106,15 +111,27 @@ if (exists("outputfiles.dir")) {
 # "a-2-reformat-psse.R" (or edit data between "a-1" and "a-2" or at least add 
 # more options), but that's not currently implemented.
 
+parse.in.place = FALSE
+
 runPSSEparsing <- function () {
+  
+  if (exists("raw.file.list")) {
     
-    # only parse psse if need to
-    message("importing PSSE files...")
-    source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
-    source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
-    
-    message("done!")
-    
+    for (cur.raw.file in raw.file.list) {
+      # hacky... move cur.raw.file to global env so scripts can find it
+      cur.raw.file <<- cur.raw.file 
+      
+      message("importing PSSE files...")
+      source(file.path(pidg.dir, "SourceScripts", "a-1-parse-psse.R"))
+      source(file.path(pidg.dir, "SourceScripts", "a-2-reformat-psse.R"))
+      
+    }
+  }else{
+    message('please provide a list of raw PSSE files in input.params (raw.file.list)')
+  }
+  
+  message("done!")
+  
 }
 
 #------------------------------------------------------------------------------|

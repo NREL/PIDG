@@ -156,12 +156,11 @@ if (!exists("plexos.version")) {
 # function definition ----
 #------------------------------------------------------------------------------|
 
+parse.in.place <- TRUE
+
 runAllFiles <- function () {
     
     if (exists("raw.file.list")) {
-        
-        # if running here, want to parse in place
-        parse.in.place <- TRUE
         
         for (cur.raw.file in raw.file.list) {
             # hacky... move cur.raw.file to global env so scripts can find it
