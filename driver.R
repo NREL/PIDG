@@ -18,7 +18,7 @@ if (!("openxlsx" %in% installed.packages()[, "Package"]) & export.wb == TRUE) {
                 " (check the 'edit path' box during installation)"))
 }
 
-pacman::p_load(cowplot, ggplot2, data.table, igraph, openxlsx, RPostgreSQL) 
+pacman::p_load(cowplot, ggplot2, data.table, igraph, openxlsx, RPostgreSQL,zoo) 
 
 
 #------------------------------------------------------------------------------|
