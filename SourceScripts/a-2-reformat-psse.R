@@ -139,6 +139,8 @@ if (exists("node.data.table")) {
             node.data.table[,`Load Participation Factor` := `Load Participation Factor`/sum(`Load Participation Factor`), 
                             by = Region_Region]
         }
+        # some regions have no load at all, resulting in an NaN LPF on individual nodes. Setting to 0.
+        node.data.table[is.nan(`Load Participation Factor`), `Load Participation Factor` := 0] 
         
     }
     
