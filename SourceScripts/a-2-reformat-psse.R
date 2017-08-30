@@ -7,6 +7,8 @@
 
 # clean environment of skipped and empty tables, rename tables to use
 
+message("starting a-2")
+
 if (exists('Bus.table')) {
     node.data.table <- Bus.table
 }
@@ -58,7 +60,7 @@ if (exists("node.data.table")) {
     
     
     ## optionally, add region, zone, and owner names. otherwise, rename columns
-    
+  
     # regions
     if (exists("region.data.table")) {
         
@@ -101,7 +103,7 @@ if (exists("node.data.table")) {
         if ("zone.number" %in% colnames(node.data.table)) {
             setnames(node.data.table, "zone.number", "Zone_Zone") }
     }
-    
+      
     # # owners
     # if (exists("owner.data.table")) {
     #     
@@ -119,12 +121,13 @@ if (exists("node.data.table")) {
     #         setnames(node.data.table, "owner.number", "Owner") }
     # }
     
+    
     # optionally add load
-    if (exists("load.data.table")) {
+    if (exists("load.data.table")) { 
         load.data.table <- load.data.table[active.power.MW > 0,
                                            .(`Load Participation Factor` = sum(active.power.MW * status)), 
                                            by = node.number]
-        
+  
         # add node name
         node.data.table <- merge(node.data.table, 
                                  load.data.table, 
@@ -144,6 +147,7 @@ if (exists("node.data.table")) {
         node.data.table[is.nan(`Load Participation Factor`), `Load Participation Factor` := 0] 
         
     }
+
     
     # since there is no status information in the .raw file for nodes, add Units = 1
     node.data.table[,Units := 1]
@@ -221,11 +225,13 @@ if (exists("line.data.table")) {
                              by = "node.from.number", 
                              all.x = TRUE)
     
+    
     line.data.table <- merge(line.data.table, 
                              node.data.table[,.(node.to.number = node.number, 
                                                 `Node To_Node` = Node)],
                              by = "node.to.number", 
                              all.x = TRUE)
+    
     
     # categorize lines
     line.data.table[is.na(Reactance), Type := "DC"]
@@ -424,6 +430,9 @@ if (exists("transformer.data.table")) {
                                                         Reactance = reactance.pu,
                                                         Rating = rating.MW,
                                                         Units = status)]
+
+    #to avoid merging errors
+    transformer.data.table[,node.to.number:=as.numeric(node.to.number)]
     
     # add Node From and Node To names
     transformer.data.table <- merge(transformer.data.table, 
@@ -438,6 +447,7 @@ if (exists("transformer.data.table")) {
                                                        `Node To_Node` = Node)],
                                     by = "node.to.number",
                                     all.x = TRUE)
+
     # add category - by region and type or voltage and type or just type, 
     # depending on what's available
     if ("Region_Region" %in% names(node.data.table)) {
@@ -447,7 +457,8 @@ if (exists("transformer.data.table")) {
         transformer.data.table[,region_from := node.region[`Node From_Node`]]
         transformer.data.table[,region_to := node.region[`Node To_Node`]]
         
-        transformer.data.table[region_from == region_to, category := region_from]
+#        transformer.data.table[region_from == region_to, category := region_from]
+        transformer.data.table[region_from == region_to, category := as.character(region_from)]
         transformer.data.table[region_from != region_to, category := "Interregion"]
         
         # clean up
