@@ -143,6 +143,21 @@ if (exists('Bus.table')) {
            c("node.number", "node.name", "kV", "bus.type", 
              "region.number", "zone.number", "owner.number", 
              "voltage.mag.pu", "voltage.angle.deg"))
+  
+  # a check added because of the Sri Lankan 2015 PSSE file. It's Bus.table has an extra empty row which
+  # throws off column class types
+  if(nrow(Bus.table[node.number == ""])>0){
+    Bus.table = Bus.table[!(node.number == "")]
+    
+    cols.to.convert = c('node.number','kV','bus.type','region.number','zone.number',
+                        'owner.number','voltage.mag.pu','voltage.angle.deg')
+    
+    Bus.table = Bus.table[,c(cols.to.convert) := lapply(.SD,function(x) as.numeric(x)),by = c(''),
+                          .SDcols = cols.to.convert]
+    
+    rm(cols.to.convert)
+  }
+  
 } else {
   
   message("No Bus Table exists ... skipping")
@@ -347,7 +362,6 @@ if (exists('Transformer.table')) {
                                               numeric(length = nrow(Transformer.table.3wind)/5))
   
   Transformer.table.3wind_1_S$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V1)]
-#  Transformer.table.3wind_1_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste("S",V1,V2,V3,sep='_')]
   Transformer.table.3wind_1_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="")]
   Transformer.table.3wind_1_S$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
   Transformer.table.3wind_1_S$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
@@ -358,35 +372,30 @@ if (exists('Transformer.table')) {
                                                         as.numeric(Transformer.table.3wind[i %% 5 == 2, V5]) +
                                                         as.numeric(Transformer.table.3wind[i %% 5 == 2, V8]))
   
-  Transformer.table.3wind_1_S$rating.MW        <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 3, V4]),
-                                                       as.numeric(Transformer.table.3wind[i %% 5 == 4, V4]),
-                                                       as.numeric(Transformer.table.3wind[i %% 5 == 0, V4]))
+  Transformer.table.3wind_1_S$rating.MW        <- as.numeric(Transformer.table.3wind[i %% 5 == 3, V4])
   
-  Transformer.table.3wind_1_S$overload.rating.MW <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 3, V6]),
-                                                         as.numeric(Transformer.table.3wind[i %% 5 == 4, V6]),
-                                                         as.numeric(Transformer.table.3wind[i %% 5 == 0, V6]))
+  Transformer.table.3wind_1_S$overload.rating.MW <- as.numeric(Transformer.table.3wind[i %% 5 == 3, V6])
   
   # three-winding transformers from node 2 to node S
   Transformer.table.3wind_2_S <- data.table(node.from.number = 
                                               numeric(length = nrow(Transformer.table.3wind)/5))
   
   Transformer.table.3wind_2_S$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V2)]
-#  Transformer.table.3wind_2_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste("S",V1,V2,V3,sep='_')]
   Transformer.table.3wind_2_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="")]
   Transformer.table.3wind_2_S$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
   Transformer.table.3wind_2_S$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
+  
   Transformer.table.3wind_2_S$resistance.pu    <- 0.5*(as.numeric(Transformer.table.3wind[i %% 5 == 2, V1]) +
                                                          as.numeric(Transformer.table.3wind[i %% 5 == 2, V4]) -
                                                          as.numeric(Transformer.table.3wind[i %% 5 == 2, V7]))
+  
   Transformer.table.3wind_2_S$reactance.pu    <- 0.5*(as.numeric(Transformer.table.3wind[i %% 5 == 2, V2]) +
                                                         as.numeric(Transformer.table.3wind[i %% 5 == 2, V5]) -
                                                         as.numeric(Transformer.table.3wind[i %% 5 == 2, V8]))
-  Transformer.table.3wind_2_S$rating.MW        <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 3, V4]),
-                                                       as.numeric(Transformer.table.3wind[i %% 5 == 4, V4]),
-                                                       as.numeric(Transformer.table.3wind[i %% 5 == 0, V4]))
-  Transformer.table.3wind_2_S$overload.rating.MW <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 3, V6]),
-                                                         as.numeric(Transformer.table.3wind[i %% 5 == 4, V6]),
-                                                         as.numeric(Transformer.table.3wind[i %% 5 == 0, V6]))
+  
+  Transformer.table.3wind_2_S$rating.MW        <-  as.numeric(Transformer.table.3wind[i %% 5 == 4, V4])
+  
+  Transformer.table.3wind_2_S$overload.rating.MW <-  as.numeric(Transformer.table.3wind[i %% 5 == 4, V6])
   
   
   # three-winding transformers from node 3 to node S
@@ -394,22 +403,21 @@ if (exists('Transformer.table')) {
                                               numeric(length = nrow(Transformer.table.3wind)/5))
   
   Transformer.table.3wind_3_S$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V3)]
-#  Transformer.table.3wind_3_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste("S",V1,V2,V3,sep='_')]
   Transformer.table.3wind_3_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="")]
   Transformer.table.3wind_3_S$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
   Transformer.table.3wind_3_S$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
+  
   Transformer.table.3wind_3_S$resistance.pu    <- 0.5*(as.numeric(Transformer.table.3wind[i %% 5 == 2, V4]) +
                                                          as.numeric(Transformer.table.3wind[i %% 5 == 2, V7]) -
                                                          as.numeric(Transformer.table.3wind[i %% 5 == 2, V1]))
+  
   Transformer.table.3wind_3_S$reactance.pu    <- 0.5*(as.numeric(Transformer.table.3wind[i %% 5 == 2, V5]) +
                                                         as.numeric(Transformer.table.3wind[i %% 5 == 2, V8]) -
                                                         as.numeric(Transformer.table.3wind[i %% 5 == 2, V2]))
-  Transformer.table.3wind_3_S$rating.MW        <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 3, V4]),
-                                                       as.numeric(Transformer.table.3wind[i %% 5 == 4, V4]),
-                                                       as.numeric(Transformer.table.3wind[i %% 5 == 0, V4]))
-  Transformer.table.3wind_3_S$overload.rating.MW <- pmin(as.numeric(Transformer.table.3wind[i %% 5 == 3, V6]),
-                                                         as.numeric(Transformer.table.3wind[i %% 5 == 4, V6]),
-                                                         as.numeric(Transformer.table.3wind[i %% 5 == 0, V6]))
+  
+  Transformer.table.3wind_3_S$rating.MW        <-  as.numeric(Transformer.table.3wind[i %% 5 == 0, V4])
+  
+  Transformer.table.3wind_3_S$overload.rating.MW <- as.numeric(Transformer.table.3wind[i %% 5 == 0, V6])
   
   #merge to single table
   Transformer.table = rbind(Transformer.table.2wind_1_2,
@@ -441,7 +449,7 @@ setcolorder(Bus.table.S, c("node.number", "node.name", "kV", "bus.type",
                            "voltage.mag.pu", "voltage.angle.deg"))
 
 Bus.table = rbind(Bus.table,
-                  Bus.table.S)
+                  unique(Bus.table.S))
 
 
 # clean up
