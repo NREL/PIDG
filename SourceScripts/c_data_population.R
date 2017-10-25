@@ -880,7 +880,9 @@ if (exists('isolated.nodes.to.remove.args.list')) {
                       by = "Node")
             
             # recalculate LPF
-            redo.lpfs.to.properties[,`Load Participation Factor` := prop.table(as.numeric(value)), 
+            redo.lpfs.to.properties[,`Load Participation Factor`:=max(as.numeric(value)),by='Region']
+            redo.lpfs.to.properties[`Load Participation Factor` > 0,
+                                    `Load Participation Factor` := prop.table(as.numeric(value)), 
                                     by = "Region"]
             redo.lpfs.to.properties <- redo.lpfs.to.properties[value != `Load Participation Factor`]
             
