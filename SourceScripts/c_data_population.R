@@ -509,7 +509,7 @@ if (exists("memberships.list")) {
             message(sprintf("... Adding memberships from %s", fname))
             
             # do some cleaning/checking
-            check_for_dupes(cur.dt, names(cur.dt))
+            # check_for_dupes(cur.dt, names(cur.dt))
             check_colname_cap(cur.dt, version = plexos.version)
             
             # import memberships
@@ -880,9 +880,7 @@ if (exists('isolated.nodes.to.remove.args.list')) {
                       by = "Node")
             
             # recalculate LPF
-            redo.lpfs.to.properties[,`Load Participation Factor`:=max(as.numeric(value)),by='Region']
-            redo.lpfs.to.properties[`Load Participation Factor` > 0,
-                                    `Load Participation Factor` := prop.table(as.numeric(value)), 
+            redo.lpfs.to.properties[,`Load Participation Factor` := prop.table(as.numeric(value)), 
                                     by = "Region"]
             redo.lpfs.to.properties <- redo.lpfs.to.properties[value != `Load Participation Factor`]
             
