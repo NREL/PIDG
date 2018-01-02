@@ -509,15 +509,31 @@ if(!exists("parse.in.place")){
   
   rm(list = c(to.clean, reformatted.tables))
   rm(to.clean, reformatted.tables)
-  
+
 }else if(parse.in.place == FALSE){
   
   for (tab.name in reformatted.tables) {
     
-    write.csv(get(tab.name), 
-              file.path(outputfiles.dir, paste0(tab.name, ".csv")),
-              row.names = FALSE, 
-              quote = FALSE)
+    get(tab.name)[,filename:=cur.raw.file]  
+    
+    if(file.exists(file.path(outputfiles.dir, paste0(tab.name, ".csv")))){
+        
+        if(cur.raw.file == raw.file.list[[1]]){
+            message(paste0('adding raw.file.list contents to an existing ',tab.name,".csv"))
+        }
+        
+        write.csv(rbind(fread(file.path(outputfiles.dir, paste0(tab.name, ".csv"))),get(tab.name)), 
+                  file.path(outputfiles.dir, paste0(tab.name, ".csv")),
+                  row.names = FALSE, 
+                  quote = FALSE)
+        
+    }else{  
+        
+        write.csv(get(tab.name), 
+                  file.path(outputfiles.dir, paste0(tab.name, ".csv")),
+                  row.names = FALSE, 
+                  quote = FALSE)
+    }
   }
 }else{
   
