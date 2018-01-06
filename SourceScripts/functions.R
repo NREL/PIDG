@@ -656,6 +656,7 @@ import_properties <- function(input.table,
                               pattern.col = NA,
                               period.id = 0, datafile.col = NA, 
                               date_from.col = NA, overwrite = FALSE, 
+                              date_to.col = NA, overwrite = FALSE, 
                               overwrite.cols = NA, band.col = NA, 
                               memo.col = NA) {
     
@@ -673,13 +674,13 @@ import_properties <- function(input.table,
     if (is.na(collection.name)) collection.name <- paste0(object.class, "s")    
     
     non.prop.cols <- c(names.col, parent.col, pattern.col, period.id, 
-                       date_from.col,band.col, memo.col, "scenario", "notes", 
+                       date_from.col, date_to.col, band.col, memo.col, "scenario", "notes", 
                        "scenario.cat", "action", "escalator", "condition", 
                        "variable", "category")
     
     # check to make sure all given columns exist
     given.cols <- na.omit(c(names.col, parent.col, pattern.col,
-                            date_from.col, band.col, memo.col, 
+                            date_from.col, date_to.col, band.col, memo.col, 
                             datafile.col))
     
     if (!all(given.cols %in% all.cols)) {
@@ -754,6 +755,11 @@ import_properties <- function(input.table,
         #adding a date_from col if specified
         if (!is.na(date_from.col)) {
             props.tab[, date_from := input.table[, .SD, .SDcols = date_from.col]]
+        }
+
+        #adding a date_to col if specified
+        if (!is.na(date_to.col)) {
+          props.tab[, date_to := input.table[, .SD, .SDcols = date_to.col]]
         }
         
         # add period type id column if specified
