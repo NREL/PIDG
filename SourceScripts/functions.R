@@ -655,7 +655,7 @@ import_properties <- function(input.table,
                               scenario.cat = NA,
                               pattern.col = NA,
                               period.id = 0, datafile.col = NA, 
-                              date_from.col = NA, overwrite = FALSE, 
+                              date_from.col = NA, 
                               date_to.col = NA, overwrite = FALSE, 
                               overwrite.cols = NA, band.col = NA, 
                               memo.col = NA) {
