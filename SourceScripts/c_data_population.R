@@ -871,7 +871,7 @@ if (exists('isolated.nodes.to.remove.args.list')) {
                 Properties.sheet[property == "Load Participation Factor" & 
                                      !(child_object %in% isolated.nodes.to.remove$Node.Name) &
                                      is.na(scenario), 
-                                 .(Node = child_object, value)]
+                                 .(Node = child_object, pattern, value)]
             
             # add region for calculating LPF
             redo.lpfs.to.properties <-
@@ -883,7 +883,7 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             redo.lpfs.to.properties[,`Load Participation Factor`:=max(as.numeric(value)),by='Region']
             redo.lpfs.to.properties[`Load Participation Factor` > 0,
                                     `Load Participation Factor` := prop.table(as.numeric(value)), 
-                                    by = "Region"]
+                                    by = c("Region","pattern")]
             redo.lpfs.to.properties <- redo.lpfs.to.properties[value != `Load Participation Factor`]
             
             # for nodes with LPFs that have changed, assign the new LPFs to the nodes
@@ -893,11 +893,11 @@ if (exists('isolated.nodes.to.remove.args.list')) {
             if(!is.na(cur.scenario)){
                 import_properties(redo.lpfs.to.properties, names.col = "Node", 
                                   object.class = "Node", collection.name =  "Nodes",
-                                  scenario.name = cur.scenario)
+                                  pattern.col = "pattern", scenario.name = cur.scenario)
             } else {
                 import_properties(redo.lpfs.to.properties, names.col = "Node", 
                                   object.class = "Node", collection.name =  "Nodes",
-                                  overwrite = TRUE)
+                                  pattern.col = "pattern",overwrite = TRUE)
             }
             
             rm(redo.lpfs.to.properties, isolated.nodes.to.remove.args, 
