@@ -372,9 +372,7 @@ tfmrs <- merge(tfmr.from, tfmr.to, by = "line")
 edges <- rbind(lines, tfmrs)[,.(from,to)]
 
 # create graph object
-if (!anyDuplicated(nodes$Node)) {
-    network <- graph.data.frame(edges, directed = F, vertices = nodes)
-}
+network <- graph.data.frame(edges, directed = F, vertices = unique(nodes[,.(Node)]))
 
 if (nrow(edges) > 0 & nrow(nodes) > 0) {
   
