@@ -6,18 +6,6 @@ if (!require(pacman)) {
     install.packages("pacman")
 }
 
-if (!("openxlsx" %in% installed.packages()[, "Package"]) & export.wb == TRUE) {
-    stop(paste0("You are attempting to export an Excel workbook (export.wb is",
-                " set to TRUE) but openxlsx is not installed.", 
-                " Either set export.wb to FALSE or, to export an excel file,", 
-                " install openxlsx. Follow",
-                " instructions here: https://github.com/awalker89/openxlsx", 
-                " including installing Rtools from here:",  
-                " https://cran.r-project.org/bin/windows/Rtools/", 
-                " and making sure PATH variable was edited",  
-                " (check the 'edit path' box during installation)"))
-}
-
 pacman::p_load(dplyr, cowplot, ggplot2, data.table, igraph, openxlsx, 
                RPostgreSQL,zoo) 
 
