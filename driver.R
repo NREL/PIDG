@@ -122,8 +122,7 @@ if (exists("inputfiles.db")) {
     conn = dbConnect(drv = inputfiles.db$drv, 
                      host = inputfiles.db$host, 
                      dbname = inputfiles.db$dbname, 
-                     user = inputfiles.db$user, 
-                     password = inputfiles.db$password)
+                     user = inputfiles.db$user) 
 }
 
 source(input.params)
