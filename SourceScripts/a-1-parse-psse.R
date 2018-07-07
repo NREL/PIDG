@@ -144,12 +144,14 @@ if (exists('Bus.table')) {
              "region.number", "zone.number", "owner.number", 
              "voltage.mag.pu", "voltage.angle.deg"))
   
+  Bus.table[,node.number:=as.character(node.number)] # MP
+  
   # a check added because of the Sri Lankan 2015 PSSE file. It's Bus.table has an extra empty row which
   # throws off column class types
   if(nrow(Bus.table[node.number == ""])>0){
     Bus.table = Bus.table[!(node.number == "")]
     
-    cols.to.convert = c('node.number','kV','bus.type','region.number','zone.number',
+    cols.to.convert = c('kV','bus.type','region.number','zone.number',
                         'owner.number','voltage.mag.pu','voltage.angle.deg')
     
     Bus.table = Bus.table[,c(cols.to.convert) := lapply(.SD,function(x) as.numeric(x)),by = c(''),
@@ -175,7 +177,9 @@ if (exists('Load.table')) {
              "reactive.power.const.current.MVAR", 
              "active.power.const.admittance.MW", 
              "reactive.power.const.admittance.MVAR", "owner.number"))
-#  Load.table$node.number <- as.character(as.numeric(Load.table$node.number))
+  
+  Load.table[,node.number:=as.character(node.number)] # MP
+
 } else {
     
   message("No Load Table exists ... skipping")
@@ -226,6 +230,8 @@ if (exists('Generator.table')) {
   
   setnames(Generator.table, colnames(Generator.table), generator.tablenames)
   
+  Generator.table[,node.number:=as.character(node.number)] # MP
+  
 } else {
   message("No Gen Table exists ... skipping")
 }
@@ -265,6 +271,9 @@ if (exists('Branch.table')) {
         }
   
     setnames(Branch.table, colnames(Branch.table), branch.tablenames)
+    
+    Branch.table[,node.from.number:=as.character(node.from.number)]
+    Branch.table[,node.to.number:=as.character(node.to.number)]
 
 }  else {
     
@@ -341,14 +350,14 @@ if (exists('Transformer.table')) {
 
   # two-winding transformers from node 1 to node 2
   Transformer.table.2wind_1_2 <- data.table(node.from.number = 
-                                              numeric(length = nrow(Transformer.table.2wind)/4))
+                                              rep("",nrow(Transformer.table.2wind)/4))
   
-  Transformer.table.2wind_1_2$node.from.number <- Transformer.table.2wind[i %% 4 == 1, .(V1)]
-  Transformer.table.2wind_1_2$node.to.number   <- Transformer.table.2wind[i %% 4 == 1, .(V2)]
-  Transformer.table.2wind_1_2$id               <- Transformer.table.2wind[i %% 4 == 1, .(V4)]
-  Transformer.table.2wind_1_2$status           <- Transformer.table.2wind[i %% 4 == 1, .(V12)]
-  Transformer.table.2wind_1_2$resistance.pu    <- Transformer.table.2wind[i %% 4 == 2, .(V1)]
-  Transformer.table.2wind_1_2$reactance.pu     <- Transformer.table.2wind[i %% 4 == 2, .(V2)]
+  Transformer.table.2wind_1_2$node.from.number <- as.character(Transformer.table.2wind[i %% 4 == 1, V1])
+  Transformer.table.2wind_1_2$node.to.number   <- as.character(Transformer.table.2wind[i %% 4 == 1, V2])
+  Transformer.table.2wind_1_2$id               <- Transformer.table.2wind[i %% 4 == 1, V4]
+  Transformer.table.2wind_1_2$status           <- Transformer.table.2wind[i %% 4 == 1, V12]
+  Transformer.table.2wind_1_2$resistance.pu    <- Transformer.table.2wind[i %% 4 == 2, V1]
+  Transformer.table.2wind_1_2$reactance.pu     <- Transformer.table.2wind[i %% 4 == 2, V2]
   Transformer.table.2wind_1_2$rating.MW        <- as.numeric(Transformer.table.2wind[i %% 4 == 3, V4])
   Transformer.table.2wind_1_2$overload.rating.MW <- as.numeric(Transformer.table.2wind[i %% 4 == 3, V6])
   
@@ -359,12 +368,12 @@ if (exists('Transformer.table')) {
   
   # three-winding transformers from node 1 to node S
   Transformer.table.3wind_1_S <- data.table(node.from.number = 
-                                              numeric(length = nrow(Transformer.table.3wind)/5))
+                                              rep("",nrow(Transformer.table.3wind)/5))
   
-  Transformer.table.3wind_1_S$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V1)]
-  Transformer.table.3wind_1_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="")]
-  Transformer.table.3wind_1_S$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
-  Transformer.table.3wind_1_S$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
+  Transformer.table.3wind_1_S$node.from.number <- as.character(Transformer.table.3wind[i %% 5 == 1, V1])
+  Transformer.table.3wind_1_S$node.to.number   <- as.character(Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="-")])
+  Transformer.table.3wind_1_S$id               <- Transformer.table.3wind[i %% 5 == 1, V4]
+  Transformer.table.3wind_1_S$status           <- Transformer.table.3wind[i %% 5 == 1, V12]
   Transformer.table.3wind_1_S$resistance.pu    <- 0.5*(as.numeric(Transformer.table.3wind[i %% 5 == 2, V1]) -
                                                          as.numeric(Transformer.table.3wind[i %% 5 == 2, V4]) +
                                                          as.numeric(Transformer.table.3wind[i %% 5 == 2, V7]))
@@ -378,12 +387,12 @@ if (exists('Transformer.table')) {
   
   # three-winding transformers from node 2 to node S
   Transformer.table.3wind_2_S <- data.table(node.from.number = 
-                                              numeric(length = nrow(Transformer.table.3wind)/5))
+                                              rep("",nrow(Transformer.table.3wind)/5))
   
-  Transformer.table.3wind_2_S$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V2)]
-  Transformer.table.3wind_2_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="")]
-  Transformer.table.3wind_2_S$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
-  Transformer.table.3wind_2_S$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
+  Transformer.table.3wind_2_S$node.from.number <- as.character(Transformer.table.3wind[i %% 5 == 1, V2])
+  Transformer.table.3wind_2_S$node.to.number   <- as.character(Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="-")])
+  Transformer.table.3wind_2_S$id               <- Transformer.table.3wind[i %% 5 == 1, V4]
+  Transformer.table.3wind_2_S$status           <- Transformer.table.3wind[i %% 5 == 1, V12]
   
   Transformer.table.3wind_2_S$resistance.pu    <- 0.5*(as.numeric(Transformer.table.3wind[i %% 5 == 2, V1]) +
                                                          as.numeric(Transformer.table.3wind[i %% 5 == 2, V4]) -
@@ -400,12 +409,12 @@ if (exists('Transformer.table')) {
   
   # three-winding transformers from node 3 to node S
   Transformer.table.3wind_3_S <- data.table(node.from.number = 
-                                              numeric(length = nrow(Transformer.table.3wind)/5))
+                                              rep("",nrow(Transformer.table.3wind)/5))
   
-  Transformer.table.3wind_3_S$node.from.number <- Transformer.table.3wind[i %% 5 == 1, .(V3)]
-  Transformer.table.3wind_3_S$node.to.number   <- Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="")]
-  Transformer.table.3wind_3_S$id               <- Transformer.table.3wind[i %% 5 == 1, .(V4)]
-  Transformer.table.3wind_3_S$status           <- Transformer.table.3wind[i %% 5 == 1, .(V12)]
+  Transformer.table.3wind_3_S$node.from.number <- as.character(Transformer.table.3wind[i %% 5 == 1, V3])
+  Transformer.table.3wind_3_S$node.to.number   <- as.character(Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="-")])
+  Transformer.table.3wind_3_S$id               <- Transformer.table.3wind[i %% 5 == 1, V4]
+  Transformer.table.3wind_3_S$status           <- Transformer.table.3wind[i %% 5 == 1, V12]
   
   Transformer.table.3wind_3_S$resistance.pu    <- 0.5*(as.numeric(Transformer.table.3wind[i %% 5 == 2, V4]) +
                                                          as.numeric(Transformer.table.3wind[i %% 5 == 2, V7]) -
@@ -426,30 +435,22 @@ if (exists('Transformer.table')) {
                             Transformer.table.3wind_3_S)
   
 
-#update bus.table to include fictitious nodes from 3 winding transformers
-  #assume the properties of the fictitious nodes are the same as the first node from the 3 winding transformer
-  
-Bus.table.S   <- data.table(node.number = numeric(length = nrow(Transformer.table.3wind)/5))
-Bus.table.S$node.number <- Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="")]
-Bus.table.S$node.A    <- substr(Bus.table.S$node.number, 1,4)
+  # update bus.table to include fictitious 'star' nodes from 3 winding transformers
+# set default star node properties
 
-#change character columns to numeric to avoid errors
-Bus.table.S[,node.number:=as.numeric(node.number)]
-Bus.table.S[,node.A:=as.numeric(node.A)]
+Bus.table.S <- data.table(node.number = unique(Transformer.table.3wind[i %% 5 == 1, paste(V1,V2,V3,sep="-")]))  
+Bus.table.S[,node.name:='STAR']
+Bus.table.S[,c('region.number','zone.number','owner.number','bus.type'):=9999]
+Bus.table.S[,kV:=0]
+Bus.table.S[,voltage.mag.pu:=1]
+Bus.table.S[,voltage.angle.deg:=0]
 
-Bus.table[, node.A := node.number]
-
-
-Bus.table.S <- merge(Bus.table, Bus.table.S, by = "node.A")
-Bus.table.S[,c("node.A","node.number.x") := NULL]
-Bus.table[,node.A := NULL]
-setnames(Bus.table.S, "node.number.y", "node.number")
 setcolorder(Bus.table.S, c("node.number", "node.name", "kV", "bus.type", 
                            "region.number", "zone.number", "owner.number", 
                            "voltage.mag.pu", "voltage.angle.deg"))
 
 Bus.table = rbind(Bus.table,
-                  unique(Bus.table.S))
+            unique(Bus.table.S))
 
 
 # clean up
@@ -473,19 +474,15 @@ if (exists('Two.terminal.dc.line.table')) {
   
   # create empty table to populate
   DC.line.table <- data.table(node.from.number = 
-                              numeric(length = nrow(Two.terminal.dc.line.table)/3))
+                              rep("",nrow(Two.terminal.dc.line.table)/3))
   
-  DC.line.table$node.from.number <- Two.terminal.dc.line.table[i %% 3 == 2, .(V1)]
-  DC.line.table$node.to.number   <- Two.terminal.dc.line.table[i %% 3 == 0, .(V1)]
+  DC.line.table$node.from.number <- as.character(Two.terminal.dc.line.table[i %% 3 == 2, V1])
+  DC.line.table$node.to.number   <- as.character(Two.terminal.dc.line.table[i %% 3 == 0, V1])
   DC.line.table$id               <- Two.terminal.dc.line.table[i %% 3 == 2, .(V16)]
   DC.line.table$resistance.pu    <- Two.terminal.dc.line.table[i %% 3 == 1, .(V3/mva.base)]
   DC.line.table$max.flow.MW      <- Two.terminal.dc.line.table[i %% 3 == 1, .(V4)]
   DC.line.table$id.num           <- Two.terminal.dc.line.table[i %% 3 == 1, .(V1)]
 
-  #change character columns to numeric to avoid errors
-  DC.line.table[,node.from.number:=as.numeric(node.from.number)]
-  DC.line.table[,node.to.number:=as.numeric(node.to.number)]
-  
 } else {
   
   message("No Two Terminal DC Line Table exists ... skipping")
@@ -494,7 +491,6 @@ if (exists('Two.terminal.dc.line.table')) {
 #------------------------------------------------------------------------------|
 # id skipped tables ----
 #------------------------------------------------------------------------------|
-
 
 ## find tables that haven't been processed (i.e. colnames are stil V1, V2, ...)
 all.tables <- ls(pattern = "^[A-Z].*(table)$")
@@ -572,3 +568,5 @@ close(conn)
 
 # clean up
 rm(conn, mva.base, no.data.vec, tab.info, psse.version, raw.table)
+
+

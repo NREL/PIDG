@@ -431,9 +431,6 @@ if (exists("transformer.data.table")) {
                                                         Rating = rating.MW,
                                                         Units = status)]
 
-    #to avoid merging errors
-    transformer.data.table[,node.to.number:=as.numeric(node.to.number)]
-    
     # add Node From and Node To names
     transformer.data.table <- merge(transformer.data.table, 
                                     node.data.table[,.(node.from.number = node.number,
