@@ -1207,11 +1207,13 @@ if(data.check.plots == TRUE){
 }
     
 if(length(readLines(warnings, warn = F)) > 1){
-    file.show(warnings)
-}
+    tryCatch(file.show(warnings), 
+             error = function(cond) {print('Error opening warnings.txt')})
+  }
 
 if(length(readLines(fatal.warnings, warn = F)) > 1){
-    file.show(fatal.warnings)
+  tryCatch(file.show(fatal.warnings), 
+           error = function(cond) {print('Error opening fatal.warnings.txt')})
 }
 
 
