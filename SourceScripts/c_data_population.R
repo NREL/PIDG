@@ -121,6 +121,7 @@ if (exists('generic.import.files')) {
         
         # read in data, change blanks to NA, and import into .sheet tables
         imported.file <- read_data(x[[1]],
+                                   sep=',',
                                    fill = TRUE, 
                                    header = FALSE, 
                                    strip.white = TRUE, 
