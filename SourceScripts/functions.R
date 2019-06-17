@@ -85,6 +85,7 @@ fix_db_colnames <- function(x) {
     # hard cord exceptions - may need to add to this
     if (x == "Voll") x <- "VoLL"
     if (x == "Vors") x <- "VoRS"
+    if (x == "Rhs") x <- "RHS"
     if (grepl(" At ", x)) x <- gsub(" At ", " at ", x)
     
     return(x)
