@@ -36,7 +36,7 @@ Note: **PIDG/driver.R** can also be called from the command line, using a format
 
 ### Input parameter file options
 
-The input parameter file tells PIDG where to look for data and how to process it. Data can be stored in a PSS/E (version 31) .raw file, .csv files, or in a postgresql database. Pointers to data are defined in the input parameters file in one of several lists, and which list data is read in in will determine how PIDG will treat the data. This is a list of possible variables that can be defined as input parameters. Note: below, "data pointer" means either a path to a csv file, relative to the variable `inputfiles.dir` or a SQL query (beginning with "SELECT") that will be sent to the postgresql database defined by `inputfiles.db`. Unless otherwise specified, if a variable is undefined, it will be ignored.
+The input parameter file tells PIDG where to look for data and how to process it. Data can be stored in a PSS/E (version 31) .raw file, .csv files, or in a postgresql database. Pointers to data are defined in the input parameters file in one of several lists, and which list data is read in in will determine how PIDG will treat the data. This is a list of possible variables that can be defined as input parameters. Note: below, "data pointer" means either a path to a csv file, relative to the variable `inputfiles.dir` or a SQL query (beginning with "SELECT" or "WITH") that will be sent to the postgresql database defined by `inputfiles.db`. Unless otherwise specified, if a variable is undefined, it will be ignored.
 
 switches:
 * `plexos.version`: numeric, can be 6 or 7. Defaults to 7 if undefined. This determine the column names in the Properties tab of the final Excel workbook, since these are different between PLEXOS 6.xx and 7.xx.
