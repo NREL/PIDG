@@ -124,7 +124,7 @@ read_data <- function(to_data, dir = inputfiles.dir, con = conn,
                 to.return <- NA
             }
             
-        } else if (startsWith(tolower(to_data), "select")) {
+        } else if (grepl("^(select|with)",tolower(to_data))) {
             
             # pull data from a db if a connection exists
             if (exists("conn")) {
