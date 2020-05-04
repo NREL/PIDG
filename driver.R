@@ -56,9 +56,11 @@ if (!exists("input.params")) {
                "to the location of the input parameters file"))
 }
 
-if (!file.exists(input.params)) {
-    stop(sprintf("input.params is set to %s, but that file does not exist",
-                 input.params))
+if(input.params != 'none'){
+  if (!file.exists(input.params)) {
+      stop(sprintf("input.params is set to %s, but that file does not exist",
+                   input.params))
+  }
 }
 
 # check for existence inputfiles.dir (optional)
@@ -125,7 +127,9 @@ if (exists("inputfiles.db")) {
                      user = inputfiles.db$user) 
 }
 
-source(input.params)
+if(input.params != 'none'){
+  source(input.params)
+}
 
 
 #------------------------------------------------------------------------------|

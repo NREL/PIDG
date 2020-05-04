@@ -510,7 +510,7 @@ if(gen.genpf[round(gen.genpf, 3) != 1,.N] > 0){
 problem.row.mask = Properties.sheet[,property == "Min Stable Level" & 
                                         as.numeric(value) < 0]
 
-if (any(problem.row.mask)) {
+if (any(problem.row.mask, na.rm=T)) {
     sink(fatal.warnings, append = T) 
     cat("\n\n")
     cat(paste0("WARNING: there are negative min stable levels in Properties.sheet\n"))
