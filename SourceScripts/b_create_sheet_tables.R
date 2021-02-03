@@ -49,7 +49,27 @@ Properties.sheet <- if (plexos.version == 7) {
                scenario = character(), 
                memo = character(),	
                period_type_id = character())
-} else {
+} else {if (plexos.version == 8) {
+    
+    data.table(parent_class = character(),  
+               child_class = character(), 
+               collection = character(), 
+               parent_object = character(), 
+               child_object = character(), 
+               property = character(), 
+               band_id = character(), 
+               value = character(), 
+               units = character(), 
+               date_from = character(), 
+               date_to = character(), 
+               pattern = character(), 
+               action = character(),
+               expression = character(),  
+               filename = character(),  
+               scenario = character(), 
+               memo = character(),  
+               period_type_id = character())
+} else { # Version 6
     
     # include escalator and condition but not action
     data.table(parent_class = character(),	
@@ -72,7 +92,7 @@ Properties.sheet <- if (plexos.version == 7) {
                memo = character(),	
                period_type_id = character())
     
-}
+} }
 
 Reports.sheet <- data.table(object = character(), 
                             parent_class = character(), 

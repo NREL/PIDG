@@ -1078,9 +1078,16 @@ if (any(non.object.dfs)) {
 rm(non.object.dfs)
 
 # ** make sure all variables have {Object} in front of them ----
-non.object.vars = Properties.sheet[,!(grepl("^\\{Object\\}", variable) | 
-                                          is.na(variable) | 
-                                          variable == "")]
+# Version 8 calls these "expression", so using if here for that
+if ('variable' %in% names(Properties.sheet)){
+  non.object.vars = Properties.sheet[,!(grepl("^\\{Object\\}", variable) | 
+                                            is.na(variable) | 
+                                            variable == "")]
+} else {
+  non.object.vars = Properties.sheet[,!(grepl("^\\{Object\\}", expression) | 
+                                          is.na(expression) | 
+                                          expression == "")]
+}
 
 if (any(non.object.vars)) {
     sink(fatal.warnings, append = T) 
@@ -1138,7 +1145,9 @@ if (length(object.dfs) > 0) {
 rm(object.dfs)
 
 # ** make sure variable objects in Properties.sheet exist as objects ----
-colname <- ifelse(plexos.version == 7, "variable", "escalator")
+colname <- ifelse(plexos.version == 7, "variable", 
+                  ifelse(plexos.version == 8, "expression",
+                         "escalator"))
 
 object.vars <- Properties.sheet[, unique(get(colname))]
 object.vars <- object.vars[grepl("^\\{Object\\}", object.vars)]
