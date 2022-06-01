@@ -277,7 +277,7 @@ if(exists('reserve.files')) {
         message(sprintf("... Adding reserves from %s", reserve.files$reserves))
         
         # add reserves to objects sheet
-        import_objects(reserves[, .(Reserve)])
+        import_objects(unique(reserves[, .(Reserve)]))
         
         # fix scenario name so is always lowercase
         check_colname_cap(reserves, version = plexos.version)
@@ -287,7 +287,7 @@ if(exists('reserve.files')) {
             
             reserve.scenarios <- unique(reserves[,scenario])
             
-            for(i in reserve.scenarios){
+            for(i in reserve.scenarios[reserve.scenarios!='']){
                 
                 reserve.enabled <- reserves[scenario == i,.(Reserve,`Is Enabled`)]
                 
@@ -297,19 +297,29 @@ if(exists('reserve.files')) {
                                   scenario.name = i)
             }
             
+            # Set default reserve if provided. If not,
             # turn off reserve when scenario not selected
-            reserve.scenario.off <- reserves[,.(Reserve,`Is Enabled` = 0)]
-            
-            import_properties(reserve.scenario.off, 
-                              object.class = 'Reserve',
-                              names.col = 'Reserve',
-                              collection.name = 'Reserves')
+            if ("" %in% reserve.scenarios){
+              reserve.default <- reserves[scenario == "",.(Reserve,`Is Enabled`)]
+              
+              import_properties(reserve.default, object.class = 'Reserve', 
+                                names.col = 'Reserve', 
+                                collection.name = 'Reserves')
+            }
+            else{
+              reserve.default <- reserves[,.(Reserve,`Is Enabled` = 0)]
+              
+              import_properties(reserve.default, 
+                                object.class = 'Reserve',
+                                names.col = 'Reserve',
+                                collection.name = 'Reserves')
+            }
             
             # add reserve scenarios to objects.sheet
             add_scenarios(reserve.scenarios, category = "Reserves")
             
             # clean up
-            rm(reserve.scenarios, reserve.enabled, reserve.scenario.off)
+            rm(reserve.scenarios, reserve.enabled, reserve.default)
             
         } else if ("Is Enabled" %in% names(reserves)) {
             
