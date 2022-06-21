@@ -1146,7 +1146,7 @@ rm(object.dfs)
 
 # ** make sure variable objects in Properties.sheet exist as objects ----
 colname <- ifelse(plexos.version == 7, "variable", 
-                  ifelse(plexos.version == 8, "expression",
+                  ifelse(plexos.version %in% c(8,9), "expression",
                          "escalator"))
 
 object.vars <- Properties.sheet[, unique(get(colname))]

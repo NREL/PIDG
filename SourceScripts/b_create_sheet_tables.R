@@ -49,7 +49,7 @@ Properties.sheet <- if (plexos.version == 7) {
                scenario = character(), 
                memo = character(),	
                period_type_id = character())
-} else {if (plexos.version == 8) {
+} else {if (plexos.version %in% c(8, 9)) {
     
     data.table(parent_class = character(),  
                child_class = character(), 
